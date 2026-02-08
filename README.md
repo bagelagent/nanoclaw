@@ -122,6 +122,7 @@ Key files:
 - `src/task-scheduler.ts` - Runs scheduled tasks
 - `src/db.ts` - SQLite operations
 - `groups/*/CLAUDE.md` - Per-group memory
+- `.claude/skills/*/SKILL.md` - Reusable skills for capabilities
 
 ## FAQ
 

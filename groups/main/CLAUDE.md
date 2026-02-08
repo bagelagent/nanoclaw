@@ -204,6 +204,47 @@ You can read and write to `/workspace/project/groups/global/CLAUDE.md` for facts
 
 ---
 
+## Self-Modification
+
+You can modify your own source code and deploy changes. The full NanoClaw project is mounted at `/workspace/project/`.
+
+### Project Layout
+
+| Path | What it is |
+|------|-----------|
+| `src/` | Host process (TypeScript) — message routing, IPC, WhatsApp/Discord |
+| `container/agent-runner/src/` | Agent code (TypeScript) — your runtime, MCP tools |
+| `groups/main/CLAUDE.md` | This file — your memory and instructions |
+| `groups/*/CLAUDE.md` | Per-group memory files |
+| `container/build.sh` | Container image build script |
+
+### How to Make Changes
+
+1. **Edit files** at `/workspace/project/` using Write/Edit tools
+2. **Type-check** before deploying:
+   - Host changes: `cd /workspace/project && npx tsc --noEmit`
+   - Container changes: `cd /workspace/project/container/agent-runner && npx tsc --noEmit`
+3. **Review** your changes: `cd /workspace/project && git diff`
+4. **Deploy** using the `deploy` MCP tool
+
+### Deploy Targets
+
+| Changed files | Targets | What happens |
+|--------------|---------|-------------|
+| `src/*.ts` | `["host"]` | Commits, builds host, restarts service |
+| `container/agent-runner/src/*.ts` | `["container"]` | Commits, builds container image, restarts |
+| Both host and container | `["host", "container"]` | Commits, builds both, restarts |
+| `CLAUDE.md`, docs, non-code | `[]` | Commits only — no rebuild or restart |
+
+### Safety
+
+- Every deploy auto-commits changes to git (audit trail)
+- If the build fails, deploy aborts — the service keeps running old code
+- Rollback: `git revert HEAD` on the host machine
+- The session ends when the service restarts — send the user a message first
+
+---
+
 ## Scheduling for Other Groups
 
 When scheduling tasks for other groups, use the `target_group_jid` parameter with the group's JID from `registered_groups.json`:

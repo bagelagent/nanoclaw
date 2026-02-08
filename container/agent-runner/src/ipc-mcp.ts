@@ -317,6 +317,60 @@ Use available_groups.json to find the JID for a group. The folder name should be
         }
       ),
 
+      ...(isMain ? [tool(
+        'deploy',
+        `Deploy code changes to NanoClaw. Main group only.
+
+This tool commits your changes, builds the specified targets, and restarts the service. The current session will end after calling this.
+
+BEFORE calling deploy:
+1. Make your changes to files under /workspace/project/
+2. Type-check: cd /workspace/project && npx tsc --noEmit (for host changes in src/)
+3. For container changes: cd /workspace/project/container/agent-runner && npx tsc --noEmit
+4. Review changes: cd /workspace/project && git diff
+5. Only then call deploy
+
+TARGETS — what to rebuild:
+• "host" — changes to src/*.ts (host process code)
+• "container" — changes to container/agent-runner/ (agent code, MCP tools, Dockerfile)
+• Both — changes spanning host and container code
+• Neither — changes to CLAUDE.md, docs, or non-code files (just commits, no rebuild/restart)
+
+After deploy, the service restarts automatically. Your session ends — the user will see the service come back online.`,
+        {
+          targets: z.array(z.enum(['host', 'container'])).describe('What to rebuild. Empty array = commit only (no rebuild/restart).'),
+          commit_message: z.string().optional().describe('Git commit message describing your changes. Defaults to "chore: agent-initiated deploy".')
+        },
+        async (args) => {
+          if (!isMain) {
+            return {
+              content: [{ type: 'text', text: 'Deploy is only available from the main group.' }],
+              isError: true
+            };
+          }
+
+          const data = {
+            type: 'deploy',
+            targets: args.targets,
+            commitMessage: args.commit_message,
+            groupFolder,
+            timestamp: new Date().toISOString()
+          };
+
+          writeIpcFile(TASKS_DIR, data);
+
+          const willRestart = args.targets.length > 0;
+          return {
+            content: [{
+              type: 'text',
+              text: willRestart
+                ? `Deploy initiated (targets: ${args.targets.join(', ')}). The service will restart shortly — this session will end.`
+                : `Changes committed. No rebuild/restart needed.`
+            }]
+          };
+        }
+      )] : []),
+
       tool(
         'semantic_search',
         `Search your memory using natural language. Finds relevant content by meaning, not just keywords.

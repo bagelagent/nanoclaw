@@ -564,6 +564,9 @@ async function processTaskIpc(
     folder?: string;
     trigger?: string;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For deploy
+    targets?: string[];
+    commitMessage?: string;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -765,6 +768,71 @@ async function processTaskIpc(
         );
       }
       break;
+
+    case 'deploy': {
+      if (!isMain) {
+        logger.warn({ sourceGroup }, 'Unauthorized deploy attempt blocked');
+        break;
+      }
+
+      const targets = (data.targets || []) as string[];
+      const commitMsg = data.commitMessage || 'chore: agent-initiated deploy';
+
+      logger.info({ targets, commitMsg }, 'Deploy requested via IPC');
+
+      // 1. Git commit all changes (audit trail)
+      try {
+        execSync('git add -A', { cwd: process.cwd(), stdio: 'pipe' });
+        // Check if there's anything to commit
+        try {
+          execSync('git diff --cached --quiet', { cwd: process.cwd(), stdio: 'pipe' });
+          logger.info('No changes to commit, proceeding with build');
+        } catch {
+          // Non-zero exit means there are staged changes
+          execSync(
+            `git commit -m ${JSON.stringify(commitMsg + '\n\nDeployed by agent via IPC')}`,
+            { cwd: process.cwd(), stdio: 'pipe' },
+          );
+          logger.info({ commitMsg }, 'Changes committed');
+        }
+      } catch (err) {
+        logger.error({ err }, 'Git commit failed, aborting deploy');
+        break;
+      }
+
+      // 2. Build host if requested
+      if (targets.includes('host')) {
+        try {
+          logger.info('Building host...');
+          execSync('npm run build', { cwd: process.cwd(), stdio: 'pipe', timeout: 60000 });
+          logger.info('Host build succeeded');
+        } catch (err) {
+          logger.error({ err }, 'Host build failed, aborting deploy');
+          break;
+        }
+      }
+
+      // 3. Build container if requested
+      if (targets.includes('container')) {
+        try {
+          logger.info('Building container...');
+          execSync('./container/build.sh', { cwd: process.cwd(), stdio: 'pipe', timeout: 300000 });
+          logger.info('Container build succeeded');
+        } catch (err) {
+          logger.error({ err }, 'Container build failed, aborting deploy');
+          break;
+        }
+      }
+
+      // 4. Graceful shutdown after delay — systemd will restart with new code
+      logger.info('Deploy complete, restarting in 2 seconds...');
+      setTimeout(async () => {
+        await shutdownPool();
+        await queue.shutdown(10000);
+        process.exit(0);
+      }, 2000);
+      break;
+    }
 
     default:
       logger.warn({ type: data.type }, 'Unknown IPC task type');
