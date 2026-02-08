@@ -1,6 +1,6 @@
 /**
  * Container Runner for NanoClaw
- * Spawns agent execution in Apple Container and handles IPC
+ * Manages persistent Docker containers per group and sends queries over stdin/stdout.
  */
 import { ChildProcess, exec, spawn } from 'child_process';
 import fs from 'fs';
@@ -21,6 +21,8 @@ import { RegisteredGroup } from './types.js';
 // Sentinel markers for robust output parsing (must match agent-runner)
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
 const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
+
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function getHomeDir(): string {
   const home = process.env.HOME || os.homedir();
@@ -90,7 +92,7 @@ function buildVolumeMounts(
     });
 
     // Global memory directory (read-only for non-main)
-    // Apple Container only supports directory mounts, not file mounts
+    // Mount global memory directory
     const globalDir = path.join(GROUPS_DIR, 'global');
     if (fs.existsSync(globalDir)) {
       mounts.push({
@@ -127,7 +129,7 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Environment file directory (workaround for Apple Container -i env var bug)
+  // Environment file directory
   // Only expose specific auth variables needed by Claude Code, not the entire .env
   const envDir = path.join(DATA_DIR, 'env');
   fs.mkdirSync(envDir, { recursive: true });
@@ -170,7 +172,7 @@ function buildVolumeMounts(
 function buildContainerArgs(mounts: VolumeMount[], containerName: string): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
-  // Apple Container: --mount for readonly, -v for read-write
+  // Docker: --mount for readonly, -v for read-write
   for (const mount of mounts) {
     if (mount.readonly) {
       args.push(
@@ -187,6 +189,371 @@ function buildContainerArgs(mounts: VolumeMount[], containerName: string): strin
   return args;
 }
 
+// ─── Container Pool ──────────────────────────────────────────────────────────
+
+interface PoolEntry {
+  process: ChildProcess;
+  containerName: string;
+  group: RegisteredGroup;
+  isMain: boolean;
+  lastUsed: number;
+  idleTimer: NodeJS.Timeout;
+  /** Stderr buffer for diagnostics */
+  stderr: string;
+  stderrTruncated: boolean;
+  /**
+   * Stdout accumulator between sentinel markers.
+   * Data arrives in chunks; we buffer until we see both markers.
+   */
+  stdoutBuf: string;
+  /** Whether the container process has exited */
+  exited: boolean;
+  exitCode: number | null;
+  /**
+   * If a query is in flight, this holds the resolve callback.
+   * Only one query can be active per container at a time.
+   */
+  pendingResolve: ((output: ContainerOutput) => void) | null;
+  pendingTimeout: NodeJS.Timeout | null;
+}
+
+class ContainerPool {
+  private pool = new Map<string, PoolEntry>();
+
+  /**
+   * Get or spawn a persistent container for a group.
+   */
+  getOrSpawn(
+    group: RegisteredGroup,
+    isMain: boolean,
+  ): PoolEntry {
+    const key = group.folder;
+    const existing = this.pool.get(key);
+    if (existing && !existing.exited) {
+      return existing;
+    }
+
+    // Clean up dead entry
+    if (existing) {
+      this.pool.delete(key);
+    }
+
+    const groupDir = path.join(GROUPS_DIR, group.folder);
+    fs.mkdirSync(groupDir, { recursive: true });
+
+    const mounts = buildVolumeMounts(group, isMain);
+    const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
+    const containerName = `nanoclaw-${safeName}-${Date.now()}`;
+    const containerArgs = buildContainerArgs(mounts, containerName);
+
+    logger.debug(
+      {
+        group: group.name,
+        containerName,
+        mounts: mounts.map(
+          (m) =>
+            `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`,
+        ),
+      },
+      'Container mount configuration',
+    );
+
+    logger.info(
+      {
+        group: group.name,
+        containerName,
+        mountCount: mounts.length,
+        isMain,
+      },
+      'Spawning persistent container',
+    );
+
+    const container = spawn('docker', containerArgs, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    const entry: PoolEntry = {
+      process: container,
+      containerName,
+      group,
+      isMain,
+      lastUsed: Date.now(),
+      idleTimer: setTimeout(() => this.shutdownEntry(key), IDLE_TIMEOUT_MS),
+      stderr: '',
+      stderrTruncated: false,
+      stdoutBuf: '',
+      exited: false,
+      exitCode: null,
+      pendingResolve: null,
+      pendingTimeout: null,
+    };
+
+    // Stream stderr for logging/diagnostics
+    container.stderr.on('data', (data) => {
+      const chunk = data.toString();
+      const lines = chunk.trim().split('\n');
+      for (const line of lines) {
+        if (line) logger.debug({ container: group.folder }, line);
+      }
+      if (entry.stderrTruncated) return;
+      const remaining = CONTAINER_MAX_OUTPUT_SIZE - entry.stderr.length;
+      if (chunk.length > remaining) {
+        entry.stderr += chunk.slice(0, remaining);
+        entry.stderrTruncated = true;
+      } else {
+        entry.stderr += chunk;
+      }
+    });
+
+    // Stream stdout — look for sentinel-delimited output per query
+    container.stdout.on('data', (data) => {
+      entry.stdoutBuf += data.toString();
+      this.checkForOutput(entry);
+    });
+
+    container.on('close', (code) => {
+      entry.exited = true;
+      entry.exitCode = code;
+      clearTimeout(entry.idleTimer);
+
+      logger.info(
+        { group: group.name, containerName, code },
+        'Persistent container exited',
+      );
+
+      // If a query was pending, resolve with error
+      if (entry.pendingResolve) {
+        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+        entry.pendingResolve({
+          status: 'error',
+          result: null,
+          error: `Container exited unexpectedly with code ${code}: ${entry.stderr.slice(-200)}`,
+        });
+        entry.pendingResolve = null;
+        entry.pendingTimeout = null;
+      }
+
+      this.pool.delete(key);
+    });
+
+    container.on('error', (err) => {
+      entry.exited = true;
+      clearTimeout(entry.idleTimer);
+      logger.error({ group: group.name, containerName, error: err }, 'Container spawn error');
+
+      if (entry.pendingResolve) {
+        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+        entry.pendingResolve({
+          status: 'error',
+          result: null,
+          error: `Container spawn error: ${err.message}`,
+        });
+        entry.pendingResolve = null;
+        entry.pendingTimeout = null;
+      }
+
+      this.pool.delete(key);
+    });
+
+    this.pool.set(key, entry);
+    return entry;
+  }
+
+  /**
+   * Check if stdout buffer contains a complete sentinel-delimited response.
+   */
+  private checkForOutput(entry: PoolEntry): void {
+    if (!entry.pendingResolve) return;
+
+    const startIdx = entry.stdoutBuf.indexOf(OUTPUT_START_MARKER);
+    const endIdx = entry.stdoutBuf.indexOf(OUTPUT_END_MARKER);
+
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return;
+
+    // Extract the JSON between markers
+    const jsonStr = entry.stdoutBuf
+      .slice(startIdx + OUTPUT_START_MARKER.length, endIdx)
+      .trim();
+
+    // Remove the consumed output from buffer (keep anything after end marker)
+    entry.stdoutBuf = entry.stdoutBuf.slice(endIdx + OUTPUT_END_MARKER.length);
+
+    const resolve = entry.pendingResolve;
+    entry.pendingResolve = null;
+    if (entry.pendingTimeout) {
+      clearTimeout(entry.pendingTimeout);
+      entry.pendingTimeout = null;
+    }
+
+    try {
+      const output: ContainerOutput = JSON.parse(jsonStr);
+      resolve(output);
+    } catch (err) {
+      logger.error(
+        { group: entry.group.name, jsonStr: jsonStr.slice(0, 200), error: err },
+        'Failed to parse container output from persistent container',
+      );
+      resolve({
+        status: 'error',
+        result: null,
+        error: `Failed to parse container output: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  /**
+   * Send a query to a persistent container and wait for the response.
+   */
+  sendQuery(
+    entry: PoolEntry,
+    input: ContainerInput,
+    timeout: number,
+  ): Promise<ContainerOutput> {
+    return new Promise((resolve) => {
+      if (entry.exited) {
+        resolve({
+          status: 'error',
+          result: null,
+          error: `Container already exited with code ${entry.exitCode}`,
+        });
+        return;
+      }
+
+      // Reset per-query stderr buffer for logging
+      entry.stderr = '';
+      entry.stderrTruncated = false;
+
+      entry.pendingResolve = resolve;
+      entry.lastUsed = Date.now();
+
+      // Reset idle timer
+      clearTimeout(entry.idleTimer);
+      entry.idleTimer = setTimeout(
+        () => this.shutdownEntry(entry.group.folder),
+        IDLE_TIMEOUT_MS,
+      );
+
+      // Set per-query timeout
+      entry.pendingTimeout = setTimeout(() => {
+        if (entry.pendingResolve) {
+          logger.error(
+            { group: entry.group.name, containerName: entry.containerName },
+            'Query timeout on persistent container',
+          );
+          entry.pendingResolve({
+            status: 'error',
+            result: null,
+            error: `Query timed out after ${timeout}ms`,
+          });
+          entry.pendingResolve = null;
+          entry.pendingTimeout = null;
+          // Kill the container since the agent is stuck
+          this.shutdownEntry(entry.group.folder);
+        }
+      }, timeout);
+
+      // Write JSON line to stdin
+      const line = JSON.stringify(input) + '\n';
+      entry.process.stdin!.write(line, (err) => {
+        if (err && entry.pendingResolve) {
+          if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+          entry.pendingResolve({
+            status: 'error',
+            result: null,
+            error: `Failed to write to container stdin: ${err.message}`,
+          });
+          entry.pendingResolve = null;
+          entry.pendingTimeout = null;
+        }
+      });
+    });
+  }
+
+  /**
+   * Gracefully shut down a single container by closing its stdin.
+   */
+  private shutdownEntry(key: string): void {
+    const entry = this.pool.get(key);
+    if (!entry || entry.exited) {
+      this.pool.delete(key);
+      return;
+    }
+
+    // Don't shut down if a query is in flight — reschedule the idle timer
+    if (entry.pendingResolve) {
+      logger.debug(
+        { group: entry.group.name, containerName: entry.containerName },
+        'Skipping idle shutdown, query still in flight',
+      );
+      clearTimeout(entry.idleTimer);
+      entry.idleTimer = setTimeout(
+        () => this.shutdownEntry(key),
+        IDLE_TIMEOUT_MS,
+      );
+      return;
+    }
+
+    logger.info(
+      { group: entry.group.name, containerName: entry.containerName },
+      'Shutting down idle persistent container',
+    );
+
+    clearTimeout(entry.idleTimer);
+    if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+
+    // Send shutdown signal and close stdin
+    try {
+      entry.process.stdin!.write(JSON.stringify({ type: 'shutdown' }) + '\n');
+    } catch {
+      // stdin may already be closed
+    }
+    try {
+      entry.process.stdin!.end();
+    } catch {
+      // ignore
+    }
+
+    // Give it a few seconds, then force kill
+    setTimeout(() => {
+      if (!entry.exited) {
+        logger.warn(
+          { group: entry.group.name, containerName: entry.containerName },
+          'Container did not exit after shutdown, force killing',
+        );
+        const safeName = entry.containerName.replace(/[^a-zA-Z0-9-]/g, '');
+        exec(`docker stop ${safeName}`, { timeout: 10000 }, (err) => {
+          if (err) entry.process.kill('SIGKILL');
+        });
+      }
+    }, 5000);
+  }
+
+  /**
+   * Shut down all persistent containers. Called during process shutdown.
+   */
+  async shutdownAll(): Promise<void> {
+    const entries = Array.from(this.pool.keys());
+    for (const key of entries) {
+      this.shutdownEntry(key);
+    }
+  }
+
+  /**
+   * Get the ChildProcess and container name for a group (if active).
+   * Used by GroupQueue for shutdown tracking.
+   */
+  getEntry(groupFolder: string): { process: ChildProcess; containerName: string } | null {
+    const entry = this.pool.get(groupFolder);
+    if (entry && !entry.exited) {
+      return { process: entry.process, containerName: entry.containerName };
+    }
+    return null;
+  }
+}
+
+// Module-level pool instance
+const containerPool = new ContainerPool();
+
 export async function runContainerAgent(
   group: RegisteredGroup,
   input: ContainerInput,
@@ -194,271 +561,86 @@ export async function runContainerAgent(
 ): Promise<ContainerOutput> {
   const startTime = Date.now();
 
-  const groupDir = path.join(GROUPS_DIR, group.folder);
-  fs.mkdirSync(groupDir, { recursive: true });
+  const logsDir = path.join(GROUPS_DIR, group.folder, 'logs');
+  fs.mkdirSync(logsDir, { recursive: true });
 
-  const mounts = buildVolumeMounts(group, input.isMain);
-  const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
-  const containerName = `nanoclaw-${safeName}-${Date.now()}`;
-  const containerArgs = buildContainerArgs(mounts, containerName);
+  const entry = containerPool.getOrSpawn(group, input.isMain);
 
-  logger.debug(
-    {
-      group: group.name,
-      containerName,
-      mounts: mounts.map(
-        (m) =>
-          `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`,
-      ),
-      containerArgs: containerArgs.join(' '),
-    },
-    'Container mount configuration',
-  );
+  // Always register the process with the queue so shutdown can find it
+  onProcess(entry.process, entry.containerName);
 
   logger.info(
     {
       group: group.name,
-      containerName,
-      mountCount: mounts.length,
+      containerName: entry.containerName,
       isMain: input.isMain,
     },
-    'Spawning container agent',
+    'Sending query to persistent container',
   );
 
-  const logsDir = path.join(GROUPS_DIR, group.folder, 'logs');
-  fs.mkdirSync(logsDir, { recursive: true });
+  const timeout = group.containerConfig?.timeout || CONTAINER_TIMEOUT;
+  const output = await containerPool.sendQuery(entry, input, timeout);
 
-  return new Promise((resolve) => {
-    const container = spawn('container', containerArgs, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+  const duration = Date.now() - startTime;
 
-    onProcess(container, containerName);
+  // Write log file
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const logFile = path.join(logsDir, `container-${timestamp}.log`);
+  const isVerbose =
+    process.env.LOG_LEVEL === 'debug' || process.env.LOG_LEVEL === 'trace';
 
-    let stdout = '';
-    let stderr = '';
-    let stdoutTruncated = false;
-    let stderrTruncated = false;
+  const logLines = [
+    `=== Container Query Log ===`,
+    `Timestamp: ${new Date().toISOString()}`,
+    `Group: ${group.name}`,
+    `Container: ${entry.containerName}`,
+    `IsMain: ${input.isMain}`,
+    `Duration: ${duration}ms`,
+    `Status: ${output.status}`,
+    ``,
+  ];
 
-    container.stdin.write(JSON.stringify(input));
-    container.stdin.end();
+  if (isVerbose || output.status === 'error') {
+    logLines.push(
+      `=== Input ===`,
+      JSON.stringify(input, null, 2),
+      ``,
+      `=== Stderr${entry.stderrTruncated ? ' (TRUNCATED)' : ''} ===`,
+      entry.stderr,
+      ``,
+      `=== Output ===`,
+      JSON.stringify(output, null, 2),
+    );
+  } else {
+    logLines.push(
+      `=== Input Summary ===`,
+      `Prompt length: ${input.prompt.length} chars`,
+      `Session ID: ${input.sessionId || 'new'}`,
+      ``,
+    );
+  }
 
-    container.stdout.on('data', (data) => {
-      if (stdoutTruncated) return;
-      const chunk = data.toString();
-      const remaining = CONTAINER_MAX_OUTPUT_SIZE - stdout.length;
-      if (chunk.length > remaining) {
-        stdout += chunk.slice(0, remaining);
-        stdoutTruncated = true;
-        logger.warn(
-          { group: group.name, size: stdout.length },
-          'Container stdout truncated due to size limit',
-        );
-      } else {
-        stdout += chunk;
-      }
-    });
+  fs.writeFileSync(logFile, logLines.join('\n'));
+  logger.debug({ logFile, verbose: isVerbose }, 'Container log written');
 
-    container.stderr.on('data', (data) => {
-      const chunk = data.toString();
-      const lines = chunk.trim().split('\n');
-      for (const line of lines) {
-        if (line) logger.debug({ container: group.folder }, line);
-      }
-      if (stderrTruncated) return;
-      const remaining = CONTAINER_MAX_OUTPUT_SIZE - stderr.length;
-      if (chunk.length > remaining) {
-        stderr += chunk.slice(0, remaining);
-        stderrTruncated = true;
-        logger.warn(
-          { group: group.name, size: stderr.length },
-          'Container stderr truncated due to size limit',
-        );
-      } else {
-        stderr += chunk;
-      }
-    });
+  logger.info(
+    {
+      group: group.name,
+      duration,
+      status: output.status,
+      hasResult: !!output.result,
+    },
+    'Container query completed',
+  );
 
-    let timedOut = false;
+  return output;
+}
 
-    const timeout = setTimeout(() => {
-      timedOut = true;
-      logger.error({ group: group.name, containerName }, 'Container timeout, stopping gracefully');
-      // Graceful stop: sends SIGTERM, waits, then SIGKILL — lets --rm fire
-      exec(`container stop ${containerName}`, { timeout: 15000 }, (err) => {
-        if (err) {
-          logger.warn({ group: group.name, containerName, err }, 'Graceful stop failed, force killing');
-          container.kill('SIGKILL');
-        }
-      });
-    }, group.containerConfig?.timeout || CONTAINER_TIMEOUT);
-
-    container.on('close', (code) => {
-      clearTimeout(timeout);
-      const duration = Date.now() - startTime;
-
-      if (timedOut) {
-        const ts = new Date().toISOString().replace(/[:.]/g, '-');
-        const timeoutLog = path.join(logsDir, `container-${ts}.log`);
-        fs.writeFileSync(timeoutLog, [
-          `=== Container Run Log (TIMEOUT) ===`,
-          `Timestamp: ${new Date().toISOString()}`,
-          `Group: ${group.name}`,
-          `Container: ${containerName}`,
-          `Duration: ${duration}ms`,
-          `Exit Code: ${code}`,
-        ].join('\n'));
-
-        logger.error(
-          { group: group.name, containerName, duration, code },
-          'Container timed out',
-        );
-
-        resolve({
-          status: 'error',
-          result: null,
-          error: `Container timed out after ${group.containerConfig?.timeout || CONTAINER_TIMEOUT}ms`,
-        });
-        return;
-      }
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const logFile = path.join(logsDir, `container-${timestamp}.log`);
-      const isVerbose =
-        process.env.LOG_LEVEL === 'debug' || process.env.LOG_LEVEL === 'trace';
-
-      const logLines = [
-        `=== Container Run Log ===`,
-        `Timestamp: ${new Date().toISOString()}`,
-        `Group: ${group.name}`,
-        `IsMain: ${input.isMain}`,
-        `Duration: ${duration}ms`,
-        `Exit Code: ${code}`,
-        `Stdout Truncated: ${stdoutTruncated}`,
-        `Stderr Truncated: ${stderrTruncated}`,
-        ``,
-      ];
-
-      const isError = code !== 0;
-
-      if (isVerbose || isError) {
-        logLines.push(
-          `=== Input ===`,
-          JSON.stringify(input, null, 2),
-          ``,
-          `=== Container Args ===`,
-          containerArgs.join(' '),
-          ``,
-          `=== Mounts ===`,
-          mounts
-            .map(
-              (m) =>
-                `${m.hostPath} -> ${m.containerPath}${m.readonly ? ' (ro)' : ''}`,
-            )
-            .join('\n'),
-          ``,
-          `=== Stderr${stderrTruncated ? ' (TRUNCATED)' : ''} ===`,
-          stderr,
-          ``,
-          `=== Stdout${stdoutTruncated ? ' (TRUNCATED)' : ''} ===`,
-          stdout,
-        );
-      } else {
-        logLines.push(
-          `=== Input Summary ===`,
-          `Prompt length: ${input.prompt.length} chars`,
-          `Session ID: ${input.sessionId || 'new'}`,
-          ``,
-          `=== Mounts ===`,
-          mounts
-            .map((m) => `${m.containerPath}${m.readonly ? ' (ro)' : ''}`)
-            .join('\n'),
-          ``,
-        );
-      }
-
-      fs.writeFileSync(logFile, logLines.join('\n'));
-      logger.debug({ logFile, verbose: isVerbose }, 'Container log written');
-
-      if (code !== 0) {
-        logger.error(
-          {
-            group: group.name,
-            code,
-            duration,
-            stderr,
-            stdout,
-            logFile,
-          },
-          'Container exited with error',
-        );
-
-        resolve({
-          status: 'error',
-          result: null,
-          error: `Container exited with code ${code}: ${stderr.slice(-200)}`,
-        });
-        return;
-      }
-
-      try {
-        // Extract JSON between sentinel markers for robust parsing
-        const startIdx = stdout.indexOf(OUTPUT_START_MARKER);
-        const endIdx = stdout.indexOf(OUTPUT_END_MARKER);
-
-        let jsonLine: string;
-        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-          jsonLine = stdout
-            .slice(startIdx + OUTPUT_START_MARKER.length, endIdx)
-            .trim();
-        } else {
-          // Fallback: last non-empty line (backwards compatibility)
-          const lines = stdout.trim().split('\n');
-          jsonLine = lines[lines.length - 1];
-        }
-
-        const output: ContainerOutput = JSON.parse(jsonLine);
-
-        logger.info(
-          {
-            group: group.name,
-            duration,
-            status: output.status,
-            hasResult: !!output.result,
-          },
-          'Container completed',
-        );
-
-        resolve(output);
-      } catch (err) {
-        logger.error(
-          {
-            group: group.name,
-            stdout,
-            stderr,
-            error: err,
-          },
-          'Failed to parse container output',
-        );
-
-        resolve({
-          status: 'error',
-          result: null,
-          error: `Failed to parse container output: ${err instanceof Error ? err.message : String(err)}`,
-        });
-      }
-    });
-
-    container.on('error', (err) => {
-      clearTimeout(timeout);
-      logger.error({ group: group.name, containerName, error: err }, 'Container spawn error');
-      resolve({
-        status: 'error',
-        result: null,
-        error: `Container spawn error: ${err.message}`,
-      });
-    });
-  });
+/**
+ * Shut down all persistent containers. Called during process shutdown.
+ */
+export async function shutdownPool(): Promise<void> {
+  await containerPool.shutdownAll();
 }
 
 export function writeTasksSnapshot(

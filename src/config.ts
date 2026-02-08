@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Andy';
@@ -43,6 +44,15 @@ function escapeRegex(str: string): string {
 export const TRIGGER_PATTERN = new RegExp(
   `^@${escapeRegex(ASSISTANT_NAME)}\\b`,
   'i',
+);
+
+// Discord configuration
+export const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || '';
+export const DISCORD_ENABLED = !!DISCORD_BOT_TOKEN;
+
+// WhatsApp is enabled if auth directory exists
+export const WHATSAPP_ENABLED = fs.existsSync(
+  path.join(STORE_DIR, 'auth', 'creds.json'),
 );
 
 // Timezone for scheduled tasks (cron expressions, etc.)

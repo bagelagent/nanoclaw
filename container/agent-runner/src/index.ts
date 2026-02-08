@@ -5,6 +5,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { createInterface } from 'readline';
 import { query, HookCallback, PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 import { createIpcMcp } from './ipc-mcp.js';
 
@@ -61,14 +62,12 @@ interface SessionsIndex {
   entries: SessionEntry[];
 }
 
-async function readStdin(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', chunk => { data += chunk; });
-    process.stdin.on('end', () => resolve(data));
-    process.stdin.on('error', reject);
-  });
+/**
+ * Yields one line at a time from stdin. Resolves the async iterator when stdin closes (EOF).
+ */
+function stdinLines(): AsyncIterable<string> {
+  const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
+  return rl;
 }
 
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
@@ -226,22 +225,11 @@ function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | nu
   return lines.join('\n');
 }
 
-async function main(): Promise<void> {
-  let input: ContainerInput;
-
-  try {
-    const stdinData = await readStdin();
-    input = JSON.parse(stdinData);
-    log(`Received input for group: ${input.groupFolder}`);
-  } catch (err) {
-    writeOutput({
-      status: 'error',
-      result: null,
-      error: `Failed to parse input: ${err instanceof Error ? err.message : String(err)}`
-    });
-    process.exit(1);
-  }
-
+/**
+ * Process a single query: run the Claude agent SDK and return the output.
+ */
+async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
+  // Create IPC MCP with the current query's context (chatJid may differ per query)
   const ipcMcp = createIpcMcp({
     chatJid: input.chatJid,
     groupFolder: input.groupFolder,
@@ -321,23 +309,61 @@ async function main(): Promise<void> {
     }
 
     log('Agent completed successfully');
-    writeOutput({
+    return {
       status: 'success',
       result: result ?? { outputType: 'log' },
       newSessionId
-    });
+    };
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     log(`Agent error: ${errorMessage}`);
-    writeOutput({
+    return {
       status: 'error',
       result: null,
       newSessionId,
       error: errorMessage
-    });
-    process.exit(1);
+    };
   }
+}
+
+/**
+ * Main loop: read line-delimited JSON from stdin, process each query, write output.
+ * Container stays alive between queries. Exits on EOF or shutdown message.
+ */
+async function main(): Promise<void> {
+  log('Agent runner ready, waiting for queries on stdin...');
+
+  for await (const line of stdinLines()) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    let input: ContainerInput;
+    try {
+      const parsed = JSON.parse(trimmed);
+
+      // Shutdown signal — exit cleanly
+      if (parsed.type === 'shutdown') {
+        log('Received shutdown signal, exiting');
+        break;
+      }
+
+      input = parsed as ContainerInput;
+      log(`Received query for group: ${input.groupFolder}, chatJid: ${input.chatJid}`);
+    } catch (err) {
+      writeOutput({
+        status: 'error',
+        result: null,
+        error: `Failed to parse input: ${err instanceof Error ? err.message : String(err)}`
+      });
+      continue; // Don't exit — wait for next valid query
+    }
+
+    const output = await processQuery(input);
+    writeOutput(output);
+  }
+
+  log('Stdin closed, exiting');
 }
 
 main();

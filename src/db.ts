@@ -200,6 +200,24 @@ export function setLastGroupSync(): void {
 }
 
 /**
+ * Store a message with full content (platform-agnostic).
+ * Usable by any channel (WhatsApp, Discord, etc.).
+ */
+export function storeGenericMessage(
+  id: string,
+  chatJid: string,
+  sender: string,
+  senderName: string,
+  content: string,
+  timestamp: string,
+  isFromMe: boolean,
+): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, chatJid, sender, senderName, content, timestamp, isFromMe ? 1 : 0);
+}
+
+/**
  * Store a message with full content.
  * Only call this for registered groups where message history is needed.
  */
@@ -223,17 +241,7 @@ export function storeMessage(
   const senderName = pushName || sender.split('@')[0];
   const msgId = msg.key.id || '';
 
-  db.prepare(
-    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    msgId,
-    chatJid,
-    sender,
-    senderName,
-    content,
-    timestamp,
-    isFromMe ? 1 : 0,
-  );
+  storeGenericMessage(msgId, chatJid, sender, senderName, content, timestamp, isFromMe);
 }
 
 export function getNewMessages(

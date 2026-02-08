@@ -13,17 +13,20 @@ import { CronExpressionParser } from 'cron-parser';
 import {
   ASSISTANT_NAME,
   DATA_DIR,
+  DISCORD_ENABLED,
   IPC_POLL_INTERVAL,
   MAIN_GROUP_FOLDER,
   POLL_INTERVAL,
   STORE_DIR,
   TIMEZONE,
   TRIGGER_PATTERN,
+  WHATSAPP_ENABLED,
 } from './config.js';
 import {
   AgentResponse,
   AvailableGroup,
   runContainerAgent,
+  shutdownPool,
   writeGroupsSnapshot,
   writeTasksSnapshot,
 } from './container-runner.js';
@@ -51,6 +54,7 @@ import {
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { startSchedulerLoop } from './task-scheduler.js';
+import { connectDiscord, sendDiscordMessage, setDiscordTyping } from './discord.js';
 import { RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 
@@ -86,6 +90,10 @@ function translateJid(jid: string): string {
 }
 
 async function setTyping(jid: string, isTyping: boolean): Promise<void> {
+  if (jid.startsWith('discord:')) {
+    await setDiscordTyping(jid, isTyping);
+    return;
+  }
   try {
     await sock.sendPresenceUpdate(isTyping ? 'composing' : 'paused', jid);
   } catch (err) {
@@ -180,7 +188,11 @@ function getAvailableGroups(): AvailableGroup[] {
   const registeredJids = new Set(Object.keys(registeredGroups));
 
   return chats
-    .filter((c) => c.jid !== '__group_sync__' && c.jid.endsWith('@g.us'))
+    .filter(
+      (c) =>
+        c.jid !== '__group_sync__' &&
+        (c.jid.endsWith('@g.us') || c.jid.startsWith('discord:')),
+    )
     .map((c) => ({
       jid: c.jid,
       name: c.name,
@@ -328,11 +340,15 @@ async function runAgent(
 }
 
 async function sendMessage(jid: string, text: string): Promise<void> {
-  try {
-    await sock.sendMessage(jid, { text });
-    logger.info({ jid, length: text.length }, 'Message sent');
-  } catch (err) {
-    logger.error({ jid, err }, 'Failed to send message');
+  if (jid.startsWith('discord:')) {
+    await sendDiscordMessage(jid, text);
+  } else {
+    try {
+      await sock.sendMessage(jid, { text });
+      logger.info({ jid, length: text.length }, 'Message sent');
+    } catch (err) {
+      logger.error({ jid, err }, 'Failed to send message');
+    }
   }
 }
 
@@ -633,7 +649,9 @@ async function processTaskIpc(
           { sourceGroup },
           'Group metadata refresh requested via IPC',
         );
-        await syncGroupMetadata(true);
+        if (WHATSAPP_ENABLED && sock) {
+          await syncGroupMetadata(true);
+        }
         // Write updated snapshot immediately
         const availableGroups = getAvailableGroups();
         writeGroupsSnapshot(
@@ -747,17 +765,7 @@ async function connectWhatsApp(): Promise<void> {
           );
         }, GROUP_SYNC_INTERVAL_MS);
       }
-      startSchedulerLoop({
-        sendMessage,
-        registeredGroups: () => registeredGroups,
-        getSessions: () => sessions,
-        queue,
-        onProcess: (groupJid, proc, containerName) => queue.registerProcess(groupJid, proc, containerName),
-      });
-      startIpcWatcher();
-      queue.setProcessMessagesFn(processGroupMessages);
-      recoverPendingMessages();
-      startMessageLoop();
+      startSharedServices();
     }
   });
 
@@ -854,46 +862,40 @@ function recoverPendingMessages(): void {
 
 function ensureContainerSystemRunning(): void {
   try {
-    execSync('container system status', { stdio: 'pipe' });
-    logger.debug('Apple Container system already running');
-  } catch {
-    logger.info('Starting Apple Container system...');
-    try {
-      execSync('container system start', { stdio: 'pipe', timeout: 30000 });
-      logger.info('Apple Container system started');
-    } catch (err) {
-      logger.error({ err }, 'Failed to start Apple Container system');
-      console.error(
-        '\n╔════════════════════════════════════════════════════════════════╗',
-      );
-      console.error(
-        '║  FATAL: Apple Container system failed to start                 ║',
-      );
-      console.error(
-        '║                                                                ║',
-      );
-      console.error(
-        '║  Agents cannot run without Apple Container. To fix:           ║',
-      );
-      console.error(
-        '║  1. Install from: https://github.com/apple/container/releases ║',
-      );
-      console.error(
-        '║  2. Run: container system start                               ║',
-      );
-      console.error(
-        '║  3. Restart NanoClaw                                          ║',
-      );
-      console.error(
-        '╚════════════════════════════════════════════════════════════════╝\n',
-      );
-      throw new Error('Apple Container system is required but failed to start');
-    }
+    execSync('docker info', { stdio: 'pipe' });
+    logger.debug('Docker daemon is running');
+  } catch (err) {
+    logger.error({ err }, 'Docker daemon is not running');
+    console.error(
+      '\n╔════════════════════════════════════════════════════════════════╗',
+    );
+    console.error(
+      '║  FATAL: Docker daemon is not running                           ║',
+    );
+    console.error(
+      '║                                                                ║',
+    );
+    console.error(
+      '║  Agents cannot run without Docker. To fix:                    ║',
+    );
+    console.error(
+      '║  1. Install Docker: https://docs.docker.com/get-docker/       ║',
+    );
+    console.error(
+      '║  2. Start Docker: sudo systemctl start docker                 ║',
+    );
+    console.error(
+      '║  3. Restart NanoClaw                                          ║',
+    );
+    console.error(
+      '╚════════════════════════════════════════════════════════════════╝\n',
+    );
+    throw new Error('Docker daemon is required but not running');
   }
 
   // Clean up stopped NanoClaw containers from previous runs
   try {
-    const output = execSync('container ls -a --format {{.Names}}', {
+    const output = execSync('docker ps -a --format {{.Names}}', {
       stdio: ['pipe', 'pipe', 'pipe'],
       encoding: 'utf-8',
     });
@@ -902,12 +904,31 @@ function ensureContainerSystemRunning(): void {
       .map((n) => n.trim())
       .filter((n) => n.startsWith('nanoclaw-'));
     if (stale.length > 0) {
-      execSync(`container rm ${stale.join(' ')}`, { stdio: 'pipe' });
+      execSync(`docker rm ${stale.join(' ')}`, { stdio: 'pipe' });
       logger.info({ count: stale.length }, 'Cleaned up stopped containers');
     }
   } catch {
     // No stopped containers or ls/rm not supported
   }
+}
+
+/**
+ * Start shared services (scheduler, IPC watcher, message loop).
+ * Called once when the first channel connects.
+ */
+function startSharedServices(): void {
+  startSchedulerLoop({
+    sendMessage,
+    registeredGroups: () => registeredGroups,
+    getSessions: () => sessions,
+    queue,
+    onProcess: (groupJid, proc, containerName) =>
+      queue.registerProcess(groupJid, proc, containerName),
+  });
+  startIpcWatcher();
+  queue.setProcessMessagesFn(processGroupMessages);
+  recoverPendingMessages();
+  startMessageLoop();
 }
 
 async function main(): Promise<void> {
@@ -919,13 +940,38 @@ async function main(): Promise<void> {
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
+    await shutdownPool();
     await queue.shutdown(10000);
     process.exit(0);
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 
-  await connectWhatsApp();
+  if (!WHATSAPP_ENABLED && !DISCORD_ENABLED) {
+    logger.error(
+      'No channels configured. Set DISCORD_BOT_TOKEN env var or authenticate WhatsApp.',
+    );
+    process.exit(1);
+  }
+
+  if (DISCORD_ENABLED) {
+    await connectDiscord({
+      onMessage: (chatJid, isRegistered) => {
+        if (isRegistered) {
+          queue.enqueueMessageCheck(chatJid);
+        }
+      },
+    });
+  }
+
+  if (WHATSAPP_ENABLED) {
+    await connectWhatsApp();
+  } else {
+    // No WhatsApp — start shared services directly
+    // (when WhatsApp is enabled, these are started in the connection.open handler)
+    logger.info('WhatsApp not configured, running Discord-only mode');
+    startSharedServices();
+  }
 }
 
 main().catch((err) => {
