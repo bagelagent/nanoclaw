@@ -60,6 +60,7 @@ import { startSchedulerLoop } from './task-scheduler.js';
 import { connectDiscord, sendDiscordMessage, setDiscordTyping } from './discord.js';
 import { RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
+import { initOpenAI, isAudioMessage, transcribeAudio } from './audio.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -425,6 +426,40 @@ async function sendMessage(jid: string, text: string): Promise<void> {
   }
 }
 
+async function sendVoiceMessage(
+  jid: string,
+  text: string,
+  voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
+): Promise<void> {
+  if (jid.startsWith('discord:')) {
+    // Discord doesn't support voice messages, send text instead
+    await sendDiscordMessage(jid, `🎤 ${text}`);
+    return;
+  }
+
+  try {
+    const { generateSpeech } = await import('./audio.js');
+    const audioBuffer = await generateSpeech(text, voice);
+
+    if (!audioBuffer) {
+      logger.error('Failed to generate speech, sending text instead');
+      await sendMessage(jid, text);
+      return;
+    }
+
+    // Send as PTT (push-to-talk) audio message
+    await sock.sendMessage(jid, {
+      audio: audioBuffer,
+      mimetype: 'audio/ogg; codecs=opus',
+      ptt: true,
+    });
+    logger.info({ jid, voice, length: audioBuffer.length }, 'Voice message sent');
+  } catch (err) {
+    logger.error({ jid, err }, 'Failed to send voice message, sending text instead');
+    await sendMessage(jid, text);
+  }
+}
+
 function startIpcWatcher(): void {
   if (ipcWatcherRunning) {
     logger.debug('IPC watcher already running, skipping duplicate start');
@@ -483,6 +518,28 @@ function startIpcWatcher(): void {
                   logger.warn(
                     { chatJid: data.chatJid, sourceGroup },
                     'Unauthorized IPC message attempt blocked',
+                  );
+                }
+              } else if (data.type === 'voice_message' && data.chatJid && data.text) {
+                // Handle voice message
+                const targetGroup = registeredGroups[data.chatJid];
+                if (
+                  isMain ||
+                  (targetGroup && targetGroup.folder === sourceGroup)
+                ) {
+                  await sendVoiceMessage(
+                    data.chatJid,
+                    data.text,
+                    data.voice || 'nova',
+                  );
+                  logger.info(
+                    { chatJid: data.chatJid, sourceGroup, voice: data.voice },
+                    'IPC voice message sent',
+                  );
+                } else {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'Unauthorized IPC voice message attempt blocked',
                   );
                 }
               }
@@ -930,12 +987,38 @@ async function connectWhatsApp(): Promise<void> {
 
       // Only store full message content for registered groups
       if (registeredGroups[chatJid]) {
-        storeMessage(
-          msg,
-          chatJid,
-          msg.key.fromMe || false,
-          msg.pushName || undefined,
-        );
+        // Handle audio transcription asynchronously
+        if (isAudioMessage(msg)) {
+          const groupFolder = registeredGroups[chatJid]?.folder || 'unknown';
+          const tmpDir = path.join(GROUPS_DIR, groupFolder, 'tmp');
+          transcribeAudio(msg, tmpDir)
+            .then((transcribedText) => {
+              storeMessage(
+                msg,
+                chatJid,
+                msg.key.fromMe || false,
+                msg.pushName || undefined,
+                transcribedText || undefined,
+              );
+            })
+            .catch((err) => {
+              logger.error({ err }, 'Audio transcription failed');
+              // Store message without transcription
+              storeMessage(
+                msg,
+                chatJid,
+                msg.key.fromMe || false,
+                msg.pushName || undefined,
+              );
+            });
+        } else {
+          storeMessage(
+            msg,
+            chatJid,
+            msg.key.fromMe || false,
+            msg.pushName || undefined,
+          );
+        }
       }
     }
   });
@@ -1086,6 +1169,15 @@ async function main(): Promise<void> {
   ensureContainerSystemRunning();
   initDatabase();
   logger.info('Database initialized');
+
+  // Initialize OpenAI for audio features
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (openaiKey) {
+    initOpenAI(openaiKey);
+  } else {
+    logger.warn('OPENAI_API_KEY not set - audio transcription and TTS disabled');
+  }
+
   loadState();
 
   // Graceful shutdown handlers

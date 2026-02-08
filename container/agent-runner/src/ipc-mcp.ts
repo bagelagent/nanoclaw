@@ -68,6 +68,34 @@ export function createIpcMcp(ctx: IpcMcpContext) {
       ),
 
       tool(
+        'send_voice_message',
+        'Send a voice message (audio) to the user or group. The text will be converted to speech using OpenAI TTS. Use this when the user explicitly asks for a voice response.',
+        {
+          text: z.string().describe('The text to convert to speech and send as a voice message'),
+          voice: z.enum(['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']).default('nova').describe('Voice to use for TTS. nova is warm and friendly (default), alloy is neutral, echo is deep, fable is expressive, onyx is authoritative, shimmer is bright')
+        },
+        async (args) => {
+          const data = {
+            type: 'voice_message',
+            chatJid,
+            text: args.text,
+            voice: args.voice,
+            groupFolder,
+            timestamp: new Date().toISOString()
+          };
+
+          writeIpcFile(MESSAGES_DIR, data);
+
+          return {
+            content: [{
+              type: 'text',
+              text: 'Voice message queued for delivery.'
+            }]
+          };
+        }
+      ),
+
+      tool(
         'schedule_task',
         `Schedule a recurring or one-time task. The task will run as a full agent with access to all tools.
 

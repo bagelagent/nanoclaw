@@ -87,6 +87,13 @@ export function initDatabase(): void {
     /* column already exists */
   }
 
+  // Add is_audio column for audio message tracking (migration for existing DBs)
+  try {
+    db.exec(`ALTER TABLE messages ADD COLUMN is_audio INTEGER DEFAULT 0`);
+  } catch {
+    /* column already exists */
+  }
+
   // State tables (replacing JSON files)
   db.exec(`
     CREATE TABLE IF NOT EXISTS router_state (
@@ -211,10 +218,11 @@ export function storeGenericMessage(
   content: string,
   timestamp: string,
   isFromMe: boolean,
+  isAudio: boolean = false,
 ): void {
   db.prepare(
-    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, chatJid, sender, senderName, content, timestamp, isFromMe ? 1 : 0);
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_audio) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, chatJid, sender, senderName, content, timestamp, isFromMe ? 1 : 0, isAudio ? 1 : 0);
 }
 
 /**
@@ -226,22 +234,26 @@ export function storeMessage(
   chatJid: string,
   isFromMe: boolean,
   pushName?: string,
+  transcribedText?: string,
 ): void {
   if (!msg.key) return;
 
+  const isAudio = !!(msg.message?.audioMessage);
+
   const content =
+    transcribedText ||
     msg.message?.conversation ||
     msg.message?.extendedTextMessage?.text ||
     msg.message?.imageMessage?.caption ||
     msg.message?.videoMessage?.caption ||
-    '';
+    (isAudio ? '[Voice Message]' : '');
 
   const timestamp = new Date(Number(msg.messageTimestamp) * 1000).toISOString();
   const sender = msg.key.participant || msg.key.remoteJid || '';
   const senderName = pushName || sender.split('@')[0];
   const msgId = msg.key.id || '';
 
-  storeGenericMessage(msgId, chatJid, sender, senderName, content, timestamp, isFromMe);
+  storeGenericMessage(msgId, chatJid, sender, senderName, content, timestamp, isFromMe, isAudio);
 }
 
 export function getNewMessages(
