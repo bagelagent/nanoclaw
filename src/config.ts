@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Andy';
+export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Bagel';
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 
@@ -54,6 +54,13 @@ export const DISCORD_ENABLED = !!DISCORD_BOT_TOKEN;
 export const WHATSAPP_ENABLED = fs.existsSync(
   path.join(STORE_DIR, 'auth', 'creds.json'),
 );
+
+// Semantic memory (vector search)
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+export const MEMORY_ENABLED = !!OPENAI_API_KEY;
+export const MEMORY_INDEX_INTERVAL = 300000; // 5 minutes
+export const MEMORY_CHUNK_SIZE = 3500;
+export const MEMORY_CHUNK_OVERLAP = 350;
 
 // Timezone for scheduled tasks (cron expressions, etc.)
 // Uses system timezone by default

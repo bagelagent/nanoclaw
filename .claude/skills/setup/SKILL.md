@@ -166,7 +166,7 @@ This step configures three things at once: the trigger word, the main channel ty
 ### 6a. Ask for trigger word
 
 Ask the user:
-> What trigger word do you want to use? (default: `Andy`)
+> What trigger word do you want to use? (default: `Bagel`)
 >
 > In group chats, messages starting with `@TriggerWord` will be sent to Claude.
 > In your main channel (and optionally solo chats), no prefix is needed — all messages are processed.
@@ -264,8 +264,8 @@ mkdir -p data
 
 Then write `data/registered_groups.json` with the correct JID, trigger, and timestamp.
 
-If the user chose a name other than `Andy`, also update:
-1. `groups/global/CLAUDE.md` - Change "# Andy" and "You are Andy" to the new name
+If the user chose a name other than `Bagel`, also update:
+1. `groups/global/CLAUDE.md` - Change "# Bagel" and "You are Bagel" to the new name
 2. `groups/main/CLAUDE.md` - Same changes at the top
 
 Ensure the groups folder exists:

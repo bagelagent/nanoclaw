@@ -16,6 +16,7 @@ import {
   DISCORD_ENABLED,
   IPC_POLL_INTERVAL,
   MAIN_GROUP_FOLDER,
+  MEMORY_ENABLED,
   POLL_INTERVAL,
   STORE_DIR,
   TIMEZONE,
@@ -53,6 +54,7 @@ import {
   updateTask,
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
+import { searchMemory, startMemoryIndexer } from './memory-indexer.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { connectDiscord, sendDiscordMessage, setDiscordTyping } from './discord.js';
 import { RegisteredGroup } from './types.js';
@@ -238,7 +240,26 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         .replace(/"/g, '&quot;');
     return `<message sender="${escapeXml(m.sender_name)}" time="${m.timestamp}">${escapeXml(m.content)}</message>`;
   });
-  const prompt = `<messages>\n${lines.join('\n')}\n</messages>`;
+  let prompt = `<messages>\n${lines.join('\n')}\n</messages>`;
+
+  // Automatic memory context injection
+  if (MEMORY_ENABLED) {
+    try {
+      const searchText = missedMessages
+        .map((m) => m.content)
+        .join(' ')
+        .slice(0, 500);
+      const memoryResults = await searchMemory(searchText, 'hybrid', 5);
+      if (memoryResults.length > 0) {
+        const context = memoryResults
+          .map((r) => `[${r.source}] ${r.content.slice(0, 300)}`)
+          .join('\n\n');
+        prompt = `<memory-context>\nRelevant context from your memory:\n\n${context}\n</memory-context>\n\n${prompt}`;
+      }
+    } catch (err) {
+      logger.error({ err }, 'Memory context injection failed');
+    }
+  }
 
   logger.info(
     { group: group.name, messageCount: missedMessages.length },
@@ -917,6 +938,16 @@ function ensureContainerSystemRunning(): void {
  * Called once when the first channel connects.
  */
 function startSharedServices(): void {
+  if (MEMORY_ENABLED) {
+    startMemoryIndexer(() => {
+      const folders = new Set<string>();
+      for (const group of Object.values(registeredGroups)) {
+        folders.add(group.folder);
+      }
+      return Array.from(folders);
+    });
+  }
+
   startSchedulerLoop({
     sendMessage,
     registeredGroups: () => registeredGroups,

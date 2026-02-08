@@ -8,6 +8,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
+import { search as memorySearch } from './memory-search.js';
 
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
@@ -286,7 +287,7 @@ Use available_groups.json to find the JID for a group. The folder name should be
           jid: z.string().describe('The WhatsApp JID (e.g., "120363336345536173@g.us")'),
           name: z.string().describe('Display name for the group'),
           folder: z.string().describe('Folder name for group files (lowercase, hyphens, e.g., "family-chat")'),
-          trigger: z.string().describe('Trigger word (e.g., "@Andy")')
+          trigger: z.string().describe('Trigger word (e.g., "@Bagel")')
         },
         async (args) => {
           if (!isMain) {
@@ -313,6 +314,58 @@ Use available_groups.json to find the JID for a group. The folder name should be
               text: `Group "${args.name}" registered. It will start receiving messages immediately.`
             }]
           };
+        }
+      ),
+
+      tool(
+        'semantic_search',
+        `Search your memory using natural language. Finds relevant content by meaning, not just keywords.
+
+Use this tool proactively whenever context would help:
+- A name comes up — pull everything you know about that person
+- A topic surfaces — find related notes, conversations, past work
+- Before making commitments — check what you said before
+- When you need more context about something — search for it
+- When someone references a past event or discussion — look it up
+
+Returns the most relevant chunks from your memory files, ranked by relevance.`,
+        {
+          query: z.string().describe('Natural language search query — describe what you\'re looking for'),
+          mode: z.enum(['hybrid', 'semantic', 'keyword']).default('hybrid').describe('hybrid (recommended): combines meaning + keywords. semantic: meaning only. keyword: exact word matches only.'),
+          limit: z.number().int().min(1).max(20).default(5).describe('Number of results to return (1-20)')
+        },
+        async (args) => {
+          try {
+            const results = await memorySearch(args.query, args.mode, args.limit);
+
+            if (results.length === 0) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: 'No matching memories found.'
+                }]
+              };
+            }
+
+            const formatted = results.map((r, i) =>
+              `[${i + 1}] Source: ${r.source} (${r.type})\n${r.content}`
+            ).join('\n\n---\n\n');
+
+            return {
+              content: [{
+                type: 'text',
+                text: `Found ${results.length} relevant memories:\n\n${formatted}`
+              }]
+            };
+          } catch (err) {
+            return {
+              content: [{
+                type: 'text',
+                text: `Memory search error: ${err instanceof Error ? err.message : String(err)}`
+              }],
+              isError: true
+            };
+          }
         }
       )
     ]

@@ -136,7 +136,7 @@ function buildVolumeMounts(
   const envFile = path.join(projectRoot, '.env');
   if (fs.existsSync(envFile)) {
     const envContent = fs.readFileSync(envFile, 'utf-8');
-    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY'];
+    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY'];
     const filteredLines = envContent.split('\n').filter((line) => {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) return false;
@@ -154,6 +154,16 @@ function buildVolumeMounts(
         readonly: true,
       });
     }
+  }
+
+  // Embeddings DB for semantic memory (read-only, shared across all groups)
+  const embeddingsDbPath = path.join(DATA_DIR, 'embeddings.db');
+  if (fs.existsSync(embeddingsDbPath)) {
+    mounts.push({
+      hostPath: embeddingsDbPath,
+      containerPath: '/workspace/embeddings.db',
+      readonly: true,
+    });
   }
 
   // Additional mounts validated against external allowlist (tamper-proof from containers)
