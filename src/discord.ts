@@ -28,6 +28,29 @@ function toJid(msg: Message): string {
 }
 
 /**
+ * Build attachment description lines for a Discord message.
+ * Returns URLs with content type hints so the agent can fetch/view them.
+ */
+function buildAttachmentLines(msg: Message): string {
+  if (msg.attachments.size === 0) return '';
+  return msg.attachments
+    .map((a) => {
+      const type = a.contentType?.startsWith('image/') ? 'image' : 'file';
+      return `[Attached ${type}: ${a.name || 'unknown'}] ${a.url}`;
+    })
+    .join('\n');
+}
+
+/**
+ * Build full content string from a Discord message (text + attachments).
+ */
+function buildContent(msg: Message): string {
+  const attachmentLines = buildAttachmentLines(msg);
+  if (!attachmentLines) return msg.content;
+  return msg.content ? `${msg.content}\n${attachmentLines}` : attachmentLines;
+}
+
+/**
  * Connect to Discord and start listening for messages.
  */
 export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void> {
@@ -69,7 +92,7 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
           chatJid,
           msg.author.id,
           msg.author.displayName || msg.author.username,
-          msg.content,
+          buildContent(msg),
           timestamp,
           false,
         );
@@ -90,6 +113,12 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
       let content = msg.content;
       if (client.user) {
         content = content.replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '').trim();
+      }
+
+      // Append attachment URLs (images, files, etc.)
+      const attachmentLines = buildAttachmentLines(msg);
+      if (attachmentLines) {
+        content = content ? `${content}\n${attachmentLines}` : attachmentLines;
       }
 
       storeGenericMessage(

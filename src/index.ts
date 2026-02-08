@@ -14,6 +14,7 @@ import {
   ASSISTANT_NAME,
   DATA_DIR,
   DISCORD_ENABLED,
+  GROUPS_DIR,
   IPC_POLL_INTERVAL,
   MAIN_GROUP_FOLDER,
   MEMORY_ENABLED,
@@ -203,6 +204,49 @@ function getAvailableGroups(): AvailableGroup[] {
     }));
 }
 
+const ATTACHMENT_RE = /\[Attached image: ([^\]]+)\] (https?:\/\/\S+)/g;
+
+/**
+ * Download image attachments from message content into the group workspace.
+ * Rewrites content to reference local paths the agent can Read directly.
+ */
+async function downloadAttachments(
+  content: string,
+  groupFolder: string,
+): Promise<string> {
+  const matches = [...content.matchAll(ATTACHMENT_RE)];
+  if (matches.length === 0) return content;
+
+  const tmpDir = path.join(GROUPS_DIR, groupFolder, 'tmp');
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  let result = content;
+  for (const match of matches) {
+    const [fullMatch, filename, url] = match;
+    const safeName = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const localPath = path.join(tmpDir, safeName);
+    const containerPath = `/workspace/group/tmp/${safeName}`;
+
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (response.ok) {
+        const buffer = Buffer.from(await response.arrayBuffer());
+        fs.writeFileSync(localPath, buffer);
+        result = result.replace(
+          fullMatch,
+          `[Attached image: ${filename}] (saved to ${containerPath} — use the Read tool to view it)`,
+        );
+      } else {
+        logger.warn({ url, status: response.status }, 'Failed to download attachment');
+      }
+    } catch (err) {
+      logger.warn({ url, err }, 'Failed to download attachment');
+    }
+  }
+
+  return result;
+}
+
 /**
  * Process all pending messages for a group.
  * Called by the GroupQueue when it's this group's turn.
@@ -229,6 +273,14 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       TRIGGER_PATTERN.test(m.content.trim()),
     );
     if (!hasTrigger) return true;
+  }
+
+  // Download any image attachments into the group workspace
+  for (const m of missedMessages) {
+    if (ATTACHMENT_RE.test(m.content)) {
+      ATTACHMENT_RE.lastIndex = 0;
+      m.content = await downloadAttachments(m.content, group.folder);
+    }
   }
 
   const lines = missedMessages.map((m) => {

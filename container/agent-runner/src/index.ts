@@ -252,14 +252,15 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
   }
 
-  try {
-    log('Starting agent...');
+  async function runAgent(sessionId: string | undefined): Promise<ContainerOutput> {
+    let agentResult: AgentResponse | null = null;
+    let agentSessionId: string | undefined;
 
     for await (const message of query({
       prompt,
       options: {
         cwd: '/workspace/group',
-        resume: input.sessionId,
+        resume: sessionId,
         systemPrompt: globalClaudeMd
           ? { type: 'preset' as const, preset: 'claude_code' as const, append: globalClaudeMd }
           : undefined,
@@ -285,38 +286,65 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
       }
     })) {
       if (message.type === 'system' && message.subtype === 'init') {
-        newSessionId = message.session_id;
-        log(`Session initialized: ${newSessionId}`);
+        agentSessionId = message.session_id;
+        log(`Session initialized: ${agentSessionId}`);
       }
 
       if (message.type === 'result') {
         if (message.subtype === 'success' && message.structured_output) {
-          result = message.structured_output as AgentResponse;
-          if (result.outputType === 'message' && !result.userMessage) {
+          agentResult = message.structured_output as AgentResponse;
+          if (agentResult.outputType === 'message' && !agentResult.userMessage) {
             log('Warning: outputType is "message" but userMessage is missing, treating as "log"');
-            result = { outputType: 'log', internalLog: result.internalLog };
+            agentResult = { outputType: 'log', internalLog: agentResult.internalLog };
           }
-          log(`Agent result: outputType=${result.outputType}${result.internalLog ? `, log=${result.internalLog}` : ''}`);
+          log(`Agent result: outputType=${agentResult.outputType}${agentResult.internalLog ? `, log=${agentResult.internalLog}` : ''}`);
         } else if (message.subtype === 'success' || message.subtype === 'error_max_structured_output_retries') {
-          // Structured output missing or agent couldn't produce valid structured output — fall back to text
           log(`Structured output unavailable (subtype=${message.subtype}), falling back to text`);
           const textResult = 'result' in message ? (message as { result?: string }).result : null;
           if (textResult) {
-            result = { outputType: 'message', userMessage: textResult };
+            agentResult = { outputType: 'message', userMessage: textResult };
           }
         }
       }
     }
 
-    log('Agent completed successfully');
     return {
       status: 'success',
-      result: result ?? { outputType: 'log' },
-      newSessionId
+      result: agentResult ?? { outputType: 'log' },
+      newSessionId: agentSessionId
     };
+  }
+
+  try {
+    log('Starting agent...');
+    const output = await runAgent(input.sessionId);
+    log('Agent completed successfully');
+    newSessionId = output.newSessionId;
+    return output;
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
+
+    // If session resume failed, retry without a session (start fresh)
+    if (input.sessionId) {
+      log(`Agent error with session resume: ${errorMessage}. Retrying without session...`);
+      try {
+        const output = await runAgent(undefined);
+        log('Agent completed successfully (fresh session)');
+        newSessionId = output.newSessionId;
+        return output;
+      } catch (retryErr) {
+        const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
+        log(`Agent error on fresh session: ${retryMessage}`);
+        return {
+          status: 'error',
+          result: null,
+          newSessionId,
+          error: retryMessage
+        };
+      }
+    }
+
     log(`Agent error: ${errorMessage}`);
     return {
       status: 'error',
