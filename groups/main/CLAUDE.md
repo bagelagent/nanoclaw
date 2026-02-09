@@ -41,6 +41,13 @@ NanoClaw has a progress streaming system that shows real-time status updates dur
 - Issue is likely SDK configuration or message type detection
 - See `/workspace/group/PROGRESS_STREAMING_ANALYSIS.md` for full diagnosis
 
+**IPC System Hardening** (2026-02-09 - 15:28):
+- ✅ Bidirectional IPC with acknowledgments implemented
+- ✅ Deploy operations now return success/error with details
+- ✅ Error notifications sent directly to user with build output
+- ✅ Request IDs for reply matching
+- ✅ Reply files auto-cleanup after 60s
+
 ## Audio Features
 
 - **Voice Messages**: When users send voice messages, they are automatically transcribed using OpenAI Whisper. The transcription appears as the message content.
