@@ -363,9 +363,14 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     'Processing messages',
   );
 
-  // Send immediate acknowledgment for Discord messages
+  // Send immediate acknowledgment for Discord messages with task summary
   if (chatJid.startsWith('discord:')) {
-    await sendMessage(chatJid, '👍 Working on it...');
+    // Extract the most recent user message as the task
+    const latestUserMessage = missedMessages[missedMessages.length - 1];
+    const taskPreview = latestUserMessage.content.length > 100
+      ? latestUserMessage.content.slice(0, 97) + '...'
+      : latestUserMessage.content;
+    await sendMessage(chatJid, `📋 Task: ${taskPreview}\n\nStarting work...`);
   }
 
   await setTyping(chatJid, true);
@@ -383,7 +388,11 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   saveState();
 
   if (response.outputType === 'message' && response.userMessage) {
-    await sendMessage(chatJid, `${ASSISTANT_NAME}: ${response.userMessage}`);
+    // For Discord, don't prefix with assistant name
+    const message = chatJid.startsWith('discord:')
+      ? response.userMessage
+      : `${ASSISTANT_NAME}: ${response.userMessage}`;
+    await sendMessage(chatJid, message);
   }
 
   if (response.internalLog) {
@@ -556,10 +565,11 @@ function startIpcWatcher(): void {
                   isMain ||
                   (targetGroup && targetGroup.folder === sourceGroup)
                 ) {
-                  await sendMessage(
-                    data.chatJid,
-                    `${ASSISTANT_NAME}: ${data.text}`,
-                  );
+                  // For Discord, don't prefix with assistant name
+                  const message = data.chatJid.startsWith('discord:')
+                    ? data.text
+                    : `${ASSISTANT_NAME}: ${data.text}`;
+                  await sendMessage(data.chatJid, message);
                   logger.info(
                     { chatJid: data.chatJid, sourceGroup },
                     'IPC message sent',
