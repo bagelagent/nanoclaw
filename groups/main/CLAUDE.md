@@ -105,6 +105,32 @@ Key paths inside the container:
 
 ---
 
+## Managing Discord Channels
+
+### Registering Discord Channels
+
+To add a private Discord channel where you can interact without @mentions:
+
+1. **Get Channel ID:**
+   - Enable Developer Mode (Settings > Advanced)
+   - Right-click channel > Copy Channel ID
+
+2. **Register the Channel:**
+   ```bash
+   /workspace/group/scripts/register-discord-channel.sh <channel_id> "Channel Name"
+   ```
+
+3. **What Happens:**
+   - Channel gets own folder in `groups/discord-{name}/`
+   - Separate memory file (CLAUDE.md)
+   - Persistent conversation history
+   - No @mention needed - all messages processed
+
+4. **Restart Required:**
+   After registration, restart NanoClaw for changes to take effect
+
+---
+
 ## Managing Groups
 
 ### Finding Available Groups

@@ -78,7 +78,7 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
     const registeredGroups = getAllRegisteredGroups();
     const isRegistered = !!registeredGroups[chatJid];
 
-    // For guild messages, only process if bot is @mentioned
+    // For guild messages, check if channel is registered
     if (msg.guild) {
       const isMentioned = client.user && msg.mentions.has(client.user.id);
 
@@ -86,8 +86,27 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
       const channelName = (msg.channel as TextChannel).name || chatJid;
       storeChatMetadata(chatJid, timestamp, `#${channelName} (${msg.guild.name})`);
 
+      // If channel is registered and doesn't require trigger, process all messages
+      const group = registeredGroups[chatJid];
+      if (isRegistered && group && !group.requiresTrigger) {
+        // Process all messages in this channel without needing @mention
+        storeGenericMessage(
+          msg.id,
+          chatJid,
+          msg.author.id,
+          msg.author.displayName || msg.author.username,
+          buildContent(msg),
+          timestamp,
+          false,
+        );
+        // Trigger agent processing
+        callbacks.onMessage(chatJid, true);
+        return;
+      }
+
+      // If not registered or requires trigger, need @mention
       if (!isMentioned && isRegistered) {
-        // Store message content for registered channels even without mention
+        // Store message content but don't process
         storeGenericMessage(
           msg.id,
           chatJid,
