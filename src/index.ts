@@ -363,16 +363,6 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     'Processing messages',
   );
 
-  // Send immediate acknowledgment for Discord messages with task summary
-  if (chatJid.startsWith('discord:')) {
-    // Extract the most recent user message as the task
-    const latestUserMessage = missedMessages[missedMessages.length - 1];
-    const taskPreview = latestUserMessage.content.length > 100
-      ? latestUserMessage.content.slice(0, 97) + '...'
-      : latestUserMessage.content;
-    await sendMessage(chatJid, `📋 Task: ${taskPreview}\n\nStarting work...`);
-  }
-
   await setTyping(chatJid, true);
   const response = await runAgent(group, prompt, chatJid);
   await setTyping(chatJid, false);
