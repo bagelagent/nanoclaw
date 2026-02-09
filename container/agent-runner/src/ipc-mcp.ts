@@ -47,7 +47,7 @@ export function createIpcMcp(ctx: IpcMcpContext) {
         {
           text: z.string().describe('The message text to send')
         },
-        async (args) => {
+        async (args: { text: string }) => {
           const data = {
             type: 'message',
             chatJid,
@@ -74,7 +74,7 @@ export function createIpcMcp(ctx: IpcMcpContext) {
           text: z.string().describe('The text to convert to speech and send as a voice message'),
           voice: z.enum(['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']).default('nova').describe('Voice to use for TTS. nova is warm and friendly (default), alloy is neutral, echo is deep, fable is expressive, onyx is authoritative, shimmer is bright')
         },
-        async (args) => {
+        async (args: { text: string; voice: string }) => {
           const data = {
             type: 'voice_message',
             chatJid,
@@ -120,7 +120,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
           context_mode: z.enum(['group', 'isolated']).default('group').describe('group=runs with chat history and memory, isolated=fresh session (include context in prompt)'),
           ...(isMain ? { target_group_jid: z.string().optional().describe('JID of the group to schedule the task for. The group must be registered — look up JIDs in /workspace/project/data/registered_groups.json (the keys are JIDs). If the group is not registered, let the user know and ask if they want to activate it. Defaults to the current group.') } : {}),
         },
-        async (args) => {
+        async (args: { prompt: string; schedule_type: string; schedule_value: string; context_mode?: string; target_group_jid?: string }) => {
           // Validate schedule_value before writing IPC
           if (args.schedule_type === 'cron') {
             try {
@@ -234,7 +234,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         {
           task_id: z.string().describe('The task ID to pause')
         },
-        async (args) => {
+        async (args: { task_id: string }) => {
           const data = {
             type: 'pause_task',
             taskId: args.task_id,
@@ -260,7 +260,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         {
           task_id: z.string().describe('The task ID to resume')
         },
-        async (args) => {
+        async (args: { task_id: string }) => {
           const data = {
             type: 'resume_task',
             taskId: args.task_id,
@@ -286,7 +286,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         {
           task_id: z.string().describe('The task ID to cancel')
         },
-        async (args) => {
+        async (args: { task_id: string }) => {
           const data = {
             type: 'cancel_task',
             taskId: args.task_id,
@@ -317,7 +317,7 @@ Use available_groups.json to find the JID for a group. The folder name should be
           folder: z.string().describe('Folder name for group files (lowercase, hyphens, e.g., "family-chat")'),
           trigger: z.string().describe('Trigger word (e.g., "@Bagel")')
         },
-        async (args) => {
+        async (args: { jid: string; name: string; folder: string; trigger: string }) => {
           if (!isMain) {
             return {
               content: [{ type: 'text', text: 'Only the main group can register new groups.' }],
@@ -369,7 +369,7 @@ After deploy, the service restarts automatically. Your session ends — the user
           targets: z.array(z.enum(['host', 'container'])).describe('What to rebuild. Empty array = commit only (no rebuild/restart).'),
           commit_message: z.string().optional().describe('Git commit message describing your changes. Defaults to "chore: agent-initiated deploy".')
         },
-        async (args) => {
+        async (args: { targets: Array<'host' | 'container'>; commit_message?: string }) => {
           if (!isMain) {
             return {
               content: [{ type: 'text', text: 'Deploy is only available from the main group.' }],
@@ -444,7 +444,7 @@ After deploy, the service restarts automatically. Your session ends — the user
           {
             groupFolder: z.string().describe('The group folder name to restart (typically "main")')
           },
-          async (args) => {
+          async (args: { groupFolder: string }) => {
             const data = {
               type: 'restart_container',
               groupFolder: args.groupFolder,
@@ -480,7 +480,7 @@ Returns the most relevant chunks from your memory files, ranked by relevance.`,
           mode: z.enum(['hybrid', 'semantic', 'keyword']).default('hybrid').describe('hybrid (recommended): combines meaning + keywords. semantic: meaning only. keyword: exact word matches only.'),
           limit: z.number().int().min(1).max(20).default(5).describe('Number of results to return (1-20)')
         },
-        async (args) => {
+        async (args: { query: string; mode?: 'hybrid' | 'semantic' | 'keyword'; limit?: number }) => {
           try {
             const results = await memorySearch(args.query, args.mode, args.limit);
 

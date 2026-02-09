@@ -110,7 +110,7 @@ function getSessionSummary(sessionId: string, transcriptPath: string): string | 
  * Archive the full transcript to conversations/ before compaction.
  */
 function createPreCompactHook(): HookCallback {
-  return async (input, _toolUseId, _context) => {
+  return async (input: any, _toolUseId: any, _context: any) => {
     const preCompact = input as PreCompactHookInput;
     const transcriptPath = preCompact.transcript_path;
     const sessionId = preCompact.session_id;
