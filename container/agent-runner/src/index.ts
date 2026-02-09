@@ -256,17 +256,28 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
     // Write progress update to IPC for host to pick up
     const progressDir = '/workspace/ipc/progress';
     try {
+      log(`[DEBUG] Emitting progress: ${status}`);
+      log(`[DEBUG] Progress dir: ${progressDir}`);
+      log(`[DEBUG] Dir exists: ${fs.existsSync(progressDir)}`);
+
       if (!fs.existsSync(progressDir)) {
+        log(`[DEBUG] Creating progress directory`);
         fs.mkdirSync(progressDir, { recursive: true });
       }
+
       const filename = `${Date.now()}.json`;
-      fs.writeFileSync(
-        path.join(progressDir, filename),
-        JSON.stringify({ chatJid: input.chatJid, status, timestamp: new Date().toISOString() })
-      );
+      const filePath = path.join(progressDir, filename);
+      const data = JSON.stringify({ chatJid: input.chatJid, status, timestamp: new Date().toISOString() });
+
+      log(`[DEBUG] Writing to: ${filePath}`);
+      log(`[DEBUG] Data: ${data}`);
+
+      fs.writeFileSync(filePath, data);
+
+      log(`[DEBUG] Progress file written successfully`);
     } catch (err) {
-      // Fail silently - progress updates are non-critical
-      log(`Failed to emit progress: ${err instanceof Error ? err.message : String(err)}`);
+      log(`[ERROR] Failed to emit progress: ${err instanceof Error ? err.message : String(err)}`);
+      log(`[ERROR] Stack: ${err instanceof Error ? err.stack : 'no stack'}`);
     }
   }
 
