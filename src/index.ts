@@ -965,10 +965,22 @@ async function processTaskIpc(
       if (targets.includes('container')) {
         try {
           logger.info('Building container...');
-          execSync('./container/build.sh', { cwd: process.cwd(), stdio: 'pipe', timeout: 300000 });
-          logger.info('Container build succeeded');
+          // Use inherit to see build output in logs, capture output for error reporting
+          const buildOutput = execSync('./container/build.sh', {
+            cwd: process.cwd(),
+            stdio: 'pipe',
+            timeout: 300000,
+            encoding: 'utf-8'
+          });
+          logger.info({ output: buildOutput }, 'Container build succeeded');
         } catch (err) {
           logger.error({ err }, 'Container build failed, aborting deploy');
+          // Log full error details
+          if (err && typeof err === 'object') {
+            if ('stdout' in err) logger.error({ stdout: err.stdout?.toString() }, 'Build stdout');
+            if ('stderr' in err) logger.error({ stderr: err.stderr?.toString() }, 'Build stderr');
+            if ('status' in err) logger.error({ exitCode: err.status }, 'Build exit code');
+          }
           break;
         }
       }
