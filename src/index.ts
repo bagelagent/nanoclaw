@@ -363,6 +363,11 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     'Processing messages',
   );
 
+  // Send immediate acknowledgment for Discord messages
+  if (chatJid.startsWith('discord:')) {
+    await sendMessage(chatJid, '👍 Working on it...');
+  }
+
   await setTyping(chatJid, true);
   const response = await runAgent(group, prompt, chatJid);
   await setTyping(chatJid, false);

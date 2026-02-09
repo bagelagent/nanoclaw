@@ -80,6 +80,22 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
 
     // For guild messages, auto-respond in any channel the bot is in
     if (msg.guild) {
+      // Only respond to specific user (owner) in guild channels
+      const OWNER_DISCORD_ID = '237014586480525313';
+      if (msg.author.id !== OWNER_DISCORD_ID) {
+        // Store message for context but don't process
+        storeGenericMessage(
+          msg.id,
+          chatJid,
+          msg.author.id,
+          msg.author.displayName || msg.author.username,
+          buildContent(msg),
+          timestamp,
+          false,
+        );
+        return;
+      }
+
       // Always store chat metadata for discovery
       const channelName = (msg.channel as TextChannel).name || chatJid;
       storeChatMetadata(chatJid, timestamp, `#${channelName} (${msg.guild.name})`);
