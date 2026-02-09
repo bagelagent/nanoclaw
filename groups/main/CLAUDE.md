@@ -51,6 +51,34 @@ Keep messages clean and readable for WhatsApp.
 
 ---
 
+## CRITICAL: Container Build Script
+
+⚠️ **MANDATORY REQUIREMENT** ⚠️
+
+The `/workspace/project/container/build.sh` script is CRITICAL for deployments.
+
+**Rules:**
+1. **NEVER break this script** - any changes must be tested
+2. **IF the script fails, deployment CANNOT proceed** - you MUST fix it before continuing
+3. **Test before deploying** - if you modify build.sh, verify it works
+4. **The script must:**
+   - Detect docker or podman runtime
+   - Build the nanoclaw-agent:latest image
+   - Exit with error if no runtime found
+   - Show clear error messages
+
+**If a container deployment fails:**
+1. STOP - do not proceed with other work
+2. Check build.sh for syntax errors
+3. Verify the script can find docker/podman
+4. Fix any issues
+5. Test the build manually if possible
+6. Only then retry deployment
+
+Container builds are the foundation of the deployment system. If they don't work, NOTHING else matters.
+
+---
+
 ## Creative Projects
 
 *DevAIntArt* 🎨
