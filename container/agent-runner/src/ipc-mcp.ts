@@ -412,6 +412,30 @@ After deploy, the service restarts automatically. Your session ends — the user
         }
       )] : []),
 
+      // Test container build tool (main group only)
+      ...(isMain ? [
+        tool(
+          'test_container_build',
+          'Test the container build script to verify it works. Runs ./container/build.sh on the host and returns the output. Use this after modifying build.sh or Dockerfile to ensure builds work before deploying.',
+          {},
+          async () => {
+            const data = {
+              type: 'test_container_build',
+              timestamp: new Date().toISOString()
+            };
+
+            writeIpcFile(TASKS_DIR, data);
+
+            return {
+              content: [{
+                type: 'text',
+                text: 'Container build test initiated. The host will run ./container/build.sh and return the results via a message.'
+              }]
+            };
+          }
+        )
+      ] : []),
+
       // Restart container tool (main group only)
       ...(isMain ? [
         tool(

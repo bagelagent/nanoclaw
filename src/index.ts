@@ -706,6 +706,45 @@ async function processTaskIpc(
   isMain: boolean, // Verified from directory path
 ): Promise<void> {
   switch (data.type) {
+    case 'test_container_build':
+      // Only main group can test builds
+      if (!isMain) {
+        logger.warn({ sourceGroup }, 'Non-main group attempted to test build');
+        return;
+      }
+      try {
+        logger.info('Testing container build...');
+        const buildOutput = execSync('./container/build.sh', {
+          cwd: process.cwd(),
+          encoding: 'utf-8',
+          timeout: 300000
+        });
+        logger.info({ output: buildOutput }, 'Container build test succeeded');
+
+        // Send success message back to agent
+        const successMsg = `Container build test SUCCEEDED:\n\n${buildOutput}`;
+        await sendMessage(data.chatJid || registeredGroups[Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup) || '']?.name || 'unknown', successMsg);
+      } catch (err) {
+        logger.error({ err }, 'Container build test failed');
+
+        // Send failure message with full error details
+        let errorMsg = 'Container build test FAILED:\n\n';
+        if (err && typeof err === 'object') {
+          if ('stdout' in err) errorMsg += `STDOUT:\n${err.stdout}\n\n`;
+          if ('stderr' in err) errorMsg += `STDERR:\n${err.stderr}\n\n`;
+          if ('status' in err) errorMsg += `Exit code: ${err.status}\n`;
+        } else {
+          errorMsg += String(err);
+        }
+
+        // Find the chatJid for the source group
+        const chatJid = Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup);
+        if (chatJid) {
+          await sendMessage(chatJid, errorMsg);
+        }
+      }
+      return;
+
     case 'restart_container':
       // Only main group can restart containers
       if (!isMain) {
