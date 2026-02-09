@@ -483,8 +483,9 @@ class ContainerPool {
 
   /**
    * Gracefully shut down a single container by closing its stdin.
+   * @param force If true, shut down even if a query is in flight
    */
-  private shutdownEntry(key: string): void {
+  private shutdownEntry(key: string, force: boolean = false): void {
     const entry = this.pool.get(key);
     if (!entry || entry.exited) {
       this.pool.delete(key);
@@ -492,7 +493,8 @@ class ContainerPool {
     }
 
     // Don't shut down if a query is in flight — reschedule the idle timer
-    if (entry.pendingResolve) {
+    // Unless force=true (for explicit restarts)
+    if (entry.pendingResolve && !force) {
       logger.debug(
         { group: entry.group.name, containerName: entry.containerName },
         'Skipping idle shutdown, query still in flight',
@@ -565,15 +567,16 @@ class ContainerPool {
   /**
    * Restart a specific container by shutting it down.
    * The next query will spawn a fresh container with new code.
+   * Forces shutdown even if a query is currently in flight.
    */
   restartContainer(groupFolder: string): boolean {
     const entry = this.pool.get(groupFolder);
     if (entry && !entry.exited) {
       logger.info(
         { group: entry.group.name, containerName: entry.containerName },
-        'Restarting container (requested via IPC)',
+        'Restarting container (requested via IPC) - forcing shutdown',
       );
-      this.shutdownEntry(groupFolder);
+      this.shutdownEntry(groupFolder, true); // force=true to shutdown during query
       return true;
     }
     return false;
