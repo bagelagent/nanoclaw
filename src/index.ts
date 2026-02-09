@@ -706,6 +706,21 @@ async function processTaskIpc(
   isMain: boolean, // Verified from directory path
 ): Promise<void> {
   switch (data.type) {
+    case 'restart_container':
+      // Only main group can restart containers
+      if (!isMain) {
+        logger.warn({ sourceGroup }, 'Non-main group attempted to restart container');
+        return;
+      }
+      if (data.groupFolder) {
+        const { restartContainer } = await import('./container-runner.js');
+        const restarted = restartContainer(data.groupFolder);
+        logger.info(
+          { groupFolder: data.groupFolder, restarted },
+          'Container restart requested via IPC',
+        );
+      }
+      return;
     case 'schedule_task':
       if (
         data.prompt &&

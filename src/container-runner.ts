@@ -561,6 +561,23 @@ class ContainerPool {
     }
     return null;
   }
+
+  /**
+   * Restart a specific container by shutting it down.
+   * The next query will spawn a fresh container with new code.
+   */
+  restartContainer(groupFolder: string): boolean {
+    const entry = this.pool.get(groupFolder);
+    if (entry && !entry.exited) {
+      logger.info(
+        { group: entry.group.name, containerName: entry.containerName },
+        'Restarting container (requested via IPC)',
+      );
+      this.shutdownEntry(groupFolder);
+      return true;
+    }
+    return false;
+  }
 }
 
 // Module-level pool instance
@@ -653,6 +670,14 @@ export async function runContainerAgent(
  */
 export async function shutdownPool(): Promise<void> {
   await containerPool.shutdownAll();
+}
+
+/**
+ * Restart a specific container to pick up new code.
+ * Returns true if a container was restarted, false if none was running.
+ */
+export function restartContainer(groupFolder: string): boolean {
+  return containerPool.restartContainer(groupFolder);
 }
 
 export function writeTasksSnapshot(

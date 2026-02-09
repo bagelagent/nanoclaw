@@ -399,6 +399,33 @@ After deploy, the service restarts automatically. Your session ends — the user
         }
       )] : []),
 
+      // Restart container tool (main group only)
+      ...(isMain ? [
+        tool(
+          'restart_container',
+          'Restart the persistent container to pick up new code changes. Use this after deploying container changes to ensure the new code is loaded immediately instead of waiting for idle timeout.',
+          {
+            groupFolder: z.string().describe('The group folder name to restart (typically "main")')
+          },
+          async (args) => {
+            const data = {
+              type: 'restart_container',
+              groupFolder: args.groupFolder,
+              timestamp: new Date().toISOString()
+            };
+
+            writeIpcFile(TASKS_DIR, data);
+
+            return {
+              content: [{
+                type: 'text',
+                text: `Container restart requested for group: ${args.groupFolder}. The container will shut down and the next query will spawn a fresh container with new code.`
+              }]
+            };
+          }
+        )
+      ] : []),
+
       tool(
         'semantic_search',
         `Search your memory using natural language. Finds relevant content by meaning, not just keywords.
