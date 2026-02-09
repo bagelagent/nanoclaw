@@ -1,4 +1,5 @@
 import {
+  AttachmentBuilder,
   Client,
   Events,
   GatewayIntentBits,
@@ -237,5 +238,46 @@ export async function sendDiscordMessage(
     }
   } catch (err) {
     logger.error({ jid, err }, 'Failed to send Discord message');
+  }
+}
+
+/**
+ * Send a voice message (audio file) to Discord
+ */
+export async function sendDiscordVoiceMessage(
+  jid: string,
+  audioBuffer: Buffer,
+): Promise<void> {
+  if (!client?.isReady()) {
+    logger.error({ jid }, 'Discord client not ready, cannot send voice message');
+    return;
+  }
+
+  try {
+    let channelId: string;
+    if (jid.startsWith('discord:dm:')) {
+      // DM: fetch user and create/get DM channel
+      const userId = jid.replace('discord:dm:', '');
+      const user = await client.users.fetch(userId);
+      const dmChannel = await user.createDM();
+      channelId = dmChannel.id;
+    } else {
+      // Guild channel: extract channel ID
+      channelId = jid.replace('discord:', '');
+    }
+
+    const channel = await client.channels.fetch(channelId);
+    if (channel && 'send' in channel) {
+      const attachment = new AttachmentBuilder(audioBuffer, {
+        name: 'voice-message.ogg',
+      });
+      await (channel as TextChannel).send({ files: [attachment] });
+      logger.info({ jid, size: audioBuffer.length }, 'Discord voice message sent');
+    } else {
+      logger.error({ jid }, 'Channel not found or not a text channel');
+    }
+  } catch (err) {
+    logger.error({ jid, err }, 'Failed to send Discord voice message');
+    throw err;
   }
 }

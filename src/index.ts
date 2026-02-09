@@ -431,12 +431,6 @@ async function sendVoiceMessage(
   text: string,
   voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
 ): Promise<void> {
-  if (jid.startsWith('discord:')) {
-    // Discord doesn't support voice messages, send text instead
-    await sendDiscordMessage(jid, `🎤 ${text}`);
-    return;
-  }
-
   try {
     const { generateSpeech } = await import('./audio.js');
     const audioBuffer = await generateSpeech(text, voice);
@@ -447,13 +441,20 @@ async function sendVoiceMessage(
       return;
     }
 
-    // Send as PTT (push-to-talk) audio message
-    await sock.sendMessage(jid, {
-      audio: audioBuffer,
-      mimetype: 'audio/ogg; codecs=opus',
-      ptt: true,
-    });
-    logger.info({ jid, voice, length: audioBuffer.length }, 'Voice message sent');
+    if (jid.startsWith('discord:')) {
+      // Discord: send as audio attachment
+      const { sendDiscordVoiceMessage } = await import('./discord.js');
+      await sendDiscordVoiceMessage(jid, audioBuffer);
+      logger.info({ jid, voice, length: audioBuffer.length }, 'Discord voice message sent');
+    } else {
+      // WhatsApp: send as PTT (push-to-talk) audio message
+      await sock.sendMessage(jid, {
+        audio: audioBuffer,
+        mimetype: 'audio/ogg; codecs=opus',
+        ptt: true,
+      });
+      logger.info({ jid, voice, length: audioBuffer.length }, 'WhatsApp voice message sent');
+    }
   } catch (err) {
     logger.error({ jid, err }, 'Failed to send voice message, sending text instead');
     await sendMessage(jid, text);
