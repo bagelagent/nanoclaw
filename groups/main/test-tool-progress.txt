@@ -1,0 +1,4 @@
+Test file created at 2026-02-09 18:02 UTC
+
+This file is created to test SDK message logging.
+The container should be logging all SDK message types now.

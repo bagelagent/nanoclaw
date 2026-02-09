@@ -327,22 +327,34 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
       }
 
       // Emit progress for tool use
-      if (message.type === 'tool_progress') {
-        const toolName = message.tool_name || 'tool';
-        const toolEmoji: Record<string, string> = {
-          'Bash': '⚙️',
-          'Read': '📖',
-          'Write': '✏️',
-          'Edit': '📝',
-          'Glob': '🔍',
-          'Grep': '🔎',
-          'WebSearch': '🌐',
-          'WebFetch': '🌐',
-          'mcp__nanoclaw__send_message': '💬',
-          'Task': '🚀',
-        };
-        const emoji = toolEmoji[toolName] || '🔧';
-        emitProgress(`${emoji} ${toolName}...`);
+      // Tool usage appears as type="assistant" messages with tool_use content
+      if (message.type === 'assistant') {
+        const msg = message as any;
+        const content = msg.message?.content;
+        if (Array.isArray(content)) {
+          // Check if content array contains tool_use blocks
+          for (const block of content) {
+            if (block.type === 'tool_use' && block.name) {
+              const toolName = block.name;
+              const toolEmoji: Record<string, string> = {
+                'Bash': '⚙️',
+                'Read': '📖',
+                'Write': '✏️',
+                'Edit': '📝',
+                'Glob': '🔍',
+                'Grep': '🔎',
+                'WebSearch': '🌐',
+                'WebFetch': '🌐',
+                'mcp__nanoclaw__send_message': '💬',
+                'Task': '🚀',
+              };
+              const emoji = toolEmoji[toolName] || '🔧';
+              emitProgress(`${emoji} ${toolName}...`);
+              // Only emit for first tool in message
+              break;
+            }
+          }
+        }
       }
 
       if (message.type === 'result') {
