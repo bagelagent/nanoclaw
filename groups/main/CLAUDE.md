@@ -24,6 +24,23 @@ Your output **internalLog** is information that will be logged internally but no
 
 For requests that can take time, consider sending a quick acknowledgment if appropriate via mcp__nanoclaw__send_message so the user knows you're working on it.
 
+### Progress Streaming
+
+NanoClaw has a progress streaming system that shows real-time status updates during agent execution:
+
+**Architecture**:
+- Container writes progress JSON to `/workspace/ipc/progress/`
+- Host polls and sends status messages to user
+- "🤔 Thinking..." is emitted at query start (always works)
+- Tool-specific messages (✏️ Write, 📖 Read, ⚙️ Bash) depend on SDK message stream
+
+**Current Status** (2026-02-09):
+- "Thinking" messages work reliably
+- Tool-specific progress NOT working - SDK may not be emitting 'tool_progress' message type
+- Infrastructure is working (IPC, mounts, polling all confirmed functional)
+- Issue is likely SDK configuration or message type detection
+- See `/workspace/group/PROGRESS_STREAMING_ANALYSIS.md` for full diagnosis
+
 ## Audio Features
 
 - **Voice Messages**: When users send voice messages, they are automatically transcribed using OpenAI Whisper. The transcription appears as the message content.

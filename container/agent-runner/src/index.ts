@@ -316,6 +316,10 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
         }
       }
     })) {
+      // Log ALL message types to diagnose progress streaming
+      const msgPreview = JSON.stringify(message).slice(0, 300);
+      log(`[SDK_MESSAGE] type="${message.type}" ${message.subtype ? `subtype="${message.subtype}" ` : ''}preview: ${msgPreview}`);
+
       if (message.type === 'system' && message.subtype === 'init') {
         agentSessionId = message.session_id;
         log(`Session initialized: ${agentSessionId}`);
