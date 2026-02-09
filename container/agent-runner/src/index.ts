@@ -322,8 +322,8 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
       }
 
       // Emit progress for tool use
-      if (message.type === 'tool_use') {
-        const toolName = (message as any).tool_name || 'tool';
+      if (message.type === 'tool_progress') {
+        const toolName = message.tool_name || 'tool';
         const toolEmoji: Record<string, string> = {
           'Bash': '⚙️',
           'Read': '📖',
