@@ -132,6 +132,15 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  // Logs directory (read-only) - allows agent to debug by reading previous query logs
+  const logsHostPath = path.join(GROUPS_DIR, group.folder, 'logs');
+  fs.mkdirSync(logsHostPath, { recursive: true });
+  mounts.push({
+    hostPath: logsHostPath,
+    containerPath: '/workspace/logs',
+    readonly: true,
+  });
+
   // Environment file directory
   // Only expose specific auth variables needed by Claude Code, not the entire .env
   const envDir = path.join(DATA_DIR, 'env');

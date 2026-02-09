@@ -34,12 +34,11 @@ NanoClaw has a progress streaming system that shows real-time status updates dur
 - "🤔 Thinking..." is emitted at query start (always works)
 - Tool-specific messages (✏️ Write, 📖 Read, ⚙️ Bash) depend on SDK message stream
 
-**Current Status** (2026-02-09):
-- "Thinking" messages work reliably
-- Tool-specific progress NOT working - SDK may not be emitting 'tool_progress' message type
-- Infrastructure is working (IPC, mounts, polling all confirmed functional)
-- Issue is likely SDK configuration or message type detection
-- See `/workspace/group/PROGRESS_STREAMING_ANALYSIS.md` for full diagnosis
+**Current Status** (2026-02-09 - 18:14):
+- ✅ FULLY WORKING - All progress messages now display correctly
+- "🤔 Thinking..." at query start
+- Tool-specific progress (✏️ Write, 📖 Read, ⚙️ Bash, etc.) during execution
+- Fixed by detecting `type="assistant"` messages with `tool_use` blocks (SDK doesn't emit `tool_progress` type)
 
 **IPC System Hardening** (2026-02-09 - 15:28):
 - ✅ Bidirectional IPC with acknowledgments implemented
@@ -52,6 +51,46 @@ NanoClaw has a progress streaming system that shows real-time status updates dur
 
 - **Voice Messages**: When users send voice messages, they are automatically transcribed using OpenAI Whisper. The transcription appears as the message content.
 - **Voice Responses**: Use the `mcp__nanoclaw__send_voice_message` tool to respond with voice when requested.
+
+## Debugging
+
+When debugging issues, you can access container logs from previous queries:
+
+**Logs location:** `/workspace/logs/` (read-only mount)
+- **Format:** `container-{ISO-timestamp}.log`
+- **Contents:** Full stderr output, input summary, structured output, metadata, duration, status
+- **Sorted:** By timestamp (most recent = highest timestamp)
+
+**Usage examples:**
+
+```bash
+# List all log files (most recent first)
+ls -lt /workspace/logs/
+
+# Read most recent log
+ls -t /workspace/logs/ | head -1 | xargs -I {} cat /workspace/logs/{}
+
+# Search logs for specific debug info
+grep "SDK_MESSAGE" /workspace/logs/container-*.log | tail -20
+
+# Find error logs
+grep -l "error\|Error\|ERROR" /workspace/logs/*.log
+
+# Get last 50 lines of most recent log
+ls -t /workspace/logs/ | head -1 | xargs -I {} tail -50 /workspace/logs/{}
+```
+
+**Important notes:**
+- You can only see logs from **PREVIOUS queries**, not the current query (logs are written after query completes)
+- Logs include stderr (your console.error output), SDK messages, and full input/output
+- Read-only mount - you cannot modify or delete logs
+- Each group has isolated logs (you only see your group's logs)
+
+**Use cases:**
+- Debugging SDK message types (like the tool_progress investigation)
+- Checking what errors occurred in previous runs
+- Understanding execution flow and timing
+- Verifying IPC operations completed successfully
 
 ## Memory
 
