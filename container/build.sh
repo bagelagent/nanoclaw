@@ -12,8 +12,21 @@ TAG="${1:-latest}"
 echo "Building NanoClaw agent container image..."
 echo "Image: ${IMAGE_NAME}:${TAG}"
 
-# Build with Docker
-docker build -t "${IMAGE_NAME}:${TAG}" .
+# Detect container runtime (docker or podman)
+if command -v docker &> /dev/null; then
+    RUNTIME="docker"
+elif command -v podman &> /dev/null; then
+    RUNTIME="podman"
+else
+    echo "Error: Neither docker nor podman found in PATH"
+    echo "PATH: $PATH"
+    exit 1
+fi
+
+echo "Using container runtime: $RUNTIME"
+
+# Build with detected runtime
+$RUNTIME build -t "${IMAGE_NAME}:${TAG}" .
 
 echo ""
 echo "Build complete!"

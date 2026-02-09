@@ -387,12 +387,25 @@ After deploy, the service restarts automatically. Your session ends — the user
 
           writeIpcFile(TASKS_DIR, data);
 
+          // If container was rebuilt, schedule container restart after deploy
+          if (args.targets.includes('container')) {
+            // Wait a bit for the deploy to complete and service to restart
+            setTimeout(() => {
+              const restartData = {
+                type: 'restart_container',
+                groupFolder: 'main',
+                timestamp: new Date().toISOString()
+              };
+              writeIpcFile(TASKS_DIR, restartData);
+            }, 5000); // 5 second delay to allow service restart
+          }
+
           const willRestart = args.targets.length > 0;
           return {
             content: [{
               type: 'text',
               text: willRestart
-                ? `Deploy initiated (targets: ${args.targets.join(', ')}). The service will restart shortly — this session will end.`
+                ? `Deploy initiated (targets: ${args.targets.join(', ')}). The service will restart shortly — this session will end.${args.targets.includes('container') ? ' Container will be restarted after deploy to load new code.' : ''}`
                 : `Changes committed. No rebuild/restart needed.`
             }]
           };
