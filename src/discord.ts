@@ -78,48 +78,28 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
     const registeredGroups = getAllRegisteredGroups();
     const isRegistered = !!registeredGroups[chatJid];
 
-    // For guild messages, check if channel is registered
+    // For guild messages, auto-respond in any channel the bot is in
     if (msg.guild) {
-      const isMentioned = client.user && msg.mentions.has(client.user.id);
-
       // Always store chat metadata for discovery
       const channelName = (msg.channel as TextChannel).name || chatJid;
       storeChatMetadata(chatJid, timestamp, `#${channelName} (${msg.guild.name})`);
 
-      // If channel is registered and doesn't require trigger, process all messages
-      const group = registeredGroups[chatJid];
-      if (isRegistered && group && !group.requiresTrigger) {
-        // Process all messages in this channel without needing @mention
-        storeGenericMessage(
-          msg.id,
-          chatJid,
-          msg.author.id,
-          msg.author.displayName || msg.author.username,
-          buildContent(msg),
-          timestamp,
-          false,
-        );
-        // Trigger agent processing
-        callbacks.onMessage(chatJid, true);
-        return;
-      }
+      // Process all messages in guild channels without needing @mention
+      // Each channel will be treated as its own group with separate memory
+      storeGenericMessage(
+        msg.id,
+        chatJid,
+        msg.author.id,
+        msg.author.displayName || msg.author.username,
+        buildContent(msg),
+        timestamp,
+        false,
+      );
 
-      // If not registered or requires trigger, need @mention
-      if (!isMentioned && isRegistered) {
-        // Store message content but don't process
-        storeGenericMessage(
-          msg.id,
-          chatJid,
-          msg.author.id,
-          msg.author.displayName || msg.author.username,
-          buildContent(msg),
-          timestamp,
-          false,
-        );
-        return;
-      }
-
-      if (!isMentioned) return;
+      // Trigger agent processing
+      // Even if not registered, we'll process it (auto-registration will happen on agent side)
+      callbacks.onMessage(chatJid, isRegistered);
+      return;
     }
 
     // DMs: always store metadata and process

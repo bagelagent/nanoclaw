@@ -171,6 +171,14 @@ export interface ChatInfo {
 }
 
 /**
+ * Get chat metadata (name) for a specific JID.
+ */
+export function getChatMetadata(chatJid: string): string | null {
+  const row = db.prepare('SELECT name FROM chats WHERE jid = ?').get(chatJid) as { name: string } | undefined;
+  return row?.name || null;
+}
+
+/**
  * Get all known chats, ordered by most recent activity.
  */
 export function getAllChats(): ChatInfo[] {

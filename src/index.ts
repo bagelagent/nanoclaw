@@ -42,6 +42,7 @@ import {
   getLastGroupSync,
   getMessagesSince,
   getNewMessages,
+  getChatMetadata,
   getRouterState,
   getTaskById,
   initDatabase,
@@ -253,7 +254,50 @@ async function downloadAttachments(
  * Called by the GroupQueue when it's this group's turn.
  */
 async function processGroupMessages(chatJid: string): Promise<boolean> {
-  const group = registeredGroups[chatJid];
+  let group = registeredGroups[chatJid];
+
+  // Auto-register Discord channels on first message
+  if (!group && chatJid.startsWith('discord:') && !chatJid.startsWith('discord:dm:')) {
+    const chatInfo = getChatMetadata(chatJid);
+    if (chatInfo) {
+      // Extract channel name from chat info (format: "#channel-name (Server Name)")
+      const match = chatInfo.match(/^#([^\s]+)/);
+      const channelName = match ? match[1] : chatJid.split(':')[1];
+      const folderName = `discord-${channelName}`;
+
+      // Auto-register the channel
+      group = {
+        name: chatInfo,
+        folder: folderName,
+        trigger: `@${ASSISTANT_NAME}`,
+        requiresTrigger: false,
+        added_at: new Date().toISOString(),
+      };
+
+      registeredGroups[chatJid] = group;
+      setRegisteredGroup(chatJid, group);
+
+      // Create group folder and initial CLAUDE.md
+      const groupDir = path.join(DATA_DIR, '..', 'groups', folderName);
+      fs.mkdirSync(groupDir, { recursive: true });
+
+      const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
+      if (!fs.existsSync(claudeMdPath)) {
+        fs.writeFileSync(
+          claudeMdPath,
+          `# ${chatInfo}\n\nThis is a Discord channel workspace with persistent memory.\n`,
+        );
+      }
+
+      logger.info(
+        { jid: chatJid, name: group.name, folder: group.folder },
+        'Auto-registered Discord channel',
+      );
+    } else {
+      return true;
+    }
+  }
+
   if (!group) return true;
 
   const isMainGroup = group.folder === MAIN_GROUP_FOLDER;
@@ -1228,9 +1272,8 @@ async function main(): Promise<void> {
   if (DISCORD_ENABLED) {
     await connectDiscord({
       onMessage: (chatJid, isRegistered) => {
-        if (isRegistered) {
-          queue.enqueueMessageCheck(chatJid);
-        }
+        // Always process Discord messages - auto-register channels on first use
+        queue.enqueueMessageCheck(chatJid);
       },
     });
   }
