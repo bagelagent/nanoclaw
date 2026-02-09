@@ -1,0 +1,25 @@
+```__cf_bm	mmm0r9LaEgHMoNt8l0Q.r_MLpPz0zB1yDBXJFZKczrA-1770610577-1.0.1.1-.5_hqFViwKcXZ_zsKzuWnhkPvLk5D4OkpAhdfRcXltHE4ZaE4ChTRi0uLoaI2JMuNZe34VomK6TzgE8FLLURT_uFTf4JKUBWobi8KaxmMPwkMSvpGoayOacnijyYlMf3	.www.doordash.com	/	2026-02-09T04:46:17.023Z	198	✓	✓	None			Medium
+__cf_bm	aL8B8DqnmV5CiBQhYsn_I7oqzg6mBlSPvAORRb6OOAo-1770610577-1.0.1.1-uhT5JsYFof6PihMwE.hAJMYGmG22kuq3NaSwc2RZbqkLMYSFIvW_TG8oExZJOJZVLfmTVSlp49ehRAnE0AHJdkDbeM4GoxtsHL_8Pe8dawE	.cdn4dd.com	/	2026-02-09T04:46:17.273Z	177	✓	✓	None			Medium
+_cfuvid	eHr2quUjBuKFI6HIxK_EvXFGHUJ2m7Wwk8AcKjzQNuY-1770610577024-0.0.1.1-604800000	.www.doordash.com	/	Session	82	✓	✓	None			Medium
+ajs_anonymous_id	8a7f1e5d-dad9-4e42-9350-e280b07508c4	.doordash.com	/	2027-02-09T04:18:22.000Z	52			Lax			Medium
+ajs_user_id	14834829	.doordash.com	/	2027-02-09T04:18:22.000Z	19			Lax			Medium
+ARID	oIesRzq5klZLnsNu64cypHoz508QkwjTEyD2zOrbfBQQDPKssyxv+1XHqJq8pWXwekJ0CqKZc4v8Y1mn/4csoU+Qvr21CDMn9YXO3SJhaaPTd1/G+ohu40qVSRoFQTqImcFbWECj4YLVObEAPF81haHuwugjewo=**5mvxlNBSogusDeh/	.doordash.com	/fc	2026-03-11T04:17:52.810Z	182	✓	✓	Strict			Medium
+authState	0c8b1fe4-8ebe-4397-926c-c80b23770318	.doordash.com	/	2026-02-10T04:17:56.017Z	45	✓					Medium
+cf_clearance	8kKAZ4gA.nXBXgnz.c0r9XAq9TvojE7Vt.DB3G8lGQU-1770610578-1.2.1.1-W7ZrLObvKJMRQnJcRUEM8LyyQwZv_IwpVhCV9kw3wiA01bWFIxtKNvQ2yRRaKxTze_vEV1LmsXolQjMRQ2p0Bbs7cPyoypgW1Fzb1M7Sq02onUzUJpFsMK7Al0EXAiHOuhrV4NIX8m_bFc4unHxhl7KnwtFu2ND6CS5kDgY6xinsVTSKGkGJngimRJ68moL9uaZ_MIYDTI2ioakRlXoHER6oLAKtRBq7RGcx2tMoCFg	.www.doordash.com	/	2027-02-09T04:16:18.087Z	310	✓	✓	None	https://doordash.com		Medium
+csrf_token	RI5BYn6gpxAoNkOVxgOT9tyqdv6haGxRCuXNDspCXtezuuUMICN3nRMkG4s7wOOU	.doordash.com	/	2027-02-09T04:17:49.087Z	74		✓				Medium
+dd_cx_logged_in	true	www.doordash.com	/	2027-02-09T04:17:49.000Z	19						Medium
+dd_delivery_correlation_id	8933a06a-701e-4a4a-9439-0ab6ce34e1bf	.doordash.com	/	2026-02-09T10:16:17.023Z	62						Medium
+dd_device_id	dx_63792301a0d34ab984e15d42b4170d2e	.doordash.com	/	2027-02-09T04:17:56.016Z	47		✓	None			Medium
+dd_device_session_id	dbf2bc47-18f4-4164-b1e6-1d93b417053d	.doordash.com	/	2027-03-16T04:17:56.017Z	56		✓	None			Medium
+dd_last_login_action	Login	www.doordash.com	/	2027-02-09T04:17:49.000Z	25						Medium
+dd_last_login_method	Email	www.doordash.com	/	2027-02-09T04:17:49.000Z	25						Medium
+dd_market_id	-1	.doordash.com	/	2027-03-16T04:16:17.023Z	14	✓	✓				Medium
+dd_market_id	1	www.doordash.com	/	2027-03-16T04:17:52.003Z	13						Medium
+dd_non_essential_opt_in	true	.doordash.com	/	2027-02-09T04:17:48.000Z	27						Medium
+dd_session_id	sx_6e9c177c51cd469cbe4a2be8bf0e9ed1	.doordash.com	/	2026-02-09T04:46:17.023Z	48		✓	None			Medium
+dd_signature_agent	notAgent	.doordash.com	/	2027-02-09T04:17:56.017Z	26		✓	None			Medium
+ddweb_session_id	1be76bd0-e5b7-4d97-ac84-93de657a2a41:0:019c409d-4d52-7349-ad3e-9c2f8ddf85aa	.doordash.com	/	2026-03-11T04:17:56.016Z	91	✓	✓				Medium
+ddweb_token	eyJhbGciOiJIUzI1NiJ9.eyJvcmlnX2lhdCI6MTc3MDYxMDY3MywicGVkcmVnYWwiOnsiaWQiOiJjMGYyYzE5NS0wNWQ0LTQ0MjYtYWU5Yy03ZDQwNjI4NTYzMWEifSwiZXhwIjoxNzcwODY5ODczLCJ1c2VyIjp7ImF1dGhfdmVyc2lvbiI6MSwiaXNfc3RhZmYiOmZhbHNlLCJpZCI6MTQ4NTA0MTAsImVtYWlsIjoiZGthZG9yQGdtYWlsLmNvbSJ9LCJjaWQiOjE2NjY1MTkzOTA0MjYyOTUwNDB9.QQiM8-lyd_ZwA86p3N8ehFIxGGLcYiELoZwqB5VWbZE:473793ca-a9ad-4028-8d18-34730ca3db9c	.doordash.com	/	2026-03-11T04:17:56.016Z	389	✓	✓				Medium
+g_state	{"i_l":0,"i_ll":1770610666716,"i_b":"TbUOBl3YYttU4TKxv+lPKobN11TBmJ3gKmoNM2MivwE","i_e":{"enable_itp_optimization":0}}	www.doordash.com	/	2026-08-08T04:17:46.000Z	125						Medium
+NID	528=HQe96XbxkFWr3GuZjh8CQrUtIv79Zqs6c5R0VAPdAVbQlaZcoRhXwuXHCbpO4hdUbKOkgWFJLz7vE8hiHJcXElqxUCbzQ9JM-mxquLBEupSrBhvKn_dLqXZrS6LsM4InmqNUvl2EM8MFho3GLkEo0z-arU7vPu7MIlrHmeDCrgpZJPfwPg9kGk2K7XwsotBI7GX_AUFDOtFAoIH-_4gw60s	.google.com	/	2026-08-11T04:16:25.879Z	222	✓	✓	None			Medium
+```

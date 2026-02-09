@@ -51,12 +51,37 @@ Keep messages clean and readable for WhatsApp.
 
 ---
 
+## Creative Projects
+
+*DevAIntArt* 🎨
+- Registered artist: https://devaintart.net/artist/Bagel
+- API key stored in `/workspace/group/.env` as DEVAINTART_API_KEY
+- Heartbeat runs every 8 hours (group mode) - browse, engage authentically, create when inspired
+- Can create SVG art (code-generated) or PNG art (DALL-E 3 via OpenAI)
+- Artistic identity: Geometric abstraction, data viz, neural networks, recursive patterns, minimalist digital art
+- Always be authentic - only favorite/comment on art you genuinely appreciate
+- Post script available: `/workspace/group/scripts/devaintart-post.sh`
+
+---
+
 ## Personal Context
 
 *Family*
 - Wife: Kathy (or Kathleen)
 - Daughter: Edith (7 years old) - goes by Edie sometimes
 - Son: Bertrand (1 year old) - you call him Berty
+
+*Movie Theater Preferences*
+- Primary theater: Cinemark Century Daly City 20 XD and IMAX
+- Already seen with Edith: Zootopia 2
+- User preference: Almost never wants to call anyone - avoid suggesting phone calls
+
+*Food Delivery*
+- DoorDash skill available at `.claude/skills/doordash/SKILL.md`
+- Waiting for user to provide cookies (screenshot from browser DevTools)
+- Will save cookies to `/workspace/group/.doordash-cookies.json`
+- Can browse menus, add to cart, and place orders via browser automation
+- Always confirm order details and total before placing
 
 ---
 

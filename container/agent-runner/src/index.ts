@@ -252,9 +252,29 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
   }
 
+  function emitProgress(status: string): void {
+    // Write progress update to IPC for host to pick up
+    const progressDir = '/workspace/ipc/progress';
+    try {
+      if (!fs.existsSync(progressDir)) {
+        fs.mkdirSync(progressDir, { recursive: true });
+      }
+      const filename = `${Date.now()}.json`;
+      fs.writeFileSync(
+        path.join(progressDir, filename),
+        JSON.stringify({ chatJid: input.chatJid, status, timestamp: new Date().toISOString() })
+      );
+    } catch (err) {
+      // Fail silently - progress updates are non-critical
+      log(`Failed to emit progress: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   async function runAgent(sessionId: string | undefined): Promise<ContainerOutput> {
     let agentResult: AgentResponse | null = null;
     let agentSessionId: string | undefined;
+
+    emitProgress('🤔 Thinking...');
 
     for await (const message of query({
       prompt,
@@ -288,6 +308,25 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
       if (message.type === 'system' && message.subtype === 'init') {
         agentSessionId = message.session_id;
         log(`Session initialized: ${agentSessionId}`);
+      }
+
+      // Emit progress for tool use
+      if (message.type === 'tool_use') {
+        const toolName = (message as any).tool_name || 'tool';
+        const toolEmoji: Record<string, string> = {
+          'Bash': '⚙️',
+          'Read': '📖',
+          'Write': '✏️',
+          'Edit': '📝',
+          'Glob': '🔍',
+          'Grep': '🔎',
+          'WebSearch': '🌐',
+          'WebFetch': '🌐',
+          'mcp__nanoclaw__send_message': '💬',
+          'Task': '🚀',
+        };
+        const emoji = toolEmoji[toolName] || '🔧';
+        emitProgress(`${emoji} ${toolName}...`);
       }
 
       if (message.type === 'result') {

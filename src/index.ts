@@ -566,6 +566,33 @@ function startIpcWatcher(): void {
         );
       }
 
+      // Process progress updates from this group's IPC directory
+      const progressDir = path.join(ipcBaseDir, sourceGroup, 'progress');
+      try {
+        if (fs.existsSync(progressDir)) {
+          const progressFiles = fs
+            .readdirSync(progressDir)
+            .filter((f) => f.endsWith('.json'));
+          for (const file of progressFiles) {
+            const filePath = path.join(progressDir, file);
+            try {
+              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              if (data.chatJid && data.status) {
+                // Send progress update
+                await sendMessage(data.chatJid, data.status);
+                logger.debug({ chatJid: data.chatJid, status: data.status }, 'Progress update sent');
+              }
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              logger.error({ file, sourceGroup, err }, 'Error processing progress update');
+              try { fs.unlinkSync(filePath); } catch {}
+            }
+          }
+        }
+      } catch (err) {
+        logger.error({ err, sourceGroup }, 'Error reading progress directory');
+      }
+
       // Process tasks from this group's IPC directory
       try {
         if (fs.existsSync(tasksDir)) {

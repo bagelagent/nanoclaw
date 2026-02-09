@@ -121,3 +121,58 @@ export async function generateSpeech(
     return null;
   }
 }
+
+/**
+ * Generate an image using DALL-E
+ * Returns the image URL
+ */
+export async function generateImage(
+  prompt: string,
+  size: '1024x1024' | '1792x1024' | '1024x1792' = '1024x1024',
+  quality: 'standard' | 'hd' = 'standard',
+): Promise<string | null> {
+  if (!openai) {
+    logger.warn('OpenAI not initialized, skipping image generation');
+    return null;
+  }
+
+  try {
+    const response = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt,
+      size,
+      quality,
+      n: 1,
+    });
+
+    const imageUrl = response.data?.[0]?.url;
+    if (!imageUrl) {
+      logger.error('No image URL in response');
+      return null;
+    }
+
+    logger.info({ prompt, size, quality }, 'Image generated');
+    return imageUrl;
+  } catch (error) {
+    logger.error({ error }, 'Image generation failed');
+    return null;
+  }
+}
+
+/**
+ * Download an image from a URL and return as buffer
+ */
+export async function downloadImage(url: string): Promise<Buffer | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      logger.error({ url, status: response.status }, 'Failed to download image');
+      return null;
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    logger.error({ error, url }, 'Image download failed');
+    return null;
+  }
+}
