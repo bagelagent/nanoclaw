@@ -20,18 +20,43 @@ export interface IpcMcpContext {
   isMain: boolean;
 }
 
-function writeIpcFile(dir: string, data: object): string {
+function writeIpcFile(dir: string, data: any): string {
   fs.mkdirSync(dir, { recursive: true });
 
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const filename = `${requestId}.json`;
   const filepath = path.join(dir, filename);
+
+  // Add requestId to payload for reply matching
+  data.requestId = requestId;
 
   // Atomic write: temp file then rename
   const tempPath = `${filepath}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(data, null, 2));
   fs.renameSync(tempPath, filepath);
 
-  return filename;
+  return requestId; // Return ID for reply matching
+}
+
+async function waitForReply(requestId: string, timeoutMs: number): Promise<any> {
+  const REPLIES_DIR = path.join('/workspace/ipc', 'replies');
+  const replyPath = path.join(REPLIES_DIR, `${requestId}.json`);
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      if (fs.existsSync(replyPath)) {
+        const reply = JSON.parse(fs.readFileSync(replyPath, 'utf-8'));
+        fs.unlinkSync(replyPath); // Clean up
+        return reply;
+      }
+    } catch (err) {
+      // File might be mid-write, continue polling
+    }
+    await new Promise(resolve => setTimeout(resolve, 500)); // Poll every 500ms
+  }
+
+  throw new Error(`Timeout waiting for reply after ${timeoutMs}ms`);
 }
 
 export function createIpcMcp(ctx: IpcMcpContext) {
@@ -381,34 +406,55 @@ After deploy, the service restarts automatically. Your session ends — the user
             type: 'deploy',
             targets: args.targets,
             commitMessage: args.commit_message,
+            chatJid,
             groupFolder,
             timestamp: new Date().toISOString()
           };
 
-          writeIpcFile(TASKS_DIR, data);
+          const requestId = writeIpcFile(TASKS_DIR, data);
 
-          // If container was rebuilt, schedule container restart after deploy
-          if (args.targets.includes('container')) {
-            // Wait a bit for the deploy to complete and service to restart
-            setTimeout(() => {
-              const restartData = {
-                type: 'restart_container',
-                groupFolder: 'main',
-                timestamp: new Date().toISOString()
+          try {
+            // Wait for deploy completion (5 minutes for builds)
+            const reply = await waitForReply(requestId, 300000);
+
+            if (reply.status === 'success') {
+              // If container was rebuilt, schedule container restart
+              if (args.targets.includes('container')) {
+                setTimeout(() => {
+                  const restartData = {
+                    type: 'restart_container',
+                    groupFolder: 'main',
+                    chatJid,
+                    timestamp: new Date().toISOString()
+                  };
+                  writeIpcFile(TASKS_DIR, restartData);
+                }, 2000);
+              }
+
+              return {
+                content: [{
+                  type: 'text',
+                  text: `✅ Deploy succeeded!\n\n${reply.message || ''}\n\nTargets: ${args.targets.join(', ') || 'none (commit only)'}${args.targets.includes('container') ? '\n\nContainer will restart in 2 seconds to load new code.' : ''}`
+                }]
               };
-              writeIpcFile(TASKS_DIR, restartData);
-            }, 5000); // 5 second delay to allow service restart
+            } else {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `❌ Deploy failed: ${reply.error}\n\nThe host has already notified the user with details. Check your changes and try again.`
+                }],
+                isError: true
+              };
+            }
+          } catch (err) {
+            return {
+              content: [{
+                type: 'text',
+                text: `⏱️ Deploy timeout or error: ${err instanceof Error ? err.message : String(err)}\n\nThe host may still be processing (builds take time). Check host logs or ask the user.`
+              }],
+              isError: true
+            };
           }
-
-          const willRestart = args.targets.length > 0;
-          return {
-            content: [{
-              type: 'text',
-              text: willRestart
-                ? `Deploy initiated (targets: ${args.targets.join(', ')}). The service will restart shortly — this session will end.${args.targets.includes('container') ? ' Container will be restarted after deploy to load new code.' : ''}`
-                : `Changes committed. No rebuild/restart needed.`
-            }]
-          };
         }
       )] : []),
 

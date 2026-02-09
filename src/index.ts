@@ -681,9 +681,36 @@ function startIpcWatcher(): void {
   logger.info('IPC watcher started (per-group namespaces)');
 }
 
+async function sendIpcReply(
+  groupFolder: string,
+  requestId: string,
+  status: 'success' | 'error',
+  message?: string,
+  error?: string
+): Promise<void> {
+  const repliesDir = path.join(DATA_DIR, 'ipc', groupFolder, 'replies');
+  fs.mkdirSync(repliesDir, { recursive: true });
+
+  const replyPath = path.join(repliesDir, `${requestId}.json`);
+  const reply = { status, message, error, timestamp: new Date().toISOString() };
+
+  // Atomic write
+  const tempPath = `${replyPath}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify(reply, null, 2));
+  fs.renameSync(tempPath, replyPath);
+
+  logger.debug({ requestId, status }, 'IPC reply sent');
+
+  // Auto-delete after 60s to prevent unbounded growth
+  setTimeout(() => {
+    try { fs.unlinkSync(replyPath); } catch {}
+  }, 60000);
+}
+
 async function processTaskIpc(
   data: {
     type: string;
+    requestId?: string; // For reply matching
     taskId?: string;
     prompt?: string;
     schedule_type?: string;
@@ -745,21 +772,52 @@ async function processTaskIpc(
       }
       return;
 
-    case 'restart_container':
+    case 'restart_container': {
       // Only main group can restart containers
       if (!isMain) {
         logger.warn({ sourceGroup }, 'Non-main group attempted to restart container');
         return;
       }
+
+      const requestId = data.requestId as string | undefined;
+      const chatJid = data.chatJid as string | undefined;
+
       if (data.groupFolder) {
-        const { restartContainer } = await import('./container-runner.js');
-        const restarted = restartContainer(data.groupFolder);
-        logger.info(
-          { groupFolder: data.groupFolder, restarted },
-          'Container restart requested via IPC',
-        );
+        try {
+          const { restartContainer } = await import('./container-runner.js');
+          const restarted = restartContainer(data.groupFolder);
+          logger.info(
+            { groupFolder: data.groupFolder, restarted },
+            'Container restart requested via IPC',
+          );
+
+          if (restarted) {
+            if (chatJid) {
+              await sendMessage(chatJid, `${ASSISTANT_NAME}: ✅ Container restarted successfully`);
+            }
+            if (requestId) {
+              await sendIpcReply(sourceGroup, requestId, 'success', 'Container restarted');
+            }
+          } else {
+            if (chatJid) {
+              await sendMessage(chatJid, `${ASSISTANT_NAME}: ⚠️ Container not found or already stopped`);
+            }
+            if (requestId) {
+              await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Container not found or already stopped');
+            }
+          }
+        } catch (err: any) {
+          logger.error({ err }, 'Container restart failed');
+          if (chatJid) {
+            await sendMessage(chatJid, `${ASSISTANT_NAME}: ❌ Container restart failed: ${err.message}`);
+          }
+          if (requestId) {
+            await sendIpcReply(sourceGroup, requestId, 'error', undefined, err.message);
+          }
+        }
       }
       return;
+    }
     case 'schedule_task':
       if (
         data.prompt &&
@@ -965,8 +1023,10 @@ async function processTaskIpc(
 
       const targets = (data.targets || []) as string[];
       const commitMsg = data.commitMessage || 'chore: agent-initiated deploy';
+      const requestId = data.requestId as string | undefined;
+      const chatJid = data.chatJid as string | undefined;
 
-      logger.info({ targets, commitMsg }, 'Deploy requested via IPC');
+      logger.info({ targets, commitMsg, requestId }, 'Deploy requested via IPC');
 
       // 1. Git commit all changes (audit trail)
       try {
@@ -983,8 +1043,14 @@ async function processTaskIpc(
           );
           logger.info({ commitMsg }, 'Changes committed');
         }
-      } catch (err) {
+      } catch (err: any) {
         logger.error({ err }, 'Git commit failed, aborting deploy');
+        if (chatJid) {
+          await sendMessage(chatJid, `${ASSISTANT_NAME}: ❌ Deploy failed during git commit:\n\n\`\`\`\n${err.stderr?.toString() || err.message}\n\`\`\``);
+        }
+        if (requestId) {
+          await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Git commit failed');
+        }
         break;
       }
 
@@ -994,8 +1060,14 @@ async function processTaskIpc(
           logger.info('Building host...');
           execSync('npm run build', { cwd: process.cwd(), stdio: 'pipe', timeout: 60000 });
           logger.info('Host build succeeded');
-        } catch (err) {
+        } catch (err: any) {
           logger.error({ err }, 'Host build failed, aborting deploy');
+          if (chatJid) {
+            await sendMessage(chatJid, `${ASSISTANT_NAME}: ❌ Host build failed:\n\n\`\`\`\n${err.stderr?.toString().slice(0, 1000) || err.message}\n\`\`\``);
+          }
+          if (requestId) {
+            await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Host build failed');
+          }
           break;
         }
       }
@@ -1004,7 +1076,6 @@ async function processTaskIpc(
       if (targets.includes('container')) {
         try {
           logger.info('Building container...');
-          // Use inherit to see build output in logs, capture output for error reporting
           const buildOutput = execSync('./container/build.sh', {
             cwd: process.cwd(),
             stdio: 'pipe',
@@ -1012,19 +1083,27 @@ async function processTaskIpc(
             encoding: 'utf-8'
           });
           logger.info({ output: buildOutput }, 'Container build succeeded');
-        } catch (err) {
+        } catch (err: any) {
           logger.error({ err }, 'Container build failed, aborting deploy');
-          // Log full error details
-          if (err && typeof err === 'object') {
-            if ('stdout' in err) logger.error({ stdout: err.stdout?.toString() }, 'Build stdout');
-            if ('stderr' in err) logger.error({ stderr: err.stderr?.toString() }, 'Build stderr');
-            if ('status' in err) logger.error({ exitCode: err.status }, 'Build exit code');
+          if (chatJid) {
+            await sendMessage(chatJid, `${ASSISTANT_NAME}: ❌ Container build failed:\n\n\`\`\`\n${err.stderr?.toString().slice(0, 1000) || err.message}\n\`\`\``);
+          }
+          if (requestId) {
+            await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Container build failed');
           }
           break;
         }
       }
 
-      // 4. Graceful shutdown after delay — systemd will restart with new code
+      // 4. Send success reply and notification
+      if (chatJid) {
+        await sendMessage(chatJid, `${ASSISTANT_NAME}: ✅ Deploy completed successfully!\n\nTargets: ${targets.join(', ') || 'none (commit only)'}`);
+      }
+      if (requestId) {
+        await sendIpcReply(sourceGroup, requestId, 'success', `Deploy completed. Targets: ${targets.join(', ')}`);
+      }
+
+      // 5. Graceful shutdown after delay — systemd will restart with new code
       logger.info('Deploy complete, restarting in 2 seconds...');
       setTimeout(async () => {
         await shutdownPool();
