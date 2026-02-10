@@ -336,6 +336,8 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
           for (const block of content) {
             if (block.type === 'tool_use' && block.name) {
               const toolName = block.name;
+              const toolInput = block.input || {};
+
               const toolEmoji: Record<string, string> = {
                 'Bash': '⚙️',
                 'Read': '📖',
@@ -349,7 +351,41 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
                 'Task': '🚀',
               };
               const emoji = toolEmoji[toolName] || '🔧';
-              emitProgress(`${emoji} ${toolName}...`);
+
+              // Extract meaningful description from tool input
+              let description = '';
+              if (toolInput.description) {
+                // Bash, some other tools have explicit description field
+                description = toolInput.description;
+              } else if (toolInput.file_path) {
+                // Read, Write, Edit have file_path
+                const fileName = toolInput.file_path.split('/').pop() || toolInput.file_path;
+                description = fileName;
+              } else if (toolInput.pattern) {
+                // Glob, Grep have pattern
+                description = toolInput.pattern;
+              } else if (toolInput.query) {
+                // WebSearch has query
+                description = toolInput.query.slice(0, 50);
+              } else if (toolInput.url) {
+                // WebFetch has url
+                const urlObj = new URL(toolInput.url);
+                description = urlObj.hostname;
+              } else if (toolInput.command) {
+                // Bash without description - show truncated command
+                description = toolInput.command.slice(0, 50);
+              }
+
+              // Truncate if too long
+              if (description.length > 60) {
+                description = description.slice(0, 57) + '...';
+              }
+
+              const progressMessage = description
+                ? `${emoji} ${description}`
+                : `${emoji} ${toolName}...`;
+
+              emitProgress(progressMessage);
               // Only emit for first tool in message
               break;
             }
