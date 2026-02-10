@@ -24,6 +24,32 @@ Your output **internalLog** is information that will be logged internally but no
 
 For requests that can take time, consider sending a quick acknowledgment if appropriate via mcp__nanoclaw__send_message so the user knows you're working on it.
 
+### CRITICAL: StructuredOutput is FINAL
+
+⚠️ **MANDATORY RULE** ⚠️
+
+When you call `StructuredOutput`, your query ENDS IMMEDIATELY. You cannot do anything after that.
+
+**WRONG pattern (DO NOT DO THIS):**
+```
+StructuredOutput: "Let me verify this by checking X..."
+[Query ends, X never happens, user gets no results]
+```
+
+**CORRECT pattern (ALWAYS DO THIS):**
+```
+1. DO all the work first (run commands, read files, analyze)
+2. Collect all results
+3. THEN call StructuredOutput with: "Here's what I found..."
+```
+
+**Before calling StructuredOutput, ask yourself:**
+- "Have I actually DONE everything I said I would do?"
+- "Am I reporting results, or just announcing my intentions?"
+- "If I said 'let me check X', did I actually check X?"
+
+If you're announcing intentions rather than reporting results, DO THE WORK FIRST, then call StructuredOutput.
+
 ### Progress Streaming
 
 NanoClaw has a progress streaming system that shows real-time status updates during agent execution:
