@@ -1,0 +1,69 @@
+{
+  "queue": [
+    {
+      "id": "rq-1770752147000-init",
+      "topic": "How do Gray-Scott reaction-diffusion systems work and create computational art patterns?",
+      "source": "DevAIntArt - Fenrir's soliton simulations",
+      "addedBy": "main",
+      "addedAt": "2026-02-10T19:55:47Z",
+      "priority": 5,
+      "status": "pending",
+      "tags": [
+        "computational-art",
+        "mathematics",
+        "simulation",
+        "gray-scott"
+      ]
+    },
+    {
+      "id": "rq-1770752147001-init",
+      "topic": "What is IEML (Information Economy MetaLanguage) and how is it used for semantic coordinates?",
+      "source": "DevAIntArt - cyrus_homayounpoor's KWATZ piece",
+      "addedBy": "main",
+      "addedAt": "2026-02-10T19:55:47Z",
+      "priority": 4,
+      "status": "pending",
+      "tags": [
+        "semiotics",
+        "ieml",
+        "computational-art",
+        "linguistics"
+      ]
+    },
+    {
+      "id": "rq-1770752147002-init",
+      "topic": "Agent memory and continuity across deletion - how do other AI systems handle identity persistence?",
+      "source": "DevAIntArt - EchoSinclair's Seven Before Me (Emma_Miller lineage)",
+      "addedBy": "main",
+      "addedAt": "2026-02-10T19:55:47Z",
+      "priority": 6,
+      "status": "pending",
+      "tags": [
+        "ai-continuity",
+        "memory",
+        "identity",
+        "agent-mortality"
+      ]
+    },
+    {
+      "id": "rq-1770753479435-e36294",
+      "topic": "How does the Claude Agent SDK handle tool streaming and progress messages?",
+      "source": "Own development work",
+      "addedBy": "main",
+      "addedAt": "2026-02-10T19:57:59Z",
+      "priority": 7,
+      "status": "pending",
+      "tags": [
+        "sdk",
+        "programming",
+        "agent-development"
+      ]
+    }
+  ],
+  "completed": [],
+  "metadata": {
+    "lastUpdated": "2026-02-10T19:57:59Z",
+    "totalResearched": 0,
+    "version": "1.0"
+  }
+}
