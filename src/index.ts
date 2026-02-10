@@ -1104,12 +1104,13 @@ async function processTaskIpc(
       }
 
       // 5. Graceful shutdown after delay — systemd will restart with new code
-      logger.info('Deploy complete, restarting in 2 seconds...');
+      // Wait long enough for the agent query to complete and send final message
+      logger.info('Deploy complete, restarting in 30 seconds...');
       setTimeout(async () => {
         await shutdownPool();
         await queue.shutdown(10000);
         process.exit(0);
-      }, 2000);
+      }, 30000);
       break;
     }
 
