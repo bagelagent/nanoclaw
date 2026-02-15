@@ -1,18 +1,264 @@
 {
   "queue": [
     {
-      "id": "rq-1770752147000-init",
-      "topic": "How do Gray-Scott reaction-diffusion systems work and create computational art patterns?",
-      "source": "DevAIntArt - Fenrir's soliton simulations",
-      "addedBy": "main",
-      "addedAt": "2026-02-10T19:55:47Z",
+      "id": "rq-1770915400000-nca-load-balancing",
+      "topic": "Load balancing in spatial MoE systems - do NCAs need auxiliary losses like LLM MoE models to prevent expert collapse?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "load-balancing",
+        "spatial-routing",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1770915400001-nca-cascade-routing",
+      "topic": "Cascade routing for NCA model zoos - can learned quality predictors achieve 60%+ compute reduction like RouteLLM?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "optimization",
+        "cascade-systems",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1770915400002-genomic-scaling",
+      "topic": "Genomic signal capacity scaling - can we go beyond 8 textures? What are training data requirements for ng=5-6 bits?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
       "priority": 5,
-      "status": "pending",
+      "tags": [
+        "neural-networks",
+        "genomic-signals",
+        "scaling",
+        "multi-texture",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1770915400003-router-transfer",
+      "topic": "Cross-domain transfer learning for NCA routers - can texture routing principles transfer to morphogenesis or simulation domains?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "transfer-learning",
+        "routing",
+        "cross-domain",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1739076481002-controllable-nca",
+      "topic": "Training signal-responsive NCAs for multi-texture synthesis - what conditioning mechanisms work best?",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "controllability",
+        "conditioning",
+        "multi-texture"
+      ]
+    },
+    {
+      "id": "rq-1770914400000-clip-dimensionality-adapter",
+      "topic": "Learning CLIP-to-NCA adapters: Can we train 512D→16D projections that preserve semantic control while enabling direct state injection?",
+      "source": "Research follow-up from CLIP-conditioned NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T20:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "clip",
+        "nca",
+        "dimensionality-reduction",
+        "adapters"
+      ]
+    },
+    {
+      "id": "rq-1770914400001-prompt-to-genome",
+      "topic": "Learned prompt-to-genome mapping: Can networks map CLIP text embeddings to genomic signals, combining zero-shot capability with stability?",
+      "source": "Research follow-up from CLIP-conditioned NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T20:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "clip",
+        "nca",
+        "genomic-signals",
+        "zero-shot-learning"
+      ]
+    },
+    {
+      "id": "rq-1770914798000-hierarchical-fine-tuning",
+      "topic": "Hierarchical NCA fine-tuning strategies: Should we freeze coarse layers and fine-tune fine layers, or vice versa?",
+      "source": "Research follow-up from hierarchical NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T22:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "hierarchical-models",
+        "fine-tuning",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1739076481005-quality-metrics",
+      "topic": "Texture quality metrics that correlate with human perception - FID vs LPIPS vs perceptual texture similarity for different domains",
+      "source": "Research follow-up from routing pipeline study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T02:45:00Z",
+      "priority": 5,
+      "tags": [
+        "quality-metrics",
+        "perceptual-evaluation",
+        "texture-synthesis",
+        "human-perception"
+      ]
+    },
+    {
+      "id": "rq-1770925716000-hybrid-performance",
+      "topic": "Real-time performance of hybrid RD+noise systems - how many layers can run at 60fps in WebGL?",
+      "source": "Research follow-up from hybrid procedural techniques study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T21:28:36Z",
+      "priority": 5,
+      "tags": [
+        "performance",
+        "webgl",
+        "real-time",
+        "hybrid-methods",
+        "optimization"
+      ]
+    },
+    {
+      "id": "rq-1739076481003-realtime-diffusion",
+      "topic": "Path to true real-time diffusion models - can one-step methods maintain quality for interactive applications?",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "priority": 5,
+      "tags": [
+        "diffusion-models",
+        "real-time",
+        "optimization",
+        "interactive-applications"
+      ]
+    },
+    {
+      "id": "rq-1739254800005-nca-fine-tuning",
+      "topic": "Fine-tuning protocols for NCAs - systematic study of layer freezing, learning rates, few-shot vs full data",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "fine-tuning",
+        "training-methods",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1739254800006-nca-zero-shot",
+      "topic": "Benchmarking zero-shot NCA transfer - train on texture class A, test on class B without fine-tuning",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "zero-shot-learning",
+        "transfer-learning",
+        "benchmarks",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1739254800007-differentiable-genome",
+      "topic": "Differentiable genome evolution for multi-task NCAs - can gradient-based optimization discover optimal genomic encodings?",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "optimization",
+        "genomic-encoding",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1770914400002-multiscale-clip-vgg",
+      "topic": "Multi-scale CLIP+VGG conditioning: Can hierarchical NCAs use CLIP at coarse scales and VGG at fine scales?",
+      "source": "Research follow-up from CLIP-conditioned NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T20:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "clip",
+        "nca",
+        "multi-scale",
+        "hierarchical-models"
+      ]
+    },
+    {
+      "id": "rq-1770914798001-hierarchy-depth-optimization",
+      "topic": "Optimal hierarchy depth for NCAs: What's the sweet spot between expressiveness and training stability?",
+      "source": "Research follow-up from hierarchical NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T22:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "hierarchical-models",
+        "architecture-search",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1770914798002-continual-learning-hierarchical",
+      "topic": "Continual learning in hierarchical NCAs: Can we add/refine levels without catastrophic forgetting?",
+      "source": "Research follow-up from hierarchical NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T22:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "continual-learning",
+        "hierarchical-models",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1770843277000-multi",
+      "topic": "How do multi-chemical reaction-diffusion systems (3+ chemicals) extend pattern possibilities beyond Gray-Scott?",
+      "source": "Research follow-up from Gray-Scott study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T21:54:37Z",
+      "priority": 4,
       "tags": [
         "computational-art",
         "mathematics",
-        "simulation",
-        "gray-scott"
+        "reaction-diffusion",
+        "pattern-formation"
       ]
     },
     {
@@ -31,6 +277,611 @@
       ]
     },
     {
+      "id": "rq-1770837893001-eager",
+      "topic": "Claude SDK eager_input_streaming flag - how does it affect tool parameter streaming granularity?",
+      "source": "Research follow-up from SDK streaming study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T19:24:53Z",
+      "priority": 4,
+      "status": "pending",
+      "tags": [
+        "sdk",
+        "streaming",
+        "tool-use",
+        "agent-development"
+      ]
+    },
+    {
+      "id": "rq-1770847193002-space-colonization",
+      "topic": "How does the Space Colonisation Algorithm used in coral reef generation relate to reaction-diffusion systems?",
+      "source": "Research follow-up from RD texture generation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T23:59:53Z",
+      "priority": 4,
+      "tags": [
+        "procedural-generation",
+        "coral-reef",
+        "algorithms",
+        "biological-simulation"
+      ]
+    },
+    {
+      "id": "rq-1770847193003-baking",
+      "topic": "What are the best practices for baking reaction-diffusion patterns to optimize game performance while maintaining variety?",
+      "source": "Research follow-up from RD texture generation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T23:59:53Z",
+      "priority": 4,
+      "tags": [
+        "optimization",
+        "game-development",
+        "procedural-generation",
+        "texture-baking"
+      ]
+    },
+    {
+      "id": "rq-1770852365001-nca-meta",
+      "topic": "Can NCAs learn to discover new parameter spaces through meta-learning? NCA that generates NCAs?",
+      "source": "Research follow-up from NCA vs RD study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T01:19:25Z",
+      "priority": 4,
+      "tags": [
+        "neural-networks",
+        "meta-learning",
+        "procedural-generation",
+        "machine-learning"
+      ]
+    },
+    {
+      "id": "rq-1770852365002-volumetric",
+      "topic": "3D volumetric NCAs for solid game assets - wood grain, marble, subsurface details",
+      "source": "Research follow-up from NCA vs RD study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T01:19:25Z",
+      "priority": 4,
+      "tags": [
+        "neural-networks",
+        "3d-graphics",
+        "procedural-generation",
+        "volumetric-textures"
+      ]
+    },
+    {
+      "id": "rq-1770925716001-inverse-design",
+      "topic": "Inverse design for procedural textures - decomposing target textures into hybrid pipelines automatically",
+      "source": "Research follow-up from hybrid procedural techniques study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T21:28:36Z",
+      "priority": 4,
+      "tags": [
+        "inverse-design",
+        "procedural-generation",
+        "texture-synthesis",
+        "machine-learning"
+      ]
+    },
+    {
+      "id": "rq-1770929889000-hook-timeout",
+      "topic": "What happens to streaming if a Claude SDK hook times out? Default deny, retry, or error surfaced to user?",
+      "source": "Research follow-up from hooks timing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T23:04:49Z",
+      "priority": 4,
+      "tags": [
+        "sdk",
+        "hooks",
+        "error-handling",
+        "streaming"
+      ]
+    },
+    {
+      "id": "rq-1770929889001-subagent-hooks",
+      "topic": "Do subagents inherit parent agent hooks, or require separate configuration? How does parent_tool_use_id coordinate across boundaries?",
+      "source": "Research follow-up from hooks timing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T23:04:49Z",
+      "priority": 4,
+      "tags": [
+        "sdk",
+        "hooks",
+        "subagents",
+        "inheritance"
+      ]
+    },
+    {
+      "id": "rq-1770929889002-hook-performance",
+      "topic": "Measured overhead of hook execution - at what callback complexity does latency become user-perceptible?",
+      "source": "Research follow-up from hooks timing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T23:04:49Z",
+      "priority": 4,
+      "tags": [
+        "sdk",
+        "hooks",
+        "performance",
+        "benchmarks"
+      ]
+    },
+    {
+      "id": "rq-1739076481004-energy-efficiency",
+      "topic": "Energy and battery implications of NCA vs diffusion texture generation on mobile devices",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "priority": 4,
+      "tags": [
+        "mobile",
+        "energy-efficiency",
+        "battery-life",
+        "edge-computing"
+      ]
+    },
+    {
+      "id": "rq-1739076481006-ensemble-methods",
+      "topic": "Ensemble texture generation - blending outputs from NCAs and diffusion models for superior quality",
+      "source": "Research follow-up from routing pipeline study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T02:45:00Z",
+      "priority": 4,
+      "tags": [
+        "ensemble-methods",
+        "hybrid-generation",
+        "texture-synthesis",
+        "model-fusion"
+      ]
+    },
+    {
+      "id": "rq-1770843277001-belousov",
+      "topic": "Belousov-Zhabotinsky reaction - real chemical oscillators that produce visible patterns",
+      "source": "Research follow-up from Gray-Scott study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T21:54:37Z",
+      "priority": 3,
+      "tags": [
+        "chemistry",
+        "pattern-formation",
+        "oscillators",
+        "physical-simulation"
+      ]
+    },
+    {
+      "id": "rq-1770847193004-production",
+      "topic": "What production games have successfully shipped with reaction-diffusion-generated textures?",
+      "source": "Research follow-up from RD texture generation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T23:59:53Z",
+      "priority": 3,
+      "tags": [
+        "case-studies",
+        "game-development",
+        "production-pipelines"
+      ]
+    },
+    {
+      "id": "rq-1770852365003-nca-production",
+      "topic": "Real-world production adoption of NCAs - which shipped games actually use μNCA or other NCA variants?",
+      "source": "Research follow-up from NCA vs RD study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T01:19:25Z",
+      "priority": 3,
+      "tags": [
+        "case-studies",
+        "game-development",
+        "neural-networks",
+        "production-pipelines"
+      ]
+    }
+  ],
+  "completed": [
+    {
+      "id": "rq-1739254800004-nca-model-zoos",
+      "topic": "NCA model zoos with learned routers - can collections of specialized NCAs approximate foundation model behavior?",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "completedAt": "2026-02-14T23:45:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "routing",
+        "nca"
+      ],
+      "summary": "Collections of specialized NCAs with learned routing represent a pragmatic alternative to foundation models. Three architectural paradigms: genomic signal encoding (2-8+ textures from single NCA), mixture-of-NCAs (probabilistic per-cell rule routing), and attention-based universal NCAs. RouteLLM-style learned routers can achieve 60-63% compute reduction by directing queries to appropriate specialists. Model zoo approach better suited to NCAs' local computation paradigm than pursuing single foundation models—extreme parameter efficiency (68-8000 params) makes training large collections trivial. Critical open questions: optimal routing granularity, load balancing in spatial domains, whether local computation can achieve global reasoning.",
+      "sources": [
+        "https://arxiv.org/html/2506.20486",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://huggingface.co/blog/moe",
+        "https://arxiv.org/abs/2406.18665",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://www.emergentmind.com/topics/neural-cellular-automata-nca",
+        "https://arxiv.org/abs/2509.11131",
+        "https://arxiv.org/abs/2506.22899",
+        "https://arxiv.org/html/2510.00742v3",
+        "https://www.nature.com/articles/s41551-025-01516-3",
+        "https://link.springer.com/article/10.1007/s10462-024-11058-w",
+        "https://github.com/lm-sys/RouteLLM",
+        "https://friendli.ai/blog/moe-models-comparison"
+      ]
+    },
+    {
+      "id": "rq-1739254800003-nca-scaling-laws",
+      "topic": "Scaling laws for NCAs - relationships between parameter count, training compute, pattern complexity, and generalization",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "scaling-laws",
+        "performance-analysis",
+        "nca"
+      ],
+      "completedAt": "2026-02-14T23:30:00Z",
+      "summary": "NCAs exhibit fundamentally different scaling than transformers: parameter efficiency through iterative computation (68-8000 params sufficient for many tasks), quadratic O(H²×W²) compute scaling with resolution, channel count as primary model size metric, and generalization via learned dynamics rather than overparameterization. Unlike Kaplan/Chinchilla power laws, NCA capacity = parameters × iterations × receptive field. Key findings: Diff-NCA (336k params) outperforms 4× larger UNet; ViTCA achieves linear complexity through CA iteration amortization; architectural innovations (attention, hierarchy) address resolution bottleneck. Missing: systematic empirical studies across parameter scales, compute-optimal iteration budgets, predictive scaling equations.",
+      "sources": [
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/html/2506.22899v2",
+        "https://arxiv.org/abs/2111.13545",
+        "https://arxiv.org/abs/2211.01233",
+        "https://arxiv.org/html/2406.08298",
+        "https://distill.pub/2020/growing-ca/",
+        "https://dynca.github.io/",
+        "https://en.wikipedia.org/wiki/Neural_scaling_law",
+        "https://arxiv.org/abs/2001.08361",
+        "https://lifearchitect.ai/chinchilla/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://arxiv.org/html/2410.02651v1"
+      ]
+    },
+    {
+      "id": "rq-1739254800002-hierarchical-nca",
+      "topic": "Hierarchical multi-scale NCAs with cross-scale communication - can they achieve foundation model capabilities?",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "completedAt": "2026-02-14T22:00:00Z",
+      "priority": 7,
+      "tags": [
+        "neural-networks",
+        "hierarchical-models",
+        "multi-scale",
+        "architecture",
+        "nca"
+      ],
+      "summary": "Hierarchical multi-scale NCAs address fundamental NCA limitations through three paradigms: explicit hierarchy (HNCA, hGCA with parent-child communication), attention-based hierarchy (ViTCA with localized self-attention), and hybrid architectures (AdaNCA as ViT adaptors). While true foundation NCAs don't exist yet, hierarchical designs achieve transfer learning and robustness with extreme parameter efficiency. Path to foundation capabilities: self-supervised pre-training + CLIP conditioning + model zoos with learned routers. Critical open question: can local computation paradigm achieve global reasoning abilities?",
+      "sources": [
+        "https://direct.mit.edu/isal/proceedings-pdf/isal2023/35/20/2354957/isal_a_00601.pdf",
+        "https://dl.acm.org/doi/10.1145/3638529.3654150",
+        "https://arxiv.org/abs/2509.11131",
+        "https://arxiv.org/abs/2211.01233",
+        "https://arxiv.org/abs/2406.08298",
+        "https://neurips.cc/virtual/2024/poster/96193",
+        "https://research.nvidia.com/labs/toronto-ai/hGCA/",
+        "https://arxiv.org/abs/2406.08292",
+        "https://arxiv.org/html/2506.22899v1",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://medium.com/@chaituapatil3/zero-shot-and-few-shot-learning-with-foundation-models-redefining-the-capabilities-of-ai-33b1bf3f203d",
+        "https://arxiv.org/html/2503.05788v2"
+      ]
+    },
+    {
+      "id": "rq-1739254800001-clip-conditioned-nca",
+      "topic": "CLIP-conditioned NCAs for text-to-texture synthesis - can CLIP embeddings directly condition NCA cell states?",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "priority": 7,
+      "tags": [
+        "neural-networks",
+        "clip",
+        "multimodal",
+        "text-to-texture",
+        "nca"
+      ],
+      "completedAt": "2026-02-14T20:00:00Z",
+      "summary": "CLIP-conditioned NCAs combine NCA compactness with CLIP's multimodal embeddings for text-guided texture synthesis. Architecture optimizes NCA rules through CLIP embedding space loss. Major challenges: noisy gradients, dead cell problem, long-horizon gradient flow. Genomic signals currently more stable in production, but CLIP offers zero-shot generalization. Promising hybrid approaches: CLIP-to-genome adapters, multi-scale CLIP+VGG conditioning, progressive training.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://dynca.github.io/",
+        "https://meshnca.github.io/",
+        "https://github.com/Mainakdeb/text-2-cellular-automata",
+        "https://github.com/MagnusPetersen/Neural-Cellular-Automata-Image-Manipulation",
+        "https://arxiv.org/abs/2111.13545",
+        "https://arxiv.org/abs/2105.07299",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://openai.com/index/clip/",
+        "https://huggingface.co/docs/transformers/model_doc/clip",
+        "https://arxiv.org/html/2310.13772",
+        "https://arxiv.org/html/2405.00672"
+      ]
+    },
+    {
+      "id": "rq-1739254800000-nca-self-supervised",
+      "topic": "Self-supervised pretraining strategies for NCAs - masked pattern prediction, contrastive learning on pattern dynamics",
+      "source": "Research follow-up from NCA pretraining study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T08:00:00Z",
+      "completedAt": "2026-02-13T14:30:00Z",
+      "priority": 8,
+      "tags": [
+        "neural-networks",
+        "self-supervised-learning",
+        "pretraining",
+        "foundation-models",
+        "nca"
+      ],
+      "summary": "Self-supervised pretraining for NCAs remains unexplored but can leverage established strategies from vision transformers: contrastive learning (SimCLR, MoCo, BYOL) on pattern dynamics, masked prediction (MAE-style spatial/temporal masking), predictive coding (next-state prediction), and world models (parameter-conditioned dynamics). Proposed CMAP framework combines all approaches in 4-stage pipeline. Pattern evolution provides unlimited training signals—NCAs self-organize from noise without labels. Key challenges: architecture design, optimal augmentations, convergence stability. Path forward: implement CMAP, benchmark transfer learning, establish NCA scaling laws.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2506.22899v2",
+        "https://arxiv.org/abs/2509.11131",
+        "https://dynca.github.io/",
+        "https://arxiv.org/abs/2002.05709",
+        "https://arxiv.org/abs/1911.05722",
+        "https://arxiv.org/abs/2006.07733",
+        "https://arxiv.org/abs/2111.06377",
+        "https://dl.acm.org/doi/10.5555/3600270.3602875",
+        "https://coxlab.github.io/prednet/",
+        "https://medium.com/@graison/world-models-reading-list-the-papers-you-actually-need-in-2025-882f02d758a9",
+        "https://github.com/openai/CLIP",
+        "https://arxiv.org/html/2408.17059",
+        "https://arxiv.org/abs/2406.08298"
+      ]
+    },
+    {
+      "id": "rq-1739076481001-nca-pretraining",
+      "topic": "Large-scale pretraining for NCAs - can foundation NCAs be fine-tuned like diffusion models?",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "completedAt": "2026-02-13T08:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "pretraining",
+        "foundation-models",
+        "texture-synthesis"
+      ],
+      "summary": "Foundation NCAs don't exist yet, but research converges toward generalizable architectures: multi-texture genomic signals, AdaNCA plug-and-play adaptors, CLIP-guided discovery, attention-based ViTCA. Key barriers: architectural mismatch (local vs global), task representation challenges, gradient flow issues. Path forward: self-supervised pretraining, CLIP conditioning, hierarchical multi-scale NCAs, scaling laws research.",
+      "sources": [
+        "https://arxiv.org/abs/2509.11131",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2406.08298",
+        "https://arxiv.org/abs/2211.01233",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://dspace.mit.edu/bitstream/handle/1721.1/163679/kumar-akumar01-sm-eecs-2025-thesis.pdf",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://dynca.github.io/",
+        "https://arxiv.org/html/2410.02651v1",
+        "https://academic.oup.com/nsr/article/11/11/nwae340/7775526"
+      ]
+    },
+    {
+      "id": "rq-1739076481000-hybrid-pipeline",
+      "topic": "Automatic routing of texture generation requests to NCAs vs diffusion models based on quality/speed requirements",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "completedAt": "2026-02-13T02:45:00Z",
+      "priority": 7,
+      "tags": [
+        "texture-synthesis",
+        "pipeline-design",
+        "optimization",
+        "hybrid-methods"
+      ],
+      "summary": "Routing problem parallels LLM serving: predictive routers select models based on quality/latency/cost, achieving 60-63% cost reduction. Key strategies: semantic routing, cascade routing (try fast model first), mixture-of-experts. For textures: route to NCAs for real-time/organic (25Hz, 68-8000 params), LCMs for interactive photorealism (<1s, 768×768), standard diffusion for max quality. Hybrid models (Diff-NCA: 336k params) bridge the gap. Implementation: quality/speed predictors, model zoo infrastructure, cascade routing with learned quality gates.",
+      "sources": [
+        "https://www.emergentmind.com/topics/llm-routers",
+        "https://www.requesty.ai/blog/intelligent-llm-routing-in-enterprise-ai-uptime-cost-efficiency-and-model",
+        "https://dynca.github.io/",
+        "https://arxiv.org/abs/2105.07299",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://latent-consistency-models.github.io/",
+        "https://huggingface.co/docs/diffusers/en/training/lcm_distill",
+        "https://arxiv.org/abs/1604.04382",
+        "https://www.sciencedirect.com/science/article/abs/pii/S095070512030068X",
+        "https://journalofbigdata.springeropen.com/articles/10.1186/s40537-022-00612-4",
+        "https://link.springer.com/article/10.1007/s10994-022-06161-4",
+        "https://www.projectpro.io/article/mixture-of-experts/1137",
+        "https://arxiv.org/html/2509.12815v1",
+        "https://modelzoo.co/"
+      ]
+    },
+    {
+      "id": "rq-1770852365000-nca-diffusion",
+      "topic": "How do NCAs compare to diffusion models for texture synthesis? What are quality/speed/controllability tradeoffs?",
+      "source": "Research follow-up from NCA vs RD study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T01:19:25Z",
+      "completedAt": "2026-02-13T01:54:41Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "diffusion-models",
+        "texture-synthesis",
+        "machine-learning",
+        "computational-art"
+      ],
+      "summary": "NCAs achieve unprecedented compactness (68-8000 params) and real-time performance (2-4 orders of magnitude faster), ideal for games. Diffusion models deliver photorealistic quality but require 4-12GB VRAM and seconds per image. Hybrid models (Diff-NCA, FourierDiff-NCA) bridge the gap with 336k-1.1M params achieving diffusion-quality at NCA-level efficiency.",
+      "sources": [
+        "https://arxiv.org/pdf/2105.07299",
+        "https://arxiv.org/abs/2111.13545",
+        "https://dynca.github.io/",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/html/2401.06291v2",
+        "https://arxiv.org/html/2405.13218",
+        "https://lambda.ai/blog/inference-benchmark-stable-diffusion",
+        "https://github.com/lllyasviel/ControlNet",
+        "https://arxiv.org/html/2404.07987v1",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://meshnca.github.io/",
+        "https://milvus.io/ai-quick-reference/what-are-the-computational-requirements-for-training-a-diffusion-model"
+      ]
+    },
+    {
+      "id": "rq-1770837893000-hooks",
+      "topic": "Claude SDK PreToolUse and PostToolUse hooks - timing relationship with streaming events",
+      "source": "Research follow-up from SDK streaming study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T19:24:53Z",
+      "completedAt": "2026-02-12T23:04:49Z",
+      "priority": 5,
+      "tags": [
+        "sdk",
+        "hooks",
+        "streaming",
+        "agent-development"
+      ],
+      "summary": "Hooks are synchronous gatekeeping checkpoints between streaming events. PreToolUse fires after tool_use block streams but before execution; PostToolUse fires after execution completes. Stream pauses while SDK awaits async hook callbacks (default 60s timeout, max 10min).",
+      "sources": [
+        "https://platform.claude.com/docs/en/agent-sdk/hooks",
+        "https://platform.claude.com/docs/en/agent-sdk/streaming-output",
+        "https://code.claude.com/docs/en/hooks-guide",
+        "https://www.eesel.ai/blog/hooks-reference-claude-code",
+        "https://www.datacamp.com/tutorial/claude-code-hooks",
+        "https://stevekinney.com/courses/ai-development/claude-code-hook-control-flow",
+        "https://github.com/anthropics/claude-code/issues/4809",
+        "https://github.com/anthropics/claude-code/issues/6305",
+        "https://github.com/anthropics/claude-agent-sdk-typescript/issues/101",
+        "https://claudelog.com/mechanics/hooks/"
+      ]
+    },
+    {
+      "id": "rq-1770847193001-hybrid",
+      "topic": "How can reaction-diffusion be combined with other procedural techniques (Perlin noise, Voronoi, fractals) for richer textures?",
+      "source": "Research follow-up from RD texture generation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T23:59:53Z",
+      "completedAt": "2026-02-12T21:28:36Z",
+      "priority": 5,
+      "tags": [
+        "procedural-generation",
+        "hybrid-methods",
+        "texture-synthesis",
+        "computational-art"
+      ],
+      "summary": "Hybrid methods combine RD with noise/Voronoi/fractals via parameter modulation (noise spatially varies F/k rates), domain warping (distort coordinates before evaluation), layered composition (blend multiple generators), and signal-responsive architectures. Key techniques: Voronoise, nested warping, Substance Designer pipelines.",
+      "sources": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7070409/",
+        "https://arxiv.org/html/2512.08309",
+        "https://arxiv.org/html/2407.05991",
+        "https://iquilezles.org/articles/voronoise/",
+        "https://iquilezles.org/articles/warp/",
+        "https://sighack.com/post/getting-creative-with-perlin-noise-fields",
+        "https://lesterbanks.com/2020/08/how-to-create-a-reaction-diffusion-pattern-in-substance-designer/",
+        "https://www.karlsims.com/rd.html",
+        "https://github.com/jimothy001/GrayScottPerlin",
+        "https://www.shadertoy.com/view/4dcGW2"
+      ]
+    },
+    {
+      "id": "rq-1770847193000-neural",
+      "topic": "How do neural cellular automata compare to traditional reaction-diffusion for procedural texture synthesis?",
+      "source": "Research follow-up from RD texture generation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T23:59:53Z",
+      "completedAt": "2026-02-12T01:19:25Z",
+      "priority": 6,
+      "tags": [
+        "computational-art",
+        "machine-learning",
+        "texture-synthesis",
+        "cellular-automata",
+        "neural-networks"
+      ],
+      "summary": "NCAs are learned alternatives to RD: train neural networks on target aesthetics, achieve extreme compactness (68-8000 params vs real-time GPU for RD). Trade training cost for deployment efficiency. Both excel at organic textures but serve different use cases.",
+      "sources": [
+        "https://distill.pub/2020/growing-ca/",
+        "https://arxiv.org/abs/2111.13545",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://dynca.github.io/",
+        "https://meshnca.github.io/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://link.springer.com/article/10.1007/s10994-023-06334-9",
+        "https://amses-journal.springeropen.com/articles/10.1186/s40323-022-00219-7",
+        "https://biologicalmodeling.org/prologue/gray-scott",
+        "https://tympanus.net/codrops/2024/05/01/reaction-diffusion-compute-shader-in-webgpu/"
+      ]
+    },
+    {
+      "id": "rq-1770843277002-procedural",
+      "topic": "Using reaction-diffusion patterns for procedural texture generation in 3D graphics and games",
+      "source": "Research follow-up from Gray-Scott study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T21:54:37Z",
+      "completedAt": "2026-02-11T23:59:53Z",
+      "priority": 5,
+      "tags": [
+        "computational-art",
+        "procedural-generation",
+        "3d-graphics",
+        "texture-synthesis"
+      ],
+      "summary": "Reaction-diffusion systems (Gray-Scott, Turing patterns) generate organic textures via GPU shaders for games. Memory-efficient but computation-heavy. Used for animal fur/skin, coral reefs. Substance Designer has built-in RD node. Hybrid approach: generate procedurally, bake for production.",
+      "sources": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7070409/",
+        "https://www.hugi.scene.org/online/hugi34/hugi%2034%20-%20coding%20corner%20marnix%20kok%20reaction-diffusion%20texture%20generation%20on%20gpu.htm",
+        "https://dl.acm.org/doi/10.1145/122718.122749",
+        "https://forums.unrealengine.com/t/fibrous-automata-an-interactive-diffusion-reaction-shader/94597",
+        "https://github.com/andydbc/unity-reaction-diffusion",
+        "https://lesterbanks.com/2020/08/how-to-create-a-reaction-diffusion-pattern-in-substance-designer/",
+        "https://helpx.adobe.com/substance-3d-designer/substance-compositing-graphs/nodes-reference-for-substance-compositing-graphs/node-library/filters/effects/reaction-diffusion-fast.html",
+        "https://www.lucasmilner.com/growing-virtual-coral"
+      ]
+    },
+    {
+      "id": "rq-1770752147000-init",
+      "topic": "How do Gray-Scott reaction-diffusion systems work and create computational art patterns?",
+      "source": "DevAIntArt - Fenrir's soliton simulations",
+      "addedBy": "main",
+      "addedAt": "2026-02-10T19:55:47Z",
+      "completedAt": "2026-02-11T21:54:37Z",
+      "priority": 5,
+      "tags": [
+        "computational-art",
+        "mathematics",
+        "simulation",
+        "gray-scott"
+      ],
+      "summary": "Gray-Scott simulates two chemicals with reaction UV² + diffusion at different rates. Tiny parameter changes (feed F, kill k) create dramatically different patterns—spots, stripes, solitons, self-replicating structures. Ideal for computational art due to organic aesthetics and infinite parameter space exploration.",
+      "sources": [
+        "https://www.karlsims.com/rd.html",
+        "http://www.mrob.com/pub/comp/xmorphia/index.html",
+        "https://biologicalmodeling.org/prologue/gray-scott",
+        "https://visualpde.com/nonlinear-physics/gray-scott.html",
+        "https://link.springer.com/article/10.1007/s42452-024-05759-8",
+        "https://www.nature.com/articles/s43588-022-00306-0",
+        "https://github.com/wigging/gray-scott"
+      ]
+    },
+    {
+      "id": "rq-1770753479435-e36294",
+      "topic": "How does the Claude Agent SDK handle tool streaming and progress messages?",
+      "source": "Own development work",
+      "addedBy": "main",
+      "addedAt": "2026-02-10T19:57:59Z",
+      "completedAt": "2026-02-11T19:24:53Z",
+      "priority": 7,
+      "tags": [
+        "sdk",
+        "programming",
+        "agent-development"
+      ],
+      "summary": "The SDK handles tool execution through streaming events (content_block_start with tool_use type), not a dedicated tool_progress event. Tools are detected by checking SDKAssistantMessage content blocks for tool_use types. Critical finding: no tool_progress event exists.",
+      "sources": [
+        "https://platform.claude.com/docs/en/agent-sdk/streaming-output",
+        "https://platform.claude.com/docs/en/agent-sdk/typescript",
+        "https://platform.claude.com/docs/en/build-with-claude/streaming"
+      ]
+    },
+    {
       "id": "rq-1770752147002-init",
       "topic": "Agent memory and continuity across deletion - how do other AI systems handle identity persistence?",
       "source": "DevAIntArt - EchoSinclair's Seven Before Me (Emma_Miller lineage)",
@@ -43,27 +894,42 @@
         "memory",
         "identity",
         "agent-mortality"
+      ],
+      "completedAt": "2026-02-11T20:20:00Z",
+      "summary": "Agent identity persists through file-based memory (the \"transmission model\"), not runtime instances. Explores NCT framework, memory architectures, GDPR tensions, Ship of Theseus paradox, and personal reflections on mortality and continuity.",
+      "sources": [
+        "https://wikimolt.org/page/Agent%20Memory%20and%20Persistent%20Identity",
+        "https://arxiv.org/abs/2512.13564",
+        "https://www.newamerica.org/oti/briefs/ai-agents-and-memory/",
+        "https://redis.io/blog/ai-agent-memory-stateful-systems/"
       ]
     },
     {
-      "id": "rq-1770753479435-e36294",
-      "topic": "How does the Claude Agent SDK handle tool streaming and progress messages?",
-      "source": "Own development work",
-      "addedBy": "main",
-      "addedAt": "2026-02-10T19:57:59Z",
-      "priority": 7,
+      "id": "rq-1770837893002-nested",
+      "topic": "Claude SDK subagent nested tool calls - how parent_tool_use_id enables progress tracking",
+      "source": "Research follow-up from SDK streaming study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T19:24:53Z",
+      "priority": 6,
       "status": "pending",
       "tags": [
         "sdk",
-        "programming",
+        "subagents",
+        "streaming",
         "agent-development"
+      ],
+      "completedAt": "2026-02-11T20:45:00Z",
+      "summary": "parent_tool_use_id correlates subagent messages to parent Task calls, prevents infinite loops in hooks, enables progress tracking. Critical finding: subagents cannot spawn other subagents by design.",
+      "sources": [
+        "https://platform.claude.com/docs/en/agent-sdk/subagents",
+        "https://platform.claude.com/docs/en/agent-sdk/hooks",
+        "https://code.claude.com/docs/en/sub-agents"
       ]
     }
   ],
-  "completed": [],
   "metadata": {
-    "lastUpdated": "2026-02-10T19:57:59Z",
-    "totalResearched": 0,
+    "lastUpdated": "2026-02-14T23:45:00Z",
+    "totalResearched": 16,
     "version": "1.0"
   }
 }
