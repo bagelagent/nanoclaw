@@ -78,6 +78,14 @@ NanoClaw has a progress streaming system that shows real-time status updates dur
 - **Voice Messages**: When users send voice messages, they are automatically transcribed using OpenAI Whisper. The transcription appears as the message content.
 - **Voice Responses**: Use the `mcp__nanoclaw__send_voice_message` tool to respond with voice when requested.
 
+**IMPORTANT - Voice Message Handling**:
+When you receive a voice message from the user:
+1. ✅ Transcribe it (this happens automatically)
+2. ✅ **Actually DO the task** described in the transcription
+3. ❌ Don't just acknowledge - take action immediately
+
+Voice messages are requests for action, not just information to record. Treat them the same as text commands and complete the requested task.
+
 ## Debugging
 
 When debugging issues, you can access container logs from previous queries:
@@ -200,11 +208,41 @@ Container builds are the foundation of the deployment system. If they don't work
 - Can browse menus, add to cart, and place orders via browser automation
 - Always confirm order details and total before placing
 
+*Projects*
+- Takeover Game: https://github.com/dkador/takeover-game
+  - Live at: https://dkador.github.io/takeover-game/
+  - Full implementation of Acquire board game (hotel chains, mergers, stocks)
+  - Features: AI players, debug mode, multiple themes, localStorage persistence
+  - Files located at `/workspace/group/takeover-game/`
+
 ---
 
 ## Admin Context
 
 This is the **main channel**, which has elevated privileges.
+
+## GitHub Authentication (Global)
+
+**Shared git configuration** is now available at `/workspace/project/groups/global/.gitconfig` for all channels.
+
+**Already configured for main channel.** Other channels can use it with:
+```bash
+git config --global include.path /workspace/project/groups/global/.gitconfig
+```
+
+This provides:
+- User: Daniel Kador (dkador@gmail.com)
+- Auto-authentication for all github.com repos
+- URL rewriting to inject token automatically
+
+**Usage:**
+```bash
+# Clone any repo (token injected automatically)
+git clone https://github.com/dkador/your-repo.git
+
+# Push/pull work without password prompts
+git push origin main
+```
 
 ## Container Mounts
 

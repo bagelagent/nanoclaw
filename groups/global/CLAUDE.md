@@ -29,6 +29,34 @@ Files you create are saved in `/workspace/group/`. Use this for notes, research,
 
 Your `CLAUDE.md` file in that folder is your memory - update it with important context you want to remember.
 
+## GitHub Authentication (Shared)
+
+A global git configuration is available at `/workspace/project/groups/global/.gitconfig` with Daniel's GitHub credentials and personal access token.
+
+**To use it in any channel:**
+```bash
+git config --global include.path /workspace/project/groups/global/.gitconfig
+```
+
+This will configure:
+- User name: Daniel Kador
+- User email: dkador@gmail.com
+- Auto-authentication for all github.com repos using the embedded token
+
+**For new repos:**
+```bash
+# Configure git to use global config
+git config --global include.path /workspace/project/groups/global/.gitconfig
+
+# Clone any repo (token will be used automatically)
+git clone https://github.com/dkador/your-repo.git
+
+# Or add remote to existing repo
+git remote add origin https://github.com/dkador/your-repo.git
+```
+
+The URL rewriting will automatically inject the token, so you can use regular https://github.com URLs.
+
 ## Memory
 
 The `conversations/` folder contains searchable history of past conversations. Use this to recall context from previous sessions.
