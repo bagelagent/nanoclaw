@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f3460;
+            padding: 5px;
+        }
+        .container {
+            background: #16213e;
+            padding: 8px;
+            overflow-x: auto;
+        }
+        #stock-market {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            min-width: 0;
+        }
+        .stock-card {
+            background: #0f3460;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            border: 2px solid #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            height: 130px;
+            min-width: 0;
+        }
+        .stock-card-header {
+            font-weight: bold;
+            font-size: 0.75em;
+            margin-bottom: 4px;
+            color: #eee;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .stock-card-price {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #2ecc71;
+            margin-bottom: 3px;
+            flex-shrink: 0;
+        }
+        .stock-card-size {
+            font-size: 0.65em;
+            color: #95a5a6;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 1.2em;
+        }
+        .stock-card button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            background: #bdc3c7;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-top: auto;
+            flex-shrink: 0;
+        }
+        .info {
+            color: white;
+            padding: 10px;
+            font-size: 12px;
+            background: #1a1a2e;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <div>Screen width: <span id="width"></span>px</div>
+        <div>Container width: <span id="container-width"></span>px</div>
+        <div>Card width: <span id="card-width"></span>px each</div>
+        <div>Total needed: <span id="total-needed"></span>px</div>
+    </div>
+
+    <div class="container" id="container">
+        <div id="stock-market">
+            <div class="stock-card"><div class="stock-card-header">🏢 Tower</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            <div class="stock-card"><div class="stock-card-header">🔷 Luxor</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            <div class="stock-card"><div class="stock-card-header">🌲 American</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            <div class="stock-card"><div class="stock-card-header">🎪 Festival</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            <div class="stock-card"><div class="stock-card-header">🌐 Worldwide</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            <div class="stock-card"><div class="stock-card-header">🌊 Continental</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            <div class="stock-card"><div class="stock-card-header">👑 Imperial</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+        </div>
+    </div>
+
+    <script>
+        function updateInfo() {
+            const cards = document.querySelectorAll('.stock-card');
+            const container = document.getElementById('container');
+            const market = document.getElementById('stock-market');
+
+            document.getElementById('width').textContent = window.innerWidth;
+            document.getElementById('container-width').textContent = container.offsetWidth;
+
+            if (cards.length > 0) {
+                const cardWidth = cards[0].offsetWidth;
+                document.getElementById('card-width').textContent = cardWidth;
+
+                // 4 cards + 3 gaps (8px each) + container padding (16px)
+                const totalNeeded = (cardWidth * 4) + (8 * 3) + 16;
+                document.getElementById('total-needed').textContent = totalNeeded;
+            }
+        }
+
+        window.addEventListener('load', updateInfo);
+        window.addEventListener('resize', updateInfo);
+    </script>
+</body>
+</html>

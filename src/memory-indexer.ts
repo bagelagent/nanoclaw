@@ -169,6 +169,7 @@ async function embedTexts(texts: string[]): Promise<Float32Array[]> {
       input: texts,
       encoding_format: 'float',
     }),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {

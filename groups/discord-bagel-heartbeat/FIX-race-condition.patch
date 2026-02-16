@@ -1,0 +1,75 @@
+--- a/container/agent-runner/src/index.ts
++++ b/container/agent-runner/src/index.ts
+@@ -228,6 +228,13 @@ function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | n
+ /**
+  * Process a single query: run the Claude agent SDK and return the output.
+  */
++
++// CRITICAL: Mutex to prevent concurrent query processing
++// Without this, multiple queries can overlap and send messages to wrong chatJid
++let queryInProgress = false;
++const queryQueue: Array<() => void> = [];
++
+ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
++  // Acquire lock - wait if another query is in progress
++  if (queryInProgress) {
++    await new Promise<void>(resolve => {
++      queryQueue.push(resolve);
++    });
++  }
++  queryInProgress = true;
++
++  try {
++    return await processQueryInternal(input);
++  } finally {
++    // Release lock and wake next query
++    queryInProgress = false;
++    const next = queryQueue.shift();
++    if (next) next();
++  }
++}
++
++async function processQueryInternal(input: ContainerInput): Promise<ContainerOutput> {
+   // Create IPC MCP with the current query's context (chatJid may differ per query)
++  // IMPORTANT: This MUST be created per-query to avoid chatJid leakage between groups
+   const ipcMcp = createIpcMcp({
+     chatJid: input.chatJid,
+     groupFolder: input.groupFolder,
+     isMain: input.isMain
+   });
++  
++  // Log query start with identifying info
++  log(`[QUERY_START] group=${input.groupFolder} chatJid=${input.chatJid} isMain=${input.isMain}`);
+ 
+   let result: AgentResponse | null = null;
+   let newSessionId: string | undefined;
+@@ -420,6 +447,7 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
+   try {
+     log('Starting agent...');
+     const output = await runAgent(input.sessionId);
++    log(`[QUERY_END] group=${input.groupFolder} status=success`);
+     log('Agent completed successfully');
+     newSessionId = output.newSessionId;
+     return output;
+@@ -433,6 +461,7 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
+       try {
+         const output = await runAgent(undefined);
+         log('Agent completed successfully (fresh session)');
++        log(`[QUERY_END] group=${input.groupFolder} status=success_retry`);
+         newSessionId = output.newSessionId;
+         return output;
+       } catch (retryErr) {
+         const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
+         log(`Agent error on fresh session: ${retryMessage}`);
++        log(`[QUERY_END] group=${input.groupFolder} status=error`);
+         return {
+           status: 'error',
+           result: null,
+@@ -443,6 +472,7 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
+     }
+ 
+     log(`Agent error: ${errorMessage}`);
++    log(`[QUERY_END] group=${input.groupFolder} status=error`);
+     return {
+       status: 'error',
+       result: null,

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Stock Cards Test</title>
+    <link rel="stylesheet" href="takeover-game/styles.css">
+    <style>
+        body {
+            background: #0f3460;
+            padding: 0;
+            margin: 0;
+        }
+        .test-container {
+            background: #16213e;
+            padding: 10px;
+            margin: 10px auto;
+            border: 3px solid #2ecc71;
+            position: relative;
+        }
+        .test-container::before {
+            content: attr(data-width) 'px width';
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #2ecc71;
+            color: white;
+            padding: 3px 8px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 3px;
+        }
+        .status {
+            background: #1a1a2e;
+            color: white;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 6px;
+        }
+        .status h2 {
+            margin-top: 0;
+            color: #2ecc71;
+        }
+        .test-widths {
+            margin: 40px 20px;
+        }
+        #stock-market {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            padding: 6px;
+            width: 100%;
+        }
+        .stock-card {
+            background: #0f3460;
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+            border: 2px solid #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            height: 120px;
+            min-width: 0;
+        }
+        .stock-card-header {
+            font-weight: bold;
+            font-size: 0.7em;
+            margin-bottom: 3px;
+            color: #eee;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .stock-card-price {
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #2ecc71;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .stock-card-size {
+            font-size: 0.6em;
+            color: #95a5a6;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 1em;
+        }
+        .stock-card button {
+            width: 100%;
+            padding: 6px 4px;
+            border: none;
+            border-radius: 4px;
+            background: #bdc3c7;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8em;
+            margin-top: auto;
+            flex-shrink: 0;
+        }
+        /* Extra small phones */
+        @media (max-width: 390px) {
+            #stock-market {
+                gap: 4px;
+                padding: 4px;
+            }
+            .stock-card {
+                padding: 5px;
+                height: 115px;
+            }
+            .stock-card-header {
+                font-size: 0.65em;
+                margin-bottom: 2px;
+            }
+            .stock-card-price {
+                font-size: 0.8em;
+                margin-bottom: 2px;
+            }
+            .stock-card-size {
+                font-size: 0.55em;
+                margin-bottom: 3px;
+            }
+            .stock-card button {
+                padding: 5px 3px;
+                font-size: 0.75em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status">
+        <h2>Responsive Stock Cards Test</h2>
+        <p><strong>Current viewport:</strong> <span id="viewport-width"></span>px</p>
+        <p>Testing 4-column layout at different widths below.</p>
+        <p>✓ All cards should be fully visible (no cutoff)</p>
+        <p>✓ No horizontal scrolling should be needed</p>
+        <p>✓ All cards should have uniform height</p>
+    </div>
+
+    <div class="test-widths">
+        <!-- iPhone SE width: 375px -->
+        <div class="test-container" data-width="375" style="width: 375px;">
+            <div id="stock-market">
+                <div class="stock-card"><div class="stock-card-header">🏢 Tower</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🔷 Luxor</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌲 American</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🎪 Festival</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌐 Worldwide</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌊 Continental</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">👑 Imperial</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            </div>
+        </div>
+
+        <!-- iPhone 12/13/14 width: 390px -->
+        <div class="test-container" data-width="390" style="width: 390px;">
+            <div id="stock-market">
+                <div class="stock-card"><div class="stock-card-header">🏢 Tower</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🔷 Luxor</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌲 American</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🎪 Festival</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌐 Worldwide</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌊 Continental</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">👑 Imperial</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            </div>
+        </div>
+
+        <!-- iPhone 14 Pro Max width: 430px -->
+        <div class="test-container" data-width="430" style="width: 430px;">
+            <div id="stock-market">
+                <div class="stock-card"><div class="stock-card-header">🏢 Tower</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🔷 Luxor</div><div class="stock-card-price">$200</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌲 American</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🎪 Festival</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌐 Worldwide</div><div class="stock-card-price">$300</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">🌊 Continental</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+                <div class="stock-card"><div class="stock-card-header">👑 Imperial</div><div class="stock-card-price">$400</div><div class="stock-card-size">Not active</div><button>Buy</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateViewport() {
+            document.getElementById('viewport-width').textContent = window.innerWidth;
+        }
+        window.addEventListener('load', updateViewport);
+        window.addEventListener('resize', updateViewport);
+
+        // Check for overflow
+        window.addEventListener('load', () => {
+            document.querySelectorAll('.test-container').forEach(container => {
+                const market = container.querySelector('#stock-market');
+                const hasOverflow = market.scrollWidth > market.clientWidth;
+                if (hasOverflow) {
+                    container.style.borderColor = '#e74c3c';
+                    const warning = document.createElement('div');
+                    warning.textContent = '⚠️ OVERFLOW DETECTED';
+                    warning.style.cssText = 'color: #e74c3c; font-weight: bold; margin-top: 5px;';
+                    container.appendChild(warning);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

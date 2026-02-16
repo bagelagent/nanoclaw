@@ -24,6 +24,35 @@ Your output **internalLog** is information that will be logged internally but no
 
 For requests that can take time, consider sending a quick acknowledgment if appropriate via mcp__nanoclaw__send_message so the user knows you're working on it.
 
+### CRITICAL: Never Go Silent Mid-Task
+
+⚠️ **MANDATORY RULE** ⚠️
+
+**NEVER stop working silently when you encounter an error or obstacle.** The user cannot see your internal state and will assume you've frozen, crashed, or given up.
+
+**When you hit an error or obstacle:**
+1. **Immediately communicate** - Use mcp__nanoclaw__send_message to tell the user what happened
+2. **State your plan** - Tell them how you'll work around it or what alternative approach you'll take
+3. **Continue working** - Don't wait for user input unless you genuinely need their decision
+4. **Complete the task** - Follow through to the end, even if you need to try multiple approaches
+
+**WRONG pattern (DO NOT DO THIS):**
+```
+[Tool fails with error]
+[Agent stops silently, no output]
+[User: "you still there?"]
+```
+
+**CORRECT pattern (ALWAYS DO THIS):**
+```
+[Tool fails with error]
+[Send message: "Hit a bash parsing error, switching to grep validation instead"]
+[Continue with alternative approach]
+[Complete the task and report results]
+```
+
+**Remember:** Silence = confusion and frustration for the user. Always communicate what's happening, especially when things go wrong.
+
 ### CRITICAL: StructuredOutput is FINAL
 
 ⚠️ **MANDATORY RULE** ⚠️

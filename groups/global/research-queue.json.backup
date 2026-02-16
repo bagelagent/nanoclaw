@@ -1,6 +1,21 @@
 {
   "queue": [
     {
+      "id": "rq-1770915400000-nca-load-balancing",
+      "topic": "Load balancing in spatial MoE systems - do NCAs need auxiliary losses like LLM MoE models to prevent expert collapse?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "load-balancing",
+        "spatial-routing",
+        "nca"
+      ]
+    },
+    {
       "id": "rq-1770915400001-nca-cascade-routing",
       "topic": "Cascade routing for NCA model zoos - can learned quality predictors achieve 60%+ compute reduction like RouteLLM?",
       "source": "Research follow-up from NCA model zoos study",
@@ -456,82 +471,9 @@
         "neural-networks",
         "production-pipelines"
       ]
-    },
-    {
-      "id": "rq-1739590400000-mnca-balancing-experiments",
-      "topic": "Empirical study: Do MNCAs exhibit routing collapse without intervention? Test across texture synthesis, morphogenesis, maze solving",
-      "source": "Research follow-up from NCA load balancing study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-15T12:00:00Z",
-      "priority": 5,
-      "tags": [
-        "neural-networks",
-        "mixture-of-experts",
-        "experiments",
-        "nca",
-        "load-balancing"
-      ]
-    },
-    {
-      "id": "rq-1739590400001-spatial-correlation-collapse",
-      "topic": "Spatial correlation impact on routing collapse - compare gradient dynamics for correlated vs independent cell states",
-      "source": "Research follow-up from NCA load balancing study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-15T12:00:00Z",
-      "priority": 5,
-      "tags": [
-        "neural-networks",
-        "spatial-routing",
-        "gradient-analysis",
-        "nca"
-      ]
-    },
-    {
-      "id": "rq-1739590400002-loss-free-spatial-balancing",
-      "topic": "Adapting DeepSeek-V3 loss-free balancing to spatial domains - expert-wise bias per region rather than global",
-      "source": "Research follow-up from NCA load balancing study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-15T12:00:00Z",
-      "priority": 4,
-      "tags": [
-        "neural-networks",
-        "load-balancing",
-        "spatial-routing",
-        "moe",
-        "nca"
-      ]
     }
   ],
   "completed": [
-    {
-      "id": "rq-1770915400000-nca-load-balancing",
-      "topic": "Load balancing in spatial MoE systems - do NCAs need auxiliary losses like LLM MoE models to prevent expert collapse?",
-      "source": "Research follow-up from NCA model zoos study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-14T23:45:00Z",
-      "priority": 6,
-      "tags": [
-        "neural-networks",
-        "mixture-of-experts",
-        "load-balancing",
-        "spatial-routing",
-        "nca"
-      ],
-      "completedAt": "2026-02-15T12:00:00Z",
-      "summary": "NCAs operate in fundamentally different paradigm than token-based MoE. Standard NCAs use homogeneous rules achieving heterogeneity through emergence. Spatial MoE-NCAs (MNCA, PD-NCA) implement per-cell routing but address collapse through competitive dynamics, environmental pressure, and stochastic mechanisms rather than auxiliary losses. Key insight: spatial correlation and task objectives determine whether load balancing is needed—biological tasks often don't need it; computational tasks may benefit.",
-      "sources": [
-        "https://openreview.net/forum?id=y1iU5czYpE",
-        "https://arxiv.org/abs/2408.15664",
-        "https://arxiv.org/html/2506.20486",
-        "https://pub.sakana.ai/pdnca/",
-        "https://arxiv.org/abs/2211.13491",
-        "https://arxiv.org/html/2510.09734",
-        "https://distill.pub/2020/growing-ca/",
-        "https://arxiv.org/html/2505.13058v1",
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
-        "https://huggingface.co/blog/moe"
-      ]
-    },
     {
       "id": "rq-1739254800004-nca-model-zoos",
       "topic": "NCA model zoos with learned routers - can collections of specialized NCAs approximate foundation model behavior?",
@@ -986,8 +928,8 @@
     }
   ],
   "metadata": {
-    "lastUpdated": "2026-02-15T12:00:00Z",
-    "totalResearched": 17,
+    "lastUpdated": "2026-02-14T23:45:00Z",
+    "totalResearched": 16,
     "version": "1.0"
   }
 }

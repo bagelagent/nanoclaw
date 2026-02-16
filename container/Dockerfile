@@ -37,8 +37,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install agent-browser and claude-code globally
-RUN npm install -g agent-browser @anthropic-ai/claude-code
+# Install agent-browser, claude-code, and playwright globally
+RUN npm install -g agent-browser @anthropic-ai/claude-code @playwright/test
 
 # Create app directory
 WORKDIR /app
@@ -48,6 +48,9 @@ COPY agent-runner/package*.json ./
 
 # Install dependencies (--legacy-peer-deps: openai wants zod@3, agent SDK uses zod@4)
 RUN npm install --legacy-peer-deps
+
+# Install Playwright as dev dependency and browsers
+RUN npm install --save-dev @playwright/test && npx playwright install --with-deps chromium
 
 # Copy source code
 COPY agent-runner/ ./
