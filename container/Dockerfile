@@ -55,8 +55,12 @@ COPY agent-runner/ ./
 # Build TypeScript
 RUN npm run build
 
-# Install Playwright globally (as root)
-RUN npm install -g @playwright/test
+# Install Playwright globally and download browsers (as root)
+RUN npm install -g @playwright/test && \
+    npx playwright install --with-deps chromium && \
+    mkdir -p /home/node/.cache && \
+    cp -r /root/.cache/ms-playwright /home/node/.cache/ && \
+    chown -R node:node /home/node/.cache
 
 # Create workspace directories
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks
@@ -70,9 +74,6 @@ RUN chown -R node:node /workspace
 
 # Switch to non-root user (required for --dangerously-skip-permissions)
 USER node
-
-# Download Playwright browsers as node user (so they go in /home/node/.cache)
-RUN npx playwright install --with-deps chromium
 
 # Set working directory to group workspace
 WORKDIR /workspace/group
