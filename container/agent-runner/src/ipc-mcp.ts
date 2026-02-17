@@ -121,6 +121,69 @@ export function createIpcMcp(ctx: IpcMcpContext) {
       ),
 
       tool(
+        'send_image',
+        'Send an image to the user or group. Provide either a local file path (absolute path in the container filesystem) or a base64-encoded image string.',
+        {
+          caption: z.string().optional().describe('Optional caption/text to send with the image'),
+          image_path: z.string().optional().describe('Absolute file path to the image (e.g., "/workspace/group/output.png")'),
+          image_base64: z.string().optional().describe('Base64-encoded image data (without data:image/png;base64, prefix)'),
+          filename: z.string().optional().describe('Filename for the image (e.g., "chart.png"). Required if using image_base64.')
+        },
+        async (args: { caption?: string; image_path?: string; image_base64?: string; filename?: string }) => {
+          // Validate that exactly one image source is provided
+          if (!args.image_path && !args.image_base64) {
+            return {
+              content: [{
+                type: 'text',
+                text: 'Error: Must provide either image_path or image_base64'
+              }],
+              isError: true
+            };
+          }
+
+          if (args.image_path && args.image_base64) {
+            return {
+              content: [{
+                type: 'text',
+                text: 'Error: Cannot provide both image_path and image_base64'
+              }],
+              isError: true
+            };
+          }
+
+          if (args.image_base64 && !args.filename) {
+            return {
+              content: [{
+                type: 'text',
+                text: 'Error: filename is required when using image_base64'
+              }],
+              isError: true
+            };
+          }
+
+          const data = {
+            type: 'image',
+            chatJid,
+            caption: args.caption,
+            imagePath: args.image_path,
+            imageBase64: args.image_base64,
+            filename: args.filename,
+            groupFolder,
+            timestamp: new Date().toISOString()
+          };
+
+          writeIpcFile(MESSAGES_DIR, data);
+
+          return {
+            content: [{
+              type: 'text',
+              text: 'Image queued for delivery.'
+            }]
+          };
+        }
+      ),
+
+      tool(
         'schedule_task',
         `Schedule a recurring or one-time task. The task will run as a full agent with access to all tools.
 

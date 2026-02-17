@@ -296,3 +296,52 @@ export async function sendDiscordVoiceMessage(
     throw err;
   }
 }
+
+/**
+ * Send an image to Discord
+ */
+export async function sendDiscordImage(
+  jid: string,
+  imageBuffer: Buffer,
+  filename: string,
+  caption?: string,
+): Promise<void> {
+  if (!client?.isReady()) {
+    logger.error({ jid }, 'Discord client not ready, cannot send image');
+    return;
+  }
+
+  try {
+    let channelId: string;
+    if (jid.startsWith('discord:dm:')) {
+      // DM: fetch user and create/get DM channel
+      const userId = jid.replace('discord:dm:', '');
+      const user = await client.users.fetch(userId);
+      const dmChannel = await user.createDM();
+      channelId = dmChannel.id;
+    } else {
+      // Guild channel: extract channel ID
+      channelId = jid.replace('discord:', '');
+    }
+
+    const channel = await client.channels.fetch(channelId);
+    if (channel && 'send' in channel) {
+      const attachment = new AttachmentBuilder(imageBuffer, {
+        name: filename,
+      });
+
+      const messageOptions: any = { files: [attachment] };
+      if (caption) {
+        messageOptions.content = caption;
+      }
+
+      await (channel as TextChannel).send(messageOptions);
+      logger.info({ jid, size: imageBuffer.length, filename }, 'Discord image sent');
+    } else {
+      logger.error({ jid }, 'Channel not found or not a text channel');
+    }
+  } catch (err) {
+    logger.error({ jid, err }, 'Failed to send Discord image');
+    throw err;
+  }
+}

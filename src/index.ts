@@ -592,6 +592,54 @@ function startIpcWatcher(): void {
                     'Unauthorized IPC voice message attempt blocked',
                   );
                 }
+              } else if (data.type === 'image' && data.chatJid) {
+                // Handle image message
+                const targetGroup = registeredGroups[data.chatJid];
+                if (
+                  isMain ||
+                  (targetGroup && targetGroup.folder === sourceGroup)
+                ) {
+                  // Read image from path or decode base64
+                  let imageBuffer: Buffer;
+                  let filename: string;
+
+                  if (data.imagePath) {
+                    imageBuffer = fs.readFileSync(data.imagePath);
+                    filename = path.basename(data.imagePath);
+                  } else if (data.imageBase64) {
+                    imageBuffer = Buffer.from(data.imageBase64, 'base64');
+                    filename = data.filename || 'image.png';
+                  } else {
+                    throw new Error('No image source provided');
+                  }
+
+                  // Send to appropriate platform
+                  if (data.chatJid.startsWith('discord:')) {
+                    const { sendDiscordImage } = await import('./discord.js');
+                    await sendDiscordImage(
+                      data.chatJid,
+                      imageBuffer,
+                      filename,
+                      data.caption,
+                    );
+                  } else {
+                    // WhatsApp - not yet implemented
+                    logger.warn(
+                      { chatJid: data.chatJid },
+                      'WhatsApp image sending not yet implemented',
+                    );
+                  }
+
+                  logger.info(
+                    { chatJid: data.chatJid, sourceGroup, filename },
+                    'IPC image sent',
+                  );
+                } else {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'Unauthorized IPC image attempt blocked',
+                  );
+                }
               }
               fs.unlinkSync(filePath);
             } catch (err) {
