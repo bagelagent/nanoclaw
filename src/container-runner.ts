@@ -475,9 +475,25 @@ class ContainerPool {
       }, timeout);
 
       // Write JSON line to stdin
+      // Attach a one-time error handler to prevent unhandled 'error' event crashes
+      const onStdinError = (err: Error) => {
+        if (entry.pendingResolve) {
+          if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+          entry.pendingResolve({
+            status: 'error',
+            result: null,
+            error: `Container stdin error: ${err.message}`,
+          });
+          entry.pendingResolve = null;
+          entry.pendingTimeout = null;
+        }
+      };
+      entry.process.stdin!.once('error', onStdinError);
+
       const line = JSON.stringify(input) + '\n';
       entry.process.stdin!.write(line, (err) => {
         if (err && entry.pendingResolve) {
+          entry.process.stdin!.removeListener('error', onStdinError);
           if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
           entry.pendingResolve({
             status: 'error',
@@ -524,6 +540,10 @@ class ContainerPool {
 
     clearTimeout(entry.idleTimer);
     if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+
+    // Remove from pool immediately so getOrSpawn() won't return
+    // this entry while it's draining (prevents write-after-end crashes)
+    this.pool.delete(key);
 
     // Send shutdown signal and close stdin
     try {

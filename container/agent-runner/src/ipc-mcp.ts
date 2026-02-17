@@ -5,6 +5,7 @@
 
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
@@ -23,7 +24,7 @@ export interface IpcMcpContext {
 function writeIpcFile(dir: string, data: any): string {
   fs.mkdirSync(dir, { recursive: true });
 
-  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const requestId = crypto.randomUUID();
   const filename = `${requestId}.json`;
   const filepath = path.join(dir, filename);
 
@@ -122,10 +123,10 @@ export function createIpcMcp(ctx: IpcMcpContext) {
 
       tool(
         'send_image',
-        'Send an image to the user or group. Provide either a local file path (absolute path in the container filesystem) or a base64-encoded image string.',
+        'Send an image to the user or group. Provide either a local file path or a base64-encoded image string. IMPORTANT: image_path must be under /workspace/group/ or /workspace/project/ — these are the only paths accessible to the host. Files in /tmp/ or other container-only paths will NOT work. Save images to /workspace/group/ first if needed.',
         {
           caption: z.string().optional().describe('Optional caption/text to send with the image'),
-          image_path: z.string().optional().describe('Absolute file path to the image (e.g., "/workspace/group/output.png")'),
+          image_path: z.string().optional().describe('Absolute path under /workspace/group/ or /workspace/project/ (e.g., "/workspace/group/output.png"). Paths outside these directories are NOT accessible to the host and will fail.'),
           image_base64: z.string().optional().describe('Base64-encoded image data (without data:image/png;base64, prefix)'),
           filename: z.string().optional().describe('Filename for the image (e.g., "chart.png"). Required if using image_base64.')
         },
@@ -159,6 +160,21 @@ export function createIpcMcp(ctx: IpcMcpContext) {
               }],
               isError: true
             };
+          }
+
+          // Validate image_path is under allowed directories
+          if (args.image_path) {
+            const resolved = path.resolve(args.image_path);
+            const allowedPrefixes = ['/workspace/group/', '/workspace/project/'];
+            if (!allowedPrefixes.some(prefix => resolved.startsWith(prefix))) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: 'Error: image_path must be under /workspace/group/ or /workspace/project/'
+                }],
+                isError: true
+              };
+            }
           }
 
           const data = {
@@ -591,7 +607,8 @@ Returns the most relevant chunks from your memory files, ranked by relevance.`,
         },
         async (args: { query: string; mode?: 'hybrid' | 'semantic' | 'keyword'; limit?: number }) => {
           try {
-            const results = await memorySearch(args.query, args.mode, args.limit);
+            // Main group searches all memories; non-main groups only search their own
+            const results = await memorySearch(args.query, args.mode, args.limit, isMain ? undefined : groupFolder);
 
             if (results.length === 0) {
               return {

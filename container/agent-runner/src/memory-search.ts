@@ -27,6 +27,7 @@ function cosineSimilarity(a: Float32Array, b: Float32Array): number {
     normA += a[i] * a[i];
     normB += b[i] * b[i];
   }
+  if (normA === 0 || normB === 0) return 0;
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
@@ -45,6 +46,7 @@ async function embedQuery(query: string): Promise<Float32Array> {
       input: [query],
       encoding_format: 'float',
     }),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {
@@ -63,12 +65,12 @@ function semanticSearch(
   db: Database.Database,
   queryEmbedding: Float32Array,
   limit: number,
+  groupFolder?: string,
 ): SearchResult[] {
-  const rows = db
-    .prepare(
-      'SELECT id, source, group_folder, type, content, embedding FROM chunks',
-    )
-    .all() as Array<{
+  const rows = (groupFolder
+    ? db.prepare('SELECT id, source, group_folder, type, content, embedding FROM chunks WHERE group_folder = ?').all(groupFolder)
+    : db.prepare('SELECT id, source, group_folder, type, content, embedding FROM chunks').all()
+  ) as Array<{
     id: string;
     source: string;
     group_folder: string;
@@ -101,22 +103,31 @@ function keywordSearch(
   db: Database.Database,
   query: string,
   limit: number,
+  groupFolder?: string,
 ): SearchResult[] {
   const sanitized = query.replace(/['"(){}[\]*:^~!]/g, ' ').trim();
   if (!sanitized) return [];
 
   try {
-    const rows = db
-      .prepare(
-        `SELECT c.id, c.source, c.group_folder, c.type, c.content,
-                rank * -1 as score
-         FROM chunks_fts f
-         JOIN chunks c ON c.id = f.id
-         WHERE chunks_fts MATCH ?
-         ORDER BY rank
-         LIMIT ?`,
-      )
-      .all(sanitized, limit) as SearchResult[];
+    const rows = groupFolder
+      ? db.prepare(
+          `SELECT c.id, c.source, c.group_folder, c.type, c.content,
+                  rank * -1 as score
+           FROM chunks_fts f
+           JOIN chunks c ON c.id = f.id
+           WHERE chunks_fts MATCH ? AND c.group_folder = ?
+           ORDER BY rank
+           LIMIT ?`,
+        ).all(sanitized, groupFolder, limit) as SearchResult[]
+      : db.prepare(
+          `SELECT c.id, c.source, c.group_folder, c.type, c.content,
+                  rank * -1 as score
+           FROM chunks_fts f
+           JOIN chunks c ON c.id = f.id
+           WHERE chunks_fts MATCH ?
+           ORDER BY rank
+           LIMIT ?`,
+        ).all(sanitized, limit) as SearchResult[];
 
     return rows;
   } catch {
@@ -162,6 +173,7 @@ export async function search(
   query: string,
   mode: 'hybrid' | 'semantic' | 'keyword' = 'hybrid',
   limit = 5,
+  groupFolder?: string,
 ): Promise<SearchResult[]> {
   if (!fs.existsSync(EMBEDDINGS_DB_PATH)) {
     return [];
@@ -177,18 +189,18 @@ export async function search(
     if (count.c === 0) return [];
 
     if (mode === 'keyword') {
-      return keywordSearch(db, query, limit);
+      return keywordSearch(db, query, limit, groupFolder);
     }
 
     const queryEmbedding = await embedQuery(query);
 
     if (mode === 'semantic') {
-      return semanticSearch(db, queryEmbedding, limit);
+      return semanticSearch(db, queryEmbedding, limit, groupFolder);
     }
 
     // Hybrid: RRF fusion
-    const semanticResults = semanticSearch(db, queryEmbedding, limit * 2);
-    const keywordResults = keywordSearch(db, query, limit * 2);
+    const semanticResults = semanticSearch(db, queryEmbedding, limit * 2, groupFolder);
+    const keywordResults = keywordSearch(db, query, limit * 2, groupFolder);
     return rrfFusion(semanticResults, keywordResults, limit);
   } finally {
     db.close();

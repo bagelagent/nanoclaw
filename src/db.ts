@@ -9,6 +9,12 @@ import { NewMessage, RegisteredGroup, ScheduledTask, TaskRunLog } from './types.
 
 let db: Database.Database;
 
+export function closeDatabase(): void {
+  if (db) {
+    db.close();
+  }
+}
+
 export function initDatabase(): void {
   const dbPath = path.join(STORE_DIR, 'messages.db');
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });

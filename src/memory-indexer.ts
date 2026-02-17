@@ -26,6 +26,13 @@ let indexerRunning = false;
 
 // ─── Database ────────────────────────────────────────────────────────────────
 
+export function closeEmbeddingsDb(): void {
+  if (db) {
+    db.close();
+    db = null;
+  }
+}
+
 export function openEmbeddingsDb(): Database.Database {
   if (db) return db;
 

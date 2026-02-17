@@ -33,6 +33,7 @@ import {
   writeTasksSnapshot,
 } from './container-runner.js';
 import {
+  closeDatabase,
   createTask,
   deleteTask,
   getAllChats,
@@ -56,7 +57,7 @@ import {
   updateTask,
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
-import { searchMemory, startMemoryIndexer } from './memory-indexer.js';
+import { closeEmbeddingsDb, searchMemory, startMemoryIndexer } from './memory-indexer.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { connectDiscord, sendDiscordMessage, setDiscordTyping } from './discord.js';
 import { RegisteredGroup } from './types.js';
@@ -229,11 +230,13 @@ async function downloadAttachments(
     const localPath = path.join(tmpDir, safeName);
     const containerPath = `/workspace/group/tmp/${safeName}`;
 
+    const tmpPath = `${localPath}.tmp`;
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
       if (response.ok) {
         const buffer = Buffer.from(await response.arrayBuffer());
-        fs.writeFileSync(localPath, buffer);
+        fs.writeFileSync(tmpPath, buffer);
+        fs.renameSync(tmpPath, localPath);
         result = result.replace(
           fullMatch,
           `[Attached image: ${filename}] (saved to ${containerPath} — use the Read tool to view it)`,
@@ -243,6 +246,7 @@ async function downloadAttachments(
       }
     } catch (err) {
       logger.warn({ url, err }, 'Failed to download attachment');
+      try { fs.unlinkSync(tmpPath); } catch {}
     }
   }
 
@@ -509,6 +513,55 @@ async function sendVoiceMessage(
   }
 }
 
+function cleanupStaleIpcFiles(): void {
+  const ipcBaseDir = path.join(DATA_DIR, 'ipc');
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  const subDirs = ['errors', 'replies', 'progress'];
+
+  // Clean global error dir
+  const globalErrorDir = path.join(ipcBaseDir, 'errors');
+  if (fs.existsSync(globalErrorDir)) {
+    try {
+      for (const file of fs.readdirSync(globalErrorDir)) {
+        const filePath = path.join(globalErrorDir, file);
+        try {
+          const stat = fs.statSync(filePath);
+          if (stat.mtimeMs < oneHourAgo) {
+            fs.unlinkSync(filePath);
+          }
+        } catch {}
+      }
+    } catch {}
+  }
+
+  // Clean per-group IPC subdirectories
+  try {
+    const groupFolders = fs.readdirSync(ipcBaseDir).filter((f) => {
+      try { return fs.statSync(path.join(ipcBaseDir, f)).isDirectory() && f !== 'errors'; } catch { return false; }
+    });
+
+    for (const group of groupFolders) {
+      for (const sub of subDirs) {
+        const dir = path.join(ipcBaseDir, group, sub);
+        if (!fs.existsSync(dir)) continue;
+        try {
+          for (const file of fs.readdirSync(dir)) {
+            const filePath = path.join(dir, file);
+            try {
+              const stat = fs.statSync(filePath);
+              if (stat.mtimeMs < oneHourAgo) {
+                fs.unlinkSync(filePath);
+              }
+            } catch {}
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
+  logger.info('Cleaned up stale IPC files');
+}
+
 function startIpcWatcher(): void {
   if (ipcWatcherRunning) {
     logger.debug('IPC watcher already running, skipping duplicate start');
@@ -518,6 +571,9 @@ function startIpcWatcher(): void {
 
   const ipcBaseDir = path.join(DATA_DIR, 'ipc');
   fs.mkdirSync(ipcBaseDir, { recursive: true });
+
+  // Clean up stale IPC files from previous runs
+  cleanupStaleIpcFiles();
 
   const processIpcFiles = async () => {
     // Scan all group IPC directories (identity determined by directory)
@@ -604,8 +660,27 @@ function startIpcWatcher(): void {
                   let filename: string;
 
                   if (data.imagePath) {
-                    imageBuffer = fs.readFileSync(data.imagePath);
-                    filename = path.basename(data.imagePath);
+                    // Translate container paths to host paths
+                    let hostPath = data.imagePath;
+                    if (hostPath.startsWith('/workspace/project/')) {
+                      hostPath = path.join(process.cwd(), hostPath.slice('/workspace/project/'.length));
+                    } else if (hostPath.startsWith('/workspace/group/')) {
+                      hostPath = path.join(GROUPS_DIR, sourceGroup, hostPath.slice('/workspace/group/'.length));
+                    } else if (hostPath.startsWith('/workspace/extra/')) {
+                      // Additional mounts — resolve via group's containerConfig
+                      const srcGroup = registeredGroups[Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup) || ''];
+                      if (srcGroup?.containerConfig?.additionalMounts) {
+                        const rest = hostPath.slice('/workspace/extra/'.length);
+                        const mountName = rest.split('/')[0];
+                        const subPath = rest.slice(mountName.length + 1);
+                        const mount = srcGroup.containerConfig.additionalMounts.find((m: any) => m.containerPath === mountName);
+                        if (mount) {
+                          hostPath = path.join(mount.hostPath.replace(/^~/, process.env.HOME || ''), subPath);
+                        }
+                      }
+                    }
+                    imageBuffer = fs.readFileSync(hostPath);
+                    filename = path.basename(hostPath);
                   } else if (data.imageBase64) {
                     imageBuffer = Buffer.from(data.imageBase64, 'base64');
                     filename = data.filename || 'image.png';
@@ -1456,6 +1531,8 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'Shutdown signal received');
     await shutdownPool();
     await queue.shutdown(10000);
+    closeDatabase();
+    closeEmbeddingsDb();
     process.exit(0);
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));

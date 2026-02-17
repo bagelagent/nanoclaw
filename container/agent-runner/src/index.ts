@@ -252,32 +252,27 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
   }
 
+  let lastProgressTime = 0;
   function emitProgress(status: string): void {
+    // Rate limit: max 1 progress file per second
+    const now = Date.now();
+    if (now - lastProgressTime < 1000) return;
+    lastProgressTime = now;
+
     // Write progress update to IPC for host to pick up
     const progressDir = '/workspace/ipc/progress';
     try {
-      log(`[DEBUG] Emitting progress: ${status}`);
-      log(`[DEBUG] Progress dir: ${progressDir}`);
-      log(`[DEBUG] Dir exists: ${fs.existsSync(progressDir)}`);
-
       if (!fs.existsSync(progressDir)) {
-        log(`[DEBUG] Creating progress directory`);
         fs.mkdirSync(progressDir, { recursive: true });
       }
 
-      const filename = `${Date.now()}.json`;
+      const filename = `${now}.json`;
       const filePath = path.join(progressDir, filename);
       const data = JSON.stringify({ chatJid: input.chatJid, status, timestamp: new Date().toISOString() });
 
-      log(`[DEBUG] Writing to: ${filePath}`);
-      log(`[DEBUG] Data: ${data}`);
-
       fs.writeFileSync(filePath, data);
-
-      log(`[DEBUG] Progress file written successfully`);
     } catch (err) {
-      log(`[ERROR] Failed to emit progress: ${err instanceof Error ? err.message : String(err)}`);
-      log(`[ERROR] Stack: ${err instanceof Error ? err.stack : 'no stack'}`);
+      log(`Failed to emit progress: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

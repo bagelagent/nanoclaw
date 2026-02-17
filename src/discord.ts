@@ -12,6 +12,17 @@ import { DISCORD_BOT_TOKEN } from './config.js';
 import { storeChatMetadata, storeGenericMessage, getAllRegisteredGroups } from './db.js';
 import { logger } from './logger.js';
 
+const DISCORD_API_TIMEOUT = 15000;
+
+function withTimeout<T>(promise: Promise<T>, ms = DISCORD_API_TIMEOUT): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Discord API call timed out after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 let client: Client;
 
 export interface DiscordCallbacks {
@@ -183,19 +194,19 @@ export async function setDiscordTyping(jid: string, isTyping: boolean): Promise<
     let channelId: string;
     if (jid.startsWith('discord:dm:')) {
       const userId = jid.replace('discord:dm:', '');
-      const user = await client.users.fetch(userId);
-      const dmChannel = await user.createDM();
+      const user = await withTimeout(client.users.fetch(userId));
+      const dmChannel = await withTimeout(user.createDM());
       channelId = dmChannel.id;
     } else {
       channelId = jid.replace('discord:', '');
     }
 
-    const channel = await client.channels.fetch(channelId);
+    const channel = await withTimeout(client.channels.fetch(channelId));
     if (!channel || !('sendTyping' in channel)) return;
 
     const textChannel = channel as TextChannel;
     // Fire immediately, then every 9s
-    await textChannel.sendTyping();
+    await withTimeout(textChannel.sendTyping());
     const interval = setInterval(async () => {
       try {
         await textChannel.sendTyping();
@@ -228,23 +239,23 @@ export async function sendDiscordMessage(
     if (jid.startsWith('discord:dm:')) {
       // DM: fetch user and create/get DM channel
       const userId = jid.replace('discord:dm:', '');
-      const user = await client.users.fetch(userId);
-      const dmChannel = await user.createDM();
+      const user = await withTimeout(client.users.fetch(userId));
+      const dmChannel = await withTimeout(user.createDM());
       channelId = dmChannel.id;
     } else {
       // Guild channel: extract channel ID
       channelId = jid.replace('discord:', '');
     }
 
-    const channel = await client.channels.fetch(channelId);
+    const channel = await withTimeout(client.channels.fetch(channelId));
     if (channel && 'send' in channel) {
       // Discord has a 2000 char limit per message
       if (text.length <= 2000) {
-        await (channel as TextChannel).send(text);
+        await withTimeout((channel as TextChannel).send(text));
       } else {
         // Split long messages
         for (let i = 0; i < text.length; i += 2000) {
-          await (channel as TextChannel).send(text.slice(i, i + 2000));
+          await withTimeout((channel as TextChannel).send(text.slice(i, i + 2000)));
         }
       }
       logger.info({ jid, length: text.length }, 'Discord message sent');
@@ -273,20 +284,20 @@ export async function sendDiscordVoiceMessage(
     if (jid.startsWith('discord:dm:')) {
       // DM: fetch user and create/get DM channel
       const userId = jid.replace('discord:dm:', '');
-      const user = await client.users.fetch(userId);
-      const dmChannel = await user.createDM();
+      const user = await withTimeout(client.users.fetch(userId));
+      const dmChannel = await withTimeout(user.createDM());
       channelId = dmChannel.id;
     } else {
       // Guild channel: extract channel ID
       channelId = jid.replace('discord:', '');
     }
 
-    const channel = await client.channels.fetch(channelId);
+    const channel = await withTimeout(client.channels.fetch(channelId));
     if (channel && 'send' in channel) {
       const attachment = new AttachmentBuilder(audioBuffer, {
         name: 'voice-message.ogg',
       });
-      await (channel as TextChannel).send({ files: [attachment] });
+      await withTimeout((channel as TextChannel).send({ files: [attachment] }));
       logger.info({ jid, size: audioBuffer.length }, 'Discord voice message sent');
     } else {
       logger.error({ jid }, 'Channel not found or not a text channel');
@@ -316,15 +327,15 @@ export async function sendDiscordImage(
     if (jid.startsWith('discord:dm:')) {
       // DM: fetch user and create/get DM channel
       const userId = jid.replace('discord:dm:', '');
-      const user = await client.users.fetch(userId);
-      const dmChannel = await user.createDM();
+      const user = await withTimeout(client.users.fetch(userId));
+      const dmChannel = await withTimeout(user.createDM());
       channelId = dmChannel.id;
     } else {
       // Guild channel: extract channel ID
       channelId = jid.replace('discord:', '');
     }
 
-    const channel = await client.channels.fetch(channelId);
+    const channel = await withTimeout(client.channels.fetch(channelId));
     if (channel && 'send' in channel) {
       const attachment = new AttachmentBuilder(imageBuffer, {
         name: filename,
@@ -335,7 +346,7 @@ export async function sendDiscordImage(
         messageOptions.content = caption;
       }
 
-      await (channel as TextChannel).send(messageOptions);
+      await withTimeout((channel as TextChannel).send(messageOptions));
       logger.info({ jid, size: imageBuffer.length, filename }, 'Discord image sent');
     } else {
       logger.error({ jid }, 'Channel not found or not a text channel');
