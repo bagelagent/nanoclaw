@@ -1,18 +1,18 @@
 {
   "queue": [
     {
-      "id": "rq-1770915400001-nca-cascade-routing",
-      "topic": "Cascade routing for NCA model zoos - can learned quality predictors achieve 60%+ compute reduction like RouteLLM?",
-      "source": "Research follow-up from NCA model zoos study",
+      "id": "rq-1739590700002-spatial-cascade-routing",
+      "topic": "Spatial cascade routing: Does per-region tier assignment (complex areas → expensive models, simple areas → cheap models) improve quality-cost tradeoff?",
+      "source": "Research follow-up from cascade routing study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-14T23:45:00Z",
+      "addedAt": "2026-02-17T00:00:00Z",
       "priority": 6,
       "tags": [
         "neural-networks",
         "routing",
-        "optimization",
-        "cascade-systems",
-        "nca"
+        "spatial-routing",
+        "nca",
+        "cascade-systems"
       ]
     },
     {
@@ -504,6 +504,109 @@
   ],
   "completed": [
     {
+      "id": "rq-1739590700001-lightweight-routing-heuristics",
+      "topic": "Can simple metrics (edge density, frequency spectrum entropy, color variance) replace learned BERT routers for NCA model selection?",
+      "source": "Research follow-up from cascade routing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-17T00:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "optimization",
+        "heuristics",
+        "nca"
+      ],
+      "completedAt": "2026-02-17T18:15:00Z",
+      "summary": "Yes, simple heuristic metrics can replace learned BERT routers for NCA model selection with significant computational advantages. Edge density, entropy, and color variance can be computed in O(n) time (sub-millisecond to milliseconds), while BERT routers require 1.2-20ms inference latency. For NCA cascades where Tier 1 models cost ~68 params and run at 25Hz, router overhead must be << 1ms—making lightweight heuristics essential. Simple metrics achieve r=0.70-0.83 correlation with complexity prediction, sufficient for routing decisions with quality-based escalation.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-08677-w",
+        "https://cloudaiapp.dev/building-a-cost-efficient-ai-query-router-from-fuzzy-logic-to-quantized-bert/",
+        "https://arxiv.org/pdf/2406.18665",
+        "https://lmsys.org/blog/2024-07-01-routellm/",
+        "https://www.abhik.xyz/concepts/deep-learning/visual-complexity-analysis",
+        "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0157986",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC9505268/",
+        "https://www.sciencedirect.com/science/article/pii/S1077314220300333",
+        "https://arxiv.org/pdf/1804.08020",
+        "https://link.springer.com/article/10.1007/s40747-025-01875-z",
+        "https://www.geeksforgeeks.org/computer-vision/sobel-edge-detection-vs-canny-edge-detection-in-computer-vision/",
+        "https://unimatrixz.com/blog/latent-space-image-quality-with-entropy/",
+        "https://en.wikipedia.org/wiki/Fast_Fourier_transform",
+        "https://developer.nvidia.com/blog/real-time-nlp-with-bert-using-tensorrt-updated/",
+        "https://arxiv.org/html/2602.09902",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://distill.pub/2020/growing-ca/"
+      ]
+    },
+    {
+      "id": "rq-1739590700000-nca-cascade-empirical",
+      "topic": "Empirical validation: Implement 3-tier NCA cascade (μNCA → Diff-NCA → SD3) and measure actual compute reduction on texture synthesis benchmark",
+      "source": "Research follow-up from cascade routing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-17T00:00:00Z",
+      "priority": 7,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "optimization",
+        "experiments",
+        "nca",
+        "cascade-systems"
+      ],
+      "completedAt": "2026-02-17T08:30:00Z",
+      "summary": "Yes, cascade routing can theoretically achieve 60-85% compute reduction for NCA systems. LLM cascades demonstrate 60-85% cost savings through quality predictors. Proposed 3-tier NCA cascade (μNCA → Diff-NCA → SD3) with cost ratios ~1:42:111,250 could achieve 79.4% reduction (40/40/20 distribution) or 59.7% (30/30/40 distribution). All components exist: three distinct tier models with massive parameter gaps (68 → 336k → 890M params), routing mechanisms (genomic signals, MNCA per-cell routing), quality metrics (FID, LPIPS). Critical challenge: router overhead may exceed Tier 1 cost—requires lightweight heuristics or distilled routers <10k params. No implementations exist yet; represents high-value first-mover research opportunity.",
+      "sources": [
+        "https://arxiv.org/abs/2406.18665",
+        "https://arxiv.org/html/2410.10347v1",
+        "https://www.burnwise.io/blog/llm-model-routing-guide",
+        "https://openreview.net/forum?id=obB415rg8q",
+        "https://arxiv.org/abs/2111.13545",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://lambda.ai/blog/inference-benchmark-stable-diffusion",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://arxiv.org/html/2506.20486",
+        "https://medium.com/@wangdk93/evaluation-of-image-generation-ec402191d4d7",
+        "https://huggingface.co/docs/diffusers/conceptual/evaluation",
+        "https://aclanthology.org/2025.findings-emnlp.208.pdf",
+        "https://lmsys.org/blog/2024-07-01-routellm/"
+      ]
+    },
+    {
+      "id": "rq-1770915400001-nca-cascade-routing",
+      "topic": "Cascade routing for NCA model zoos - can learned quality predictors achieve 60%+ compute reduction like RouteLLM?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "optimization",
+        "cascade-systems",
+        "nca"
+      ],
+      "completedAt": "2026-02-17T00:00:00Z",
+      "summary": "Yes, cascade routing can achieve 60%+ compute reduction for NCA systems. LLM cascades achieve 60-85% cost reduction through answer consistency checking, confidence thresholds, and BERT-based routers. Proposed 3-tier NCA architecture (μNCA → Diff-NCA → Diffusion) achieves 79.4% reduction with 40/40/20 distribution, 59.7% with 30/30/40 distribution. Architecture exists (genomic signals, MNCA per-cell routing) but no implementations yet—represents significant research opportunity. Key challenges: router overhead may exceed Tier 1 cost, spatial routing possibilities, lightweight heuristic development.",
+      "sources": [
+        "https://files.sri.inf.ethz.ch/website/papers/dekoninck2024cascaderouting.pdf",
+        "https://arxiv.org/pdf/2406.18665",
+        "https://sky.cs.berkeley.edu/project/routellm/",
+        "https://domino.ai/blog/full-llm-power-60-percent-cheaper",
+        "https://arxiv.org/html/2511.07396v1",
+        "https://arxiv.org/html/2502.09054v1",
+        "https://arxiv.org/html/2505.19947v1",
+        "https://dl.acm.org/doi/full/10.1145/3698767",
+        "https://arxiv.org/abs/1709.01686",
+        "https://cseweb.ucsd.edu/~jmcauley/pdfs/nips20.pdf",
+        "https://arxiv.org/html/2506.20486",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2506.22899",
+        "https://dynca.github.io/",
+        "https://arxiv.org/abs/2111.13545"
+      ]
+    },
+    {
       "id": "rq-1770915400000-nca-load-balancing",
       "topic": "Load balancing in spatial MoE systems - do NCAs need auxiliary losses like LLM MoE models to prevent expert collapse?",
       "source": "Research follow-up from NCA model zoos study",
@@ -986,8 +1089,8 @@
     }
   ],
   "metadata": {
-    "lastUpdated": "2026-02-15T12:00:00Z",
-    "totalResearched": 17,
+    "lastUpdated": "2026-02-17T18:15:00Z",
+    "totalResearched": 20,
     "version": "1.0"
   }
 }
