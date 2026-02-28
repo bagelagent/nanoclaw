@@ -9,10 +9,6 @@ import fs from 'fs';
 import path from 'path';
 import { logger } from './logger.js';
 import {
-  createGitHubAssignment,
-  getGitHubAssignmentByIssue,
-  GitHubAssignment,
-  getAllRegisteredGroups,
   getRegisteredGroup,
   setRegisteredGroup,
 } from './db.js';
@@ -360,47 +356,17 @@ async function handleIssueWebhook(payload: GitHubWebhookPayload) {
     return;
   }
 
-  // Check if assignment already exists
-  const existing = getGitHubAssignmentByIssue(
-    repository.owner.login,
-    repository.name,
-    issue.number,
-  );
-
-  if (existing) {
-    logger.info(
-      { assignmentId: existing.id, status: existing.status },
-      'Assignment already exists',
-    );
-    return;
-  }
-
-  // Create new assignment
-  const assignmentId = createGitHubAssignment({
-    issue_url: issue.html_url,
-    repo_owner: repository.owner.login,
-    repo_name: repository.name,
-    issue_number: issue.number,
-    title: issue.title,
-    description: issue.body || null,
-    labels: issue.labels.length > 0 ? JSON.stringify(issue.labels.map((l) => l.name)) : null,
-    assigned_by: sender.login,
-    assigned_at: new Date().toISOString(),
-  });
-
   logger.info(
     {
-      assignmentId,
       issue: issue.number,
       repo: `${repository.owner.login}/${repository.name}`,
       title: issue.title,
     },
-    'Created GitHub assignment from webhook',
+    'Issue assigned to bot - spawning container',
   );
 
   // Spawn a container to handle this issue assignment
   spawnGitHubContainer('issue_assigned', {
-    assignmentId,
     repo_owner: repository.owner.login,
     repo_name: repository.name,
     issue_number: issue.number,
@@ -432,22 +398,17 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     return;
   }
 
-  // Check if this issue has an assignment
-  const assignment = getGitHubAssignmentByIssue(
-    repository.owner.login,
-    repository.name,
-    issue.number,
-  );
-
-  if (!assignment) {
-    logger.debug({ issue: issue.number }, 'No assignment found for this issue');
-    return;
-  }
-
   // Check if the comment is from the bot itself (ignore)
   const botUsername = process.env.GITHUB_BOT_USERNAME || 'bagel-bot';
   if (comment.user.login === botUsername) {
     logger.debug('Ignoring comment from bot itself');
+    return;
+  }
+
+  // Check if bot is assigned to this issue
+  const isAssignedToBot = issue.assignees.some((a) => a.login === botUsername);
+  if (!isAssignedToBot) {
+    logger.debug({ issue: issue.number }, 'Bot not assigned to this issue');
     return;
   }
 
@@ -459,7 +420,6 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
   if (isApproval) {
     logger.info(
       {
-        assignmentId: assignment.id,
         issue: issue.number,
         approver: comment.user.login,
       },
@@ -468,7 +428,6 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
 
     // Spawn a container to handle the approved implementation
     spawnGitHubContainer('plan_approved', {
-      assignmentId: assignment.id,
       repo_owner: repository.owner.login,
       repo_name: repository.name,
       issue_number: issue.number,
