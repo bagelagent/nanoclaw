@@ -5,17 +5,21 @@
 
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { logger } from './logger.js';
 import {
   createGitHubAssignment,
   getGitHubAssignmentByIssue,
   GitHubAssignment,
   getAllRegisteredGroups,
-
+  getRegisteredGroup,
+  setRegisteredGroup,
 } from './db.js';
 import { RegisteredGroup } from './types.js';
 import { fetchIssue } from './github-api.js';
 import { runContainerAgent } from './container-runner.js';
+import { GROUPS_DIR } from './config.js';
 
 const app = express();
 app.use(express.json());
@@ -71,6 +75,56 @@ interface GitHubCommentWebhookPayload {
   };
 }
 
+interface GitHubPRWebhookPayload {
+  action: string;
+  pull_request: {
+    number: number;
+    title: string;
+    body: string | null;
+    html_url: string;
+    state: string;
+    assignees: Array<{ login: string }>;
+    user: {
+      login: string;
+    };
+  };
+  repository: {
+    owner: {
+      login: string;
+    };
+    name: string;
+  };
+  sender: {
+    login: string;
+  };
+}
+
+interface GitHubPRReviewWebhookPayload {
+  action: string;
+  pull_request: {
+    number: number;
+    title: string;
+    html_url: string;
+  };
+  review: {
+    id: number;
+    body: string | null;
+    state: string; // 'approved', 'changes_requested', 'commented'
+    user: {
+      login: string;
+    };
+  };
+  repository: {
+    owner: {
+      login: string;
+    };
+    name: string;
+  };
+  sender: {
+    login: string;
+  };
+}
+
 /**
  * Verify GitHub webhook signature
  */
@@ -89,17 +143,64 @@ function verifyGitHubSignature(
 }
 
 /**
+ * Get or create a GitHub group for a repository
+ */
+function getOrCreateGitHubGroup(repoOwner: string, repoName: string): RegisteredGroup {
+  const groupKey = `github-${repoOwner}-${repoName}`;
+  const folderName = `github-${repoOwner}-${repoName}`;
+
+  // Check if group already exists
+  let group = getRegisteredGroup(groupKey);
+
+  if (!group) {
+    // Create new GitHub group
+    const groupFolder = path.join(GROUPS_DIR, folderName);
+
+    // Create group directory if it doesn't exist
+    if (!fs.existsSync(groupFolder)) {
+      fs.mkdirSync(groupFolder, { recursive: true });
+      logger.info({ folder: folderName }, 'Created new GitHub group folder');
+
+      // Create initial CLAUDE.md
+      const claudeMd = `# GitHub: ${repoOwner}/${repoName}
+
+This is an auto-created group for handling GitHub webhooks for the repository **${repoOwner}/${repoName}**.
+
+## Workspace
+
+The repository is cloned to \`/workspace/group/${repoName}/\` and persists across container runs.
+
+## Memory
+
+Conversation history and context for this repository's issues and PRs are stored here.
+`;
+      fs.writeFileSync(path.join(groupFolder, 'CLAUDE.md'), claudeMd);
+    }
+
+    // Register the group
+    const newGroup = {
+      name: `GitHub: ${repoOwner}/${repoName}`,
+      folder: folderName,
+      trigger: '@Bagel', // Not used for GitHub groups
+      added_at: new Date().toISOString(),
+      jid: groupKey, // Use groupKey as JID for GitHub groups
+    };
+
+    setRegisteredGroup(groupKey, newGroup);
+    logger.info({ groupKey, folder: folderName }, 'Registered new GitHub group');
+
+    group = newGroup;
+  }
+
+  return group!
+}
+
+/**
  * Spawn a container to handle GitHub webhook events
  */
 function spawnGitHubContainer(eventType: string, data: any) {
-  // Get main group (GitHub integration is main-only)
-  const registeredGroups = getAllRegisteredGroups();
-  const mainGroup = Object.values(registeredGroups).find((g: RegisteredGroup) => g.folder === 'main');
-
-  if (!mainGroup) {
-    logger.error('Main group not found - cannot spawn GitHub container');
-    return;
-  }
+  // Get or create GitHub group for this repository
+  const group = getOrCreateGitHubGroup(data.repo_owner, data.repo_name);
 
   // Build prompt based on event type
   let prompt = '';
@@ -117,20 +218,20 @@ function spawnGitHubContainer(eventType: string, data: any) {
 
   // Spawn container in background (don't await)
   runContainerAgent(
-    mainGroup,
+    group,
     {
       prompt,
       sessionId,
-      groupFolder: mainGroup.folder,
+      groupFolder: group.folder,
       chatJid,
-      isMain: true,
+      isMain: false, // GitHub groups are not main
     },
     () => {}, // No-op callback
   ).catch((err) => {
-    logger.error({ err, eventType, issue: data.issue_number }, 'GitHub container failed');
+    logger.error({ err, eventType, issue: data.issue_number || data.pr_number }, 'GitHub container failed');
   });
 
-  logger.info({ eventType, issue: data.issue_number, chatJid }, 'Spawned GitHub container');
+  logger.info({ eventType, issue: data.issue_number || data.pr_number, chatJid, groupFolder: group.folder }, 'Spawned GitHub container');
 }
 
 /**
@@ -148,23 +249,34 @@ ${data.description || '(No description provided)'}
 
 ---
 
+**WORKSPACE**: The repository is in \`/workspace/group/${data.repo_name}/\`
+
 **YOUR WORKFLOW**:
 
 1. **Post initial comment** on the issue saying you've started work
-2. **Clone the repository** using github_clone_repo
+
+2. **Get the repository**:
+   - First check if \`/workspace/group/${data.repo_name}/\` exists (use Bash: \`ls -la /workspace/group/${data.repo_name} 2>&1\`)
+   - If it exists: \`cd\` into it and \`git pull\` to update
+   - If it doesn't exist: Use github_clone_repo to clone it (it will go to /workspace/project/github-work/, then you should move it to /workspace/group/)
+
 3. **Explore the codebase** thoroughly to understand the issue
+
 4. **Enter plan mode** (use EnterPlanMode) to design your solution
+
 5. **Post your plan** as a comment on issue #${data.issue_number} using github_comment
+
 6. **Stop and wait** - DO NOT implement yet. Your work is done for now.
 
 A new container will be spawned when the user approves your plan.
 
 **Important**:
+- The repository persists in /workspace/group/ across runs - don't clone unnecessarily
 - Focus on creating a thorough, well-thought-out plan
 - Be specific about what files you'll change and why
 - Don't implement anything in this phase - just plan
 
-Begin by posting an initial comment and cloning the repository.`;
+Begin by posting an initial comment and checking if the repository exists.`;
 }
 
 /**
@@ -179,28 +291,39 @@ function buildPlanApprovedPrompt(data: any): string {
 
 ---
 
+**WORKSPACE**: The repository should be in \`/workspace/group/${data.repo_name}/\`
+
 **YOUR WORKFLOW**:
 
-1. **Clone the repository** using github_clone_repo
+1. **Get the repository**:
+   - \`cd /workspace/group/${data.repo_name}\` (it should already exist from the planning phase)
+   - Run \`git pull\` to get latest changes
+   - If it somehow doesn't exist, clone it first
+
 2. **Read your plan** - Use github_get_comments to see what you previously proposed
+
 3. **Implement the solution**:
-   - Create a new branch: github_create_branch (format: "bagel/issue-${data.issue_number}-brief-description")
+   - Create a new branch: github_create_branch in /workspace/group/${data.repo_name} (format: "bagel/issue-${data.issue_number}-brief-description")
    - Make your code changes using Edit/Write tools
    - Follow the plan you created
    - Test your changes if possible
+
 4. **Commit and push** using github_commit_push with a clear message
+
 5. **Create a pull request** using github_create_pr:
    - Title should reference the issue
    - Body should describe the changes
    - Include "Fixes #${data.issue_number}"
+
 6. **Comment on the issue** with the PR link using github_comment
 
 **Important**:
+- The repository persists in /workspace/group/${data.repo_name}/ - use it directly
 - Follow the plan you created earlier
 - Write clean, tested code
 - Create a professional PR ready for review
 
-Begin by cloning the repository and reviewing your approved plan.`;
+Begin by navigating to the repository and reviewing your approved plan.`;
 }
 
 /**
@@ -357,6 +480,49 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
 }
 
 /**
+ * Handle GitHub PR webhook events
+ */
+async function handlePRWebhook(payload: GitHubPRWebhookPayload) {
+  const { action, pull_request, repository, sender } = payload;
+
+  logger.info(
+    {
+      action,
+      pr: pull_request.number,
+      repo: `${repository.owner.login}/${repository.name}`,
+      author: pull_request.user.login,
+    },
+    'GitHub webhook: pull_request event',
+  );
+
+  // Handle relevant PR actions (opened, assigned, etc.)
+  // For now, just log them
+  // Can add custom logic later (e.g., spawn container for certain actions)
+}
+
+/**
+ * Handle GitHub PR review webhook events
+ */
+async function handlePRReviewWebhook(payload: GitHubPRReviewWebhookPayload) {
+  const { action, pull_request, review, repository, sender } = payload;
+
+  logger.info(
+    {
+      action,
+      pr: pull_request.number,
+      repo: `${repository.owner.login}/${repository.name}`,
+      reviewer: review.user.login,
+      review_state: review.state,
+    },
+    'GitHub webhook: pull_request_review event',
+  );
+
+  // Handle PR reviews (approved, changes_requested, etc.)
+  // For now, just log them
+  // Can add custom logic later (e.g., spawn container to address review comments)
+}
+
+/**
  * Start the webhook server
  */
 export function startWebhookServer(port: number = 3000) {
@@ -396,6 +562,22 @@ export function startWebhookServer(port: number = 3000) {
     } else if (event === 'issue_comment') {
       try {
         await handleIssueCommentWebhook(req.body as GitHubCommentWebhookPayload);
+        res.json({ status: 'ok' });
+      } catch (err) {
+        logger.error({ err, event }, 'Error handling webhook');
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    } else if (event === 'pull_request') {
+      try {
+        await handlePRWebhook(req.body as GitHubPRWebhookPayload);
+        res.json({ status: 'ok' });
+      } catch (err) {
+        logger.error({ err, event }, 'Error handling webhook');
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    } else if (event === 'pull_request_review') {
+      try {
+        await handlePRReviewWebhook(req.body as GitHubPRReviewWebhookPayload);
         res.json({ status: 'ok' });
       } catch (err) {
         logger.error({ err, event }, 'Error handling webhook');
