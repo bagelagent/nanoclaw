@@ -41,6 +41,33 @@ interface GitHubWebhookPayload {
   };
 }
 
+interface GitHubCommentWebhookPayload {
+  action: string;
+  issue: {
+    number: number;
+    title: string;
+    html_url: string;
+    assignees: Array<{ login: string }>;
+  };
+  comment: {
+    id: number;
+    body: string;
+    user: {
+      login: string;
+    };
+    created_at: string;
+  };
+  repository: {
+    owner: {
+      login: string;
+    };
+    name: string;
+  };
+  sender: {
+    login: string;
+  };
+}
+
 /**
  * Verify GitHub webhook signature
  */
@@ -147,6 +174,67 @@ async function handleIssueWebhook(payload: GitHubWebhookPayload) {
 }
 
 /**
+ * Handle GitHub issue comment webhook events
+ */
+async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
+  const { action, issue, comment, repository, sender } = payload;
+
+  logger.info(
+    {
+      action,
+      issue: issue.number,
+      repo: `${repository.owner.login}/${repository.name}`,
+      commenter: comment.user.login,
+    },
+    'GitHub webhook: issue_comment event',
+  );
+
+  // Only process 'created' comments
+  if (action !== 'created') {
+    logger.debug({ action }, 'Ignoring non-created comment event');
+    return;
+  }
+
+  // Check if this issue has an assignment
+  const assignment = getGitHubAssignmentByIssue(
+    repository.owner.login,
+    repository.name,
+    issue.number,
+  );
+
+  if (!assignment) {
+    logger.debug({ issue: issue.number }, 'No assignment found for this issue');
+    return;
+  }
+
+  // Check if the comment is from the bot itself (ignore)
+  const botUsername = process.env.GITHUB_BOT_USERNAME || 'bagel-bot';
+  if (comment.user.login === botUsername) {
+    logger.debug('Ignoring comment from bot itself');
+    return;
+  }
+
+  // Check for approval keywords in the comment
+  const approvalKeywords = ['approved', 'lgtm', 'go ahead', 'looks good', 'ship it'];
+  const commentLower = comment.body.toLowerCase();
+  const isApproval = approvalKeywords.some((keyword) => commentLower.includes(keyword));
+
+  if (isApproval) {
+    logger.info(
+      {
+        assignmentId: assignment.id,
+        issue: issue.number,
+        approver: comment.user.login,
+      },
+      'Approval detected in comment - agent should proceed with implementation',
+    );
+
+    // The agent is polling for comments and will detect this approval
+    // We don't need to do anything here - just log it
+  }
+}
+
+/**
  * Start the webhook server
  */
 export function startWebhookServer(port: number = 3000) {
@@ -178,6 +266,14 @@ export function startWebhookServer(port: number = 3000) {
     if (event === 'issues') {
       try {
         await handleIssueWebhook(req.body as GitHubWebhookPayload);
+        res.json({ status: 'ok' });
+      } catch (err) {
+        logger.error({ err, event }, 'Error handling webhook');
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    } else if (event === 'issue_comment') {
+      try {
+        await handleIssueCommentWebhook(req.body as GitHubCommentWebhookPayload);
         res.json({ status: 'ok' });
       } catch (err) {
         logger.error({ err, event }, 'Error handling webhook');
