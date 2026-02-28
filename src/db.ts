@@ -121,6 +121,40 @@ export function initDatabase(): void {
     );
   `);
 
+  // GitHub integration tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS github_assignments (
+      id TEXT PRIMARY KEY,
+      issue_url TEXT NOT NULL,
+      repo_owner TEXT NOT NULL,
+      repo_name TEXT NOT NULL,
+      issue_number INTEGER NOT NULL,
+      title TEXT,
+      description TEXT,
+      labels TEXT,
+      assigned_by TEXT,
+      assigned_at TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      work_branch TEXT,
+      pr_url TEXT,
+      last_updated TEXT,
+      notes TEXT,
+      UNIQUE(repo_owner, repo_name, issue_number)
+    );
+    CREATE INDEX IF NOT EXISTS idx_github_status ON github_assignments(status);
+    CREATE INDEX IF NOT EXISTS idx_github_assigned_at ON github_assignments(assigned_at);
+
+    CREATE TABLE IF NOT EXISTS github_repos (
+      id TEXT PRIMARY KEY,
+      owner TEXT NOT NULL,
+      name TEXT NOT NULL,
+      watch_enabled INTEGER DEFAULT 0,
+      watch_labels TEXT,
+      last_check TEXT,
+      UNIQUE(owner, name)
+    );
+  `);
+
   // Migrate from JSON files if they exist
   migrateJsonState();
 }
@@ -620,4 +654,111 @@ function migrateJsonState(): void {
       setRegisteredGroup(jid, group);
     }
   }
+}
+
+// --- GitHub integration accessors ---
+
+export interface GitHubAssignment {
+  id: string;
+  issue_url: string;
+  repo_owner: string;
+  repo_name: string;
+  issue_number: number;
+  title: string | null;
+  description: string | null;
+  labels: string | null;
+  assigned_by: string | null;
+  assigned_at: string;
+  status: 'pending' | 'in_progress' | 'blocked' | 'completed' | 'abandoned';
+  work_branch: string | null;
+  pr_url: string | null;
+  last_updated: string | null;
+  notes: string | null;
+}
+
+export function createGitHubAssignment(assignment: Omit<GitHubAssignment, 'id' | 'status' | 'work_branch' | 'pr_url' | 'last_updated' | 'notes'>): string {
+  const id = `gh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  db.prepare(`
+    INSERT INTO github_assignments (
+      id, issue_url, repo_owner, repo_name, issue_number,
+      title, description, labels, assigned_by, assigned_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    assignment.issue_url,
+    assignment.repo_owner,
+    assignment.repo_name,
+    assignment.issue_number,
+    assignment.title,
+    assignment.description,
+    assignment.labels,
+    assignment.assigned_by,
+    assignment.assigned_at
+  );
+  return id;
+}
+
+export function getGitHubAssignment(id: string): GitHubAssignment | undefined {
+  return db.prepare('SELECT * FROM github_assignments WHERE id = ?').get(id) as GitHubAssignment | undefined;
+}
+
+export function getGitHubAssignmentByIssue(owner: string, repo: string, issueNumber: number): GitHubAssignment | undefined {
+  return db.prepare(`
+    SELECT * FROM github_assignments
+    WHERE repo_owner = ? AND repo_name = ? AND issue_number = ?
+  `).get(owner, repo, issueNumber) as GitHubAssignment | undefined;
+}
+
+export function getAllGitHubAssignments(status?: string): GitHubAssignment[] {
+  if (status) {
+    return db.prepare(`
+      SELECT * FROM github_assignments WHERE status = ? ORDER BY assigned_at DESC
+    `).all(status) as GitHubAssignment[];
+  }
+  return db.prepare(`
+    SELECT * FROM github_assignments ORDER BY assigned_at DESC
+  `).all() as GitHubAssignment[];
+}
+
+export function updateGitHubAssignment(id: string, updates: Partial<Omit<GitHubAssignment, 'id' | 'issue_url' | 'repo_owner' | 'repo_name' | 'issue_number' | 'assigned_at'>>): void {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (updates.status !== undefined) {
+    fields.push('status = ?');
+    values.push(updates.status);
+  }
+  if (updates.work_branch !== undefined) {
+    fields.push('work_branch = ?');
+    values.push(updates.work_branch);
+  }
+  if (updates.pr_url !== undefined) {
+    fields.push('pr_url = ?');
+    values.push(updates.pr_url);
+  }
+  if (updates.notes !== undefined) {
+    fields.push('notes = ?');
+    values.push(updates.notes);
+  }
+  if (updates.title !== undefined) {
+    fields.push('title = ?');
+    values.push(updates.title);
+  }
+  if (updates.description !== undefined) {
+    fields.push('description = ?');
+    values.push(updates.description);
+  }
+  if (updates.labels !== undefined) {
+    fields.push('labels = ?');
+    values.push(updates.labels);
+  }
+
+  if (fields.length === 0) return;
+
+  // Always update last_updated
+  fields.push('last_updated = ?');
+  values.push(new Date().toISOString());
+
+  values.push(id);
+  db.prepare(`UPDATE github_assignments SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 }

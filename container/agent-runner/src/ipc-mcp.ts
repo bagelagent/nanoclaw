@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
 import { search as memorySearch } from './memory-search.js';
+import { createGitHubMcpTools } from './github-mcp.js';
 
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
@@ -639,7 +640,10 @@ Returns the most relevant chunks from your memory files, ranked by relevance.`,
             };
           }
         }
-      )
+      ),
+
+      // GitHub integration tools (main group only)
+      ...createGitHubMcpTools(ctx)
     ]
   });
 }

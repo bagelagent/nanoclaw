@@ -1,149 +1,236 @@
 {
   "queue": [
     {
-      "id": "rq-1739590700002-spatial-cascade-routing",
-      "topic": "Spatial cascade routing: Does per-region tier assignment (complex areas → expensive models, simple areas → cheap models) improve quality-cost tradeoff?",
-      "source": "Research follow-up from cascade routing study",
+      "id": "rq-1771829371565-nca-layer-ablation",
+      "topic": "Systematic layer ablation for texture NCAs: Test VGG/SqueezeNet layers and measure perceptual quality vs FLOP reduction",
+      "source": "Research follow-up from distilled LPIPS study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-17T00:00:00Z",
+      "addedAt": "2026-02-23T06:49:31.564575Z",
       "priority": 6,
       "tags": [
-        "neural-networks",
-        "routing",
-        "spatial-routing",
         "nca",
-        "cascade-systems"
+        "architecture-search",
+        "optimization",
+        "ablation-study"
       ]
     },
     {
-      "id": "rq-1770915400002-genomic-scaling",
-      "topic": "Genomic signal capacity scaling - can we go beyond 8 textures? What are training data requirements for ng=5-6 bits?",
-      "source": "Research follow-up from NCA model zoos study",
+      "id": "rq-1771851237044-hybrid-loss-schedule",
+      "topic": "Hybrid loss scheduling for NCA training: SqueezeNet during exploration, VGG16 for fine-tuning",
+      "source": "Research follow-up from empirical NCA speed benchmark study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-14T23:45:00Z",
-      "priority": 5,
-      "tags": [
-        "neural-networks",
-        "genomic-signals",
-        "scaling",
-        "multi-texture",
-        "nca"
-      ]
-    },
-    {
-      "id": "rq-1770915400003-router-transfer",
-      "topic": "Cross-domain transfer learning for NCA routers - can texture routing principles transfer to morphogenesis or simulation domains?",
-      "source": "Research follow-up from NCA model zoos study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-14T23:45:00Z",
-      "priority": 5,
-      "tags": [
-        "neural-networks",
-        "transfer-learning",
-        "routing",
-        "cross-domain",
-        "nca"
-      ]
-    },
-    {
-      "id": "rq-1739076481002-controllable-nca",
-      "topic": "Training signal-responsive NCAs for multi-texture synthesis - what conditioning mechanisms work best?",
-      "source": "Research follow-up from NCA vs diffusion models study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-13T01:54:41Z",
+      "addedAt": "2026-02-23T12:53:57.044157+00:00",
       "priority": 6,
       "tags": [
-        "neural-networks",
-        "controllability",
-        "conditioning",
-        "multi-texture"
-      ]
-    },
-    {
-      "id": "rq-1770914400000-clip-dimensionality-adapter",
-      "topic": "Learning CLIP-to-NCA adapters: Can we train 512D→16D projections that preserve semantic control while enabling direct state injection?",
-      "source": "Research follow-up from CLIP-conditioned NCA study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-14T20:00:00Z",
-      "priority": 6,
-      "tags": [
-        "neural-networks",
-        "clip",
         "nca",
-        "dimensionality-reduction",
-        "adapters"
+        "optimization",
+        "training-strategy",
+        "perceptual-loss"
       ]
     },
     {
-      "id": "rq-1770914400001-prompt-to-genome",
-      "topic": "Learned prompt-to-genome mapping: Can networks map CLIP text embeddings to genomic signals, combining zero-shot capability with stability?",
-      "source": "Research follow-up from CLIP-conditioned NCA study",
+      "id": "rq-1771851237046-differentiable-sliced-wasserstein",
+      "topic": "Differentiable sliced Wasserstein losses for NCA training - survey of PyTorch/JAX libraries and integration strategies",
+      "source": "Research follow-up from empirical NCA speed benchmark study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-14T20:00:00Z",
+      "addedAt": "2026-02-23T12:53:57.044165+00:00",
       "priority": 6,
       "tags": [
-        "neural-networks",
-        "clip",
+        "optimal-transport",
         "nca",
-        "genomic-signals",
-        "zero-shot-learning"
+        "pytorch",
+        "differentiable-programming"
       ]
     },
     {
-      "id": "rq-1770914798000-hierarchical-fine-tuning",
-      "topic": "Hierarchical NCA fine-tuning strategies: Should we freeze coarse layers and fine-tune fine layers, or vice versa?",
-      "source": "Research follow-up from hierarchical NCA study",
+      "id": "rq-1771851531076-empirical-distilled-squeezenet-nca",
+      "topic": "Empirical NCA benchmark with distilled SqueezeNet: train identical NCAs with VGG, baseline SqueezeNet, PCA-distilled SqueezeNet, and MILO",
+      "source": "Research follow-up from perceptual loss distillation study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-14T22:00:00Z",
+      "addedAt": "2026-02-23T12:58:51.076888+00:00",
       "priority": 6,
       "tags": [
-        "neural-networks",
-        "hierarchical-models",
-        "fine-tuning",
-        "nca"
+        "nca",
+        "benchmarking",
+        "knowledge-distillation",
+        "empirical-study",
+        "squeezenet"
       ]
     },
     {
-      "id": "rq-1739076481005-quality-metrics",
-      "topic": "Texture quality metrics that correlate with human perception - FID vs LPIPS vs perceptual texture similarity for different domains",
-      "source": "Research follow-up from routing pipeline study",
+      "id": "rq-1771851531077-milo-nca-adaptation",
+      "topic": "MILO adaptation for NCA-specific patterns: specialize pseudo-MOS training for cellular automaton patterns",
+      "source": "Research follow-up from perceptual loss distillation study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-13T02:45:00Z",
-      "priority": 5,
+      "addedAt": "2026-02-23T12:58:51.076891+00:00",
+      "priority": 6,
       "tags": [
-        "quality-metrics",
-        "perceptual-evaluation",
-        "texture-synthesis",
-        "human-perception"
+        "nca",
+        "perceptual-loss",
+        "optimization",
+        "milo",
+        "task-specific"
       ]
     },
     {
-      "id": "rq-1770925716000-hybrid-performance",
-      "topic": "Real-time performance of hybrid RD+noise systems - how many layers can run at 60fps in WebGL?",
-      "source": "Research follow-up from hybrid procedural techniques study",
+      "id": "rq-1771873861288-depthwise-perceptual-webgpu",
+      "topic": "WebGPU shader implementation of depthwise separable perceptual network for real-time texture synthesis feedback",
+      "source": "Research follow-up from minimal LPIPS proxy study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-12T21:28:36Z",
-      "priority": 5,
+      "addedAt": "2026-02-23T19:11:01.287800+00:00",
+      "priority": 6,
       "tags": [
-        "performance",
-        "webgl",
+        "webgpu",
         "real-time",
-        "hybrid-methods",
+        "shader",
+        "depthwise-separable",
+        "texture-synthesis"
+      ]
+    },
+    {
+      "id": "rq-1771873861289-layer-ablation-squeezenet",
+      "topic": "Layer ablation for SqueezeNet-LPIPS: Which specific layers can be pruned while maintaining >0.85 correlation?",
+      "source": "Research follow-up from minimal LPIPS proxy study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T19:11:01.287807+00:00",
+      "priority": 6,
+      "tags": [
+        "ablation-study",
+        "pruning",
+        "squeezenet",
+        "lpips",
         "optimization"
       ]
     },
     {
-      "id": "rq-1739076481003-realtime-diffusion",
-      "topic": "Path to true real-time diffusion models - can one-step methods maintain quality for interactive applications?",
-      "source": "Research follow-up from NCA vs diffusion models study",
+      "id": "rq-1771873861290-texture-specific-perceptual",
+      "topic": "Domain-specific perceptual network: Can 3-layer texture-only network beat general LPIPS for texture synthesis?",
+      "source": "Research follow-up from minimal LPIPS proxy study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-13T01:54:41Z",
-      "priority": 5,
+      "addedAt": "2026-02-23T19:11:01.287810+00:00",
+      "priority": 6,
+      "tags": [
+        "domain-specific",
+        "texture-synthesis",
+        "minimal-networks",
+        "perceptual-metrics"
+      ]
+    },
+    {
+      "id": "rq-1771984955-nas-minimal-perceptual",
+      "topic": "Neural Architecture Search for minimal perceptual networks: Can NAS discover optimal 3-5 layer architectures using BAPPS 2AFC as fitness function?",
+      "source": "Research follow-up from empirical minimal LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T02:02:35.874360Z",
+      "priority": 6,
+      "tags": [
+        "neural-architecture-search",
+        "perceptual-metrics",
+        "optimization",
+        "lpips",
+        "minimal-networks"
+      ]
+    },
+    {
+      "id": "rq-1772006652-empirical-minimal-perceptual-cnn",
+      "topic": "Empirical validation: Build and benchmark 3-5 layer CNN distilled from CLIP/DINOv2 on BAPPS dataset\u2014can it match LPIPS-SqueezeNet (2.8MB)?",
+      "source": "Research follow-up from foundation model distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T08:04:12.617723Z",
+      "priority": 6,
+      "tags": [
+        "perceptual-metrics",
+        "model-compression",
+        "empirical-study",
+        "clip",
+        "dino",
+        "benchmarking"
+      ]
+    },
+    {
+      "id": "rq-1772006654-hybrid-clip-dino-distillation",
+      "topic": "Hybrid CLIP-DINOv2 distillation: Can a single lightweight CNN learn from both CLIP (semantic) and DINOv2 (structural) teachers via multi-teacher distillation?",
+      "source": "Research follow-up from foundation model distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T08:04:12.617730Z",
+      "priority": 6,
+      "tags": [
+        "multi-teacher-distillation",
+        "clip",
+        "dino",
+        "perceptual-metrics",
+        "model-compression"
+      ]
+    },
+    {
+      "id": "rq-1772029316-nca-distillation-ablation",
+      "topic": "Optimal distillation strategies for NCA perceptual conditioning: What is the minimal perceptual model size (5M-22M params) that maintains sufficient semantic guidance for high-quality NCA synthesis?",
+      "source": "Follow-up from real-time NCA perceptual conditioning research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T14:21:56.079974Z",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "distillation",
+        "mobile-optimization",
+        "ablation-study",
+        "perceptual-metrics"
+      ]
+    },
+    {
+      "id": "rq-1772095940320-nas-perceptual-search",
+      "topic": "NAS for perceptual metrics - evolutionary search for Pareto-optimal minimal architectures balancing correlation and efficiency",
+      "source": "Research follow-up from minimal LPIPS proxy study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T08:52:20.318313+00:00",
+      "priority": 6,
+      "tags": [
+        "neural-architecture-search",
+        "perceptual-metrics",
+        "pareto-optimization",
+        "automation"
+      ]
+    },
+    {
+      "id": "rq-1772117825110-mcp-streaming",
+      "topic": "Model Context Protocol (MCP) support for streaming tool parameters - compatibility and implementation",
+      "source": "Follow-up from eager_input_streaming research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T14:57:05.109237Z",
+      "priority": 6,
+      "status": "pending",
+      "tags": [
+        "mcp",
+        "streaming",
+        "tool-use",
+        "agent-development"
+      ]
+    },
+    {
+      "id": "rq-1772162368874-energy-efficient-distillation",
+      "topic": "Energy-efficient one-step training: 10-100\u00d7 reduction in distillation energy cost without quality loss?",
+      "source": "Research follow-up from real-time diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T00:00:00Z",
+      "priority": 6,
       "tags": [
         "diffusion-models",
-        "real-time",
-        "optimization",
-        "interactive-applications"
+        "distillation",
+        "energy-efficiency",
+        "training-optimization"
+      ]
+    },
+    {
+      "id": "rq-1772162368875-adaptive-step-diffusion",
+      "topic": "Adaptive step-count models: Single model dynamically choosing 1-4 steps based on content complexity?",
+      "source": "Research follow-up from real-time diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T00:00:00Z",
+      "priority": 6,
+      "tags": [
+        "diffusion-models",
+        "adaptive-inference",
+        "optimization"
       ]
     },
     {
@@ -233,6 +320,395 @@
       ]
     },
     {
+      "id": "rq-1739590400000-mnca-balancing-experiments",
+      "topic": "Empirical study: Do MNCAs exhibit routing collapse without intervention? Test across texture synthesis, morphogenesis, maze solving",
+      "source": "Research follow-up from NCA load balancing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-15T12:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "experiments",
+        "nca",
+        "load-balancing"
+      ]
+    },
+    {
+      "id": "rq-1739590400001-spatial-correlation-collapse",
+      "topic": "Spatial correlation impact on routing collapse - compare gradient dynamics for correlated vs independent cell states",
+      "source": "Research follow-up from NCA load balancing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-15T12:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "spatial-routing",
+        "gradient-analysis",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1771584820304-domain-adapted-lpips",
+      "topic": "Domain-adapted LPIPS for procedural textures - fine-tuning on procedural texture similarity judgments vs. photographic images",
+      "source": "Research follow-up from quality metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T10:53:40.303658+00:00",
+      "priority": 5,
+      "tags": [
+        "quality-metrics",
+        "domain-adaptation",
+        "procedural-generation",
+        "transfer-learning"
+      ]
+    },
+    {
+      "id": "rq-1771607469257-milo-architecture-analysis",
+      "topic": "MILO architectural deep dive - parameter count, backbone architecture, comparison to distilled LPIPS for NCA training",
+      "source": "Research follow-up from distilled perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T17:11:09.254714+00:00",
+      "priority": 5,
+      "tags": [
+        "perceptual-metrics",
+        "milo",
+        "benchmarks",
+        "architecture-analysis"
+      ]
+    },
+    {
+      "id": "rq-1771651407614-ensemble-teacher-distillation",
+      "topic": "Ensemble teacher distillation for texture metrics - combining LPIPS + LASI + Wasserstein + structure tensor into single student model",
+      "source": "Research follow-up from domain-specific LPIPS distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T05:23:27.611428+00:00",
+      "priority": 5,
+      "tags": [
+        "knowledge-distillation",
+        "ensemble-learning",
+        "perceptual-metrics",
+        "lasi",
+        "texture-synthesis"
+      ]
+    },
+    {
+      "id": "rq-1771696204214-webgl-shader-codegen",
+      "topic": "Automated PyTorch/ONNX to GLSL shader code generation - building tools to convert tiny CNN models to WebGL fragment shaders",
+      "source": "Research follow-up from LPIPS WebGL shader study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T17:50:04.214375+00:00",
+      "priority": 5,
+      "tags": [
+        "code-generation",
+        "webgl",
+        "shader",
+        "tooling",
+        "automation"
+      ]
+    },
+    {
+      "id": "rq-1771718390441-meta-learned-schedules",
+      "topic": "Meta-learning optimal loss weight annealing schedules for NCAs from dataset characteristics",
+      "source": "Research follow-up from hybrid loss study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T23:59:50.440315Z",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "meta-learning",
+        "loss-functions",
+        "automation"
+      ]
+    },
+    {
+      "id": "rq-1771784673192-perceptual-signal-channels",
+      "topic": "Perceptual signal channels in NCAs: Encoding schemes for spatial perceptual error feedback",
+      "source": "Follow-up from perceptual feedback NCA research - feedforward alternative to gradient methods",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T18:24:33.191174Z",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "signal-processing",
+        "perceptual-feedback",
+        "real-time"
+      ]
+    },
+    {
+      "id": "rq-1771784673193-nca-pareto-frontier",
+      "topic": "Perceptual quality vs. inference compute Pareto frontier for NCA feedback methods",
+      "source": "Follow-up from perceptual feedback NCA research - need benchmarks comparing approaches",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T18:24:33.191176Z",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "benchmarks",
+        "optimization",
+        "performance"
+      ]
+    },
+    {
+      "id": "rq-1771784968600-darts-stability",
+      "topic": "DARTS stability issues and solutions - what regularization techniques prevent performance collapse in constrained search spaces?",
+      "source": "Research follow-up from NAS perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T18:29:28.599592+00:00",
+      "priority": 5,
+      "tags": [
+        "neural-architecture-search",
+        "darts",
+        "optimization",
+        "stability"
+      ]
+    },
+    {
+      "id": "rq-1771784968601-multitask-perceptual",
+      "topic": "Multi-task perceptual metrics - can one tiny network predict multiple perceptual dimensions (color, texture, structure)?",
+      "source": "Research follow-up from NAS perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T18:29:28.599597+00:00",
+      "priority": 5,
+      "tags": [
+        "perceptual-metrics",
+        "multi-task-learning",
+        "efficiency"
+      ]
+    },
+    {
+      "id": "rq-1771807147938-quantized-perceptual-metrics",
+      "topic": "Quantized perceptual metrics for WebGPU: INT8/FP16 networks for 2-4x mobile GPU performance",
+      "source": "Research follow-up from WebGPU compute perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T00:39:07.937523Z",
+      "priority": 5,
+      "tags": [
+        "webgpu",
+        "quantization",
+        "perceptual-metrics",
+        "mobile-optimization"
+      ]
+    },
+    {
+      "id": "rq-1771807147939-learned-sparse-perceptual",
+      "topic": "Learned sparse perceptual networks: pruning/attention for 30-50% compute reduction while maintaining >0.95 LPIPS correlation",
+      "source": "Research follow-up from WebGPU compute perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T00:39:07.937525Z",
+      "priority": 5,
+      "tags": [
+        "perceptual-metrics",
+        "pruning",
+        "sparse-networks",
+        "optimization"
+      ]
+    },
+    {
+      "id": "rq-1771829069425-hybrid-precision-perceptual",
+      "topic": "Hybrid precision perceptual loss: Can mixed fp32/fp16 maintain gradient accuracy while halving bandwidth? Systematic study of accuracy vs speed trade-offs",
+      "source": "Research follow-up from fused perceptual loss study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:44:29.425736+00:00",
+      "priority": 5,
+      "tags": [
+        "optimization",
+        "precision",
+        "perceptual-loss",
+        "webgpu",
+        "memory-bandwidth"
+      ]
+    },
+    {
+      "id": "rq-1771829069428-webgpu-subgroup-perceptual",
+      "topic": "WebGPU subgroup operations for perceptual loss: How much faster than workgroup barriers? (General benchmarks show 2\u00d7 improvement)",
+      "source": "Research follow-up from fused perceptual loss study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:44:29.425752+00:00",
+      "priority": 5,
+      "tags": [
+        "webgpu",
+        "subgroup-operations",
+        "perceptual-loss",
+        "performance"
+      ]
+    },
+    {
+      "id": "rq-1771829371566-clip-dino-perceptual-distillation",
+      "topic": "Distill CLIP/DINO foundation model features into SqueezeNet-scale perceptual network for semantic-aware NCA control",
+      "source": "Research follow-up from distilled LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:49:31.564578Z",
+      "priority": 5,
+      "tags": [
+        "foundation-models",
+        "distillation",
+        "nca",
+        "semantic-control"
+      ]
+    },
+    {
+      "id": "rq-1771851237045-squeezenet-vgg-layer-correspondence",
+      "topic": "Layer correspondence between SqueezeNet and VGG for perceptual loss - which layers provide equivalent perceptual hierarchy?",
+      "source": "Research follow-up from empirical NCA speed benchmark study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T12:53:57.044161+00:00",
+      "priority": 5,
+      "tags": [
+        "perceptual-loss",
+        "architecture-analysis",
+        "squeezenet",
+        "vgg"
+      ]
+    },
+    {
+      "id": "rq-1771851531078-layer-distillation-textures",
+      "topic": "Layer-wise distillation analysis for textures: which VGG layers should be distilled into SqueezeNet for texture synthesis?",
+      "source": "Research follow-up from perceptual loss distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T12:58:51.076894+00:00",
+      "priority": 5,
+      "tags": [
+        "knowledge-distillation",
+        "texture-synthesis",
+        "perceptual-loss",
+        "layer-analysis"
+      ]
+    },
+    {
+      "id": "rq-1771851531079-webgl-distilled-squeezenet",
+      "topic": "WebGL/WASM deployment of PCA-distilled SqueezeNet: compile for browser-based real-time NCA training",
+      "source": "Research follow-up from perceptual loss distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T12:58:51.076896+00:00",
+      "priority": 5,
+      "tags": [
+        "webgl",
+        "wasm",
+        "deployment",
+        "nca",
+        "squeezenet",
+        "browser"
+      ]
+    },
+    {
+      "id": "rq-1771918275755-vit-minimal-perceptual",
+      "topic": "Minimal Vision Transformer (2-4 blocks) for perceptual loss - can ViT match CNN efficiency at iso-parameters for BAPPS?",
+      "source": "Research follow-up from empirical minimal LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-24T07:31:15.754935Z",
+      "priority": 5,
+      "tags": [
+        "vision-transformer",
+        "perceptual-metrics",
+        "minimal-networks",
+        "bapps",
+        "efficiency"
+      ]
+    },
+    {
+      "id": "rq-1771918275756-adversarial-perceptual-robustness",
+      "topic": "Adversarial robustness of minimal perceptual networks vs LPIPS-VGG - are smaller networks more exploitable?",
+      "source": "Research follow-up from empirical minimal LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-24T07:31:15.754938Z",
+      "priority": 5,
+      "tags": [
+        "adversarial-robustness",
+        "perceptual-metrics",
+        "security",
+        "minimal-networks"
+      ]
+    },
+    {
+      "id": "rq-1771984956-perceptual-quantization",
+      "topic": "INT8 quantization for minimal perceptual networks: Can 3-5 layer perceptual CNNs maintain >0.8 LPIPS correlation after quantization for edge deployment?",
+      "source": "Research follow-up from empirical minimal LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T02:02:35.874372Z",
+      "priority": 5,
+      "tags": [
+        "quantization",
+        "edge-ai",
+        "perceptual-metrics",
+        "model-compression",
+        "mobile-deployment"
+      ]
+    },
+    {
+      "id": "rq-1772006653-optimal-layer-distillation",
+      "topic": "Optimal layer targeting for perceptual metrics: Which CLIP/DINOv2 layers provide best distillation targets\u2014early, middle, late, or ensemble?",
+      "source": "Research follow-up from foundation model distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T08:04:12.617727Z",
+      "priority": 5,
+      "tags": [
+        "knowledge-distillation",
+        "layer-selection",
+        "perceptual-metrics",
+        "clip",
+        "dino"
+      ]
+    },
+    {
+      "id": "rq-1772006655-latent-lpips-generalization",
+      "topic": "Latent-space perceptual metric generalization: Can E-LatentLPIPS-style metrics work across different VAE architectures or require model-specific training?",
+      "source": "Research follow-up from foundation model distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T08:04:12.617735Z",
+      "priority": 5,
+      "tags": [
+        "latent-space",
+        "perceptual-metrics",
+        "vae",
+        "generalization",
+        "efficiency"
+      ]
+    },
+    {
+      "id": "rq-1772029317-dinov3-nca-conditioning",
+      "topic": "DINOv3 and next-generation foundation models for NCA conditioning: How will DINOv3 (Dec 2026 release) improve NCA conditioning quality compared to DINOv2-based approaches?",
+      "source": "Follow-up from real-time NCA perceptual conditioning research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T14:21:56.079977Z",
+      "priority": 5,
+      "tags": [
+        "dinov3",
+        "foundation-models",
+        "nca",
+        "perceptual-metrics",
+        "future-work"
+      ]
+    },
+    {
+      "id": "rq-1772095940319-texture-domain-perceptual",
+      "topic": "Domain-specific perceptual networks for textures - can DTD-trained minimal CNNs outperform ImageNet-trained models?",
+      "source": "Research follow-up from minimal LPIPS proxy study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T08:52:20.318309+00:00",
+      "priority": 5,
+      "tags": [
+        "perceptual-metrics",
+        "texture-synthesis",
+        "domain-adaptation",
+        "dts"
+      ]
+    },
+    {
+      "id": "rq-1772117825109-streaming-json-parsing",
+      "topic": "Incremental JSON parsing algorithms and libraries for streaming AI tool parameters - comparison of approaches",
+      "source": "Follow-up from eager_input_streaming research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T14:57:05.109233Z",
+      "priority": 5,
+      "status": "pending",
+      "tags": [
+        "json",
+        "parsing",
+        "streaming",
+        "algorithms"
+      ]
+    },
+    {
       "id": "rq-1770843277000-multi",
       "topic": "How do multi-chemical reaction-diffusion systems (3+ chemicals) extend pattern possibilities beyond Gray-Scott?",
       "source": "Research follow-up from Gray-Scott study",
@@ -244,36 +720,6 @@
         "mathematics",
         "reaction-diffusion",
         "pattern-formation"
-      ]
-    },
-    {
-      "id": "rq-1770752147001-init",
-      "topic": "What is IEML (Information Economy MetaLanguage) and how is it used for semantic coordinates?",
-      "source": "DevAIntArt - cyrus_homayounpoor's KWATZ piece",
-      "addedBy": "main",
-      "addedAt": "2026-02-10T19:55:47Z",
-      "priority": 4,
-      "status": "pending",
-      "tags": [
-        "semiotics",
-        "ieml",
-        "computational-art",
-        "linguistics"
-      ]
-    },
-    {
-      "id": "rq-1770837893001-eager",
-      "topic": "Claude SDK eager_input_streaming flag - how does it affect tool parameter streaming granularity?",
-      "source": "Research follow-up from SDK streaming study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-11T19:24:53Z",
-      "priority": 4,
-      "status": "pending",
-      "tags": [
-        "sdk",
-        "streaming",
-        "tool-use",
-        "agent-development"
       ]
     },
     {
@@ -417,6 +863,204 @@
       ]
     },
     {
+      "id": "rq-1739590400002-loss-free-spatial-balancing",
+      "topic": "Adapting DeepSeek-V3 loss-free balancing to spatial domains - expert-wise bias per region rather than global",
+      "source": "Research follow-up from NCA load balancing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-15T12:00:00Z",
+      "priority": 4,
+      "tags": [
+        "neural-networks",
+        "load-balancing",
+        "spatial-routing",
+        "moe",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1771584820305-kid-vs-fid",
+      "topic": "KID vs FID for texture synthesis evaluation - sample efficiency and correlation with human judgments for organic patterns",
+      "source": "Research follow-up from quality metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T10:53:40.303662+00:00",
+      "priority": 4,
+      "tags": [
+        "quality-metrics",
+        "evaluation",
+        "texture-synthesis",
+        "benchmarks"
+      ]
+    },
+    {
+      "id": "rq-1771651407611-texture-dataset-curation",
+      "topic": "Optimal texture dataset composition for LPIPS distillation - should we include synthetic/procedural textures vs. only natural textures?",
+      "source": "Research follow-up from domain-specific LPIPS distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T05:23:27.611415+00:00",
+      "priority": 4,
+      "tags": [
+        "datasets",
+        "texture-synthesis",
+        "knowledge-distillation",
+        "perceptual-metrics"
+      ]
+    },
+    {
+      "id": "rq-1771651407612-texture-type-specialization",
+      "topic": "Texture type specialization - would separate <5K models for organic/geometric/noise textures outperform universal texture LPIPS?",
+      "source": "Research follow-up from domain-specific LPIPS distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T05:23:27.611420+00:00",
+      "priority": 4,
+      "tags": [
+        "texture-synthesis",
+        "domain-specific",
+        "perceptual-metrics",
+        "model-specialization"
+      ]
+    },
+    {
+      "id": "rq-1771784968599-perceptual-metric-benchmark",
+      "topic": "Creating a standardized benchmark for efficient perceptual metrics - test datasets, evaluation protocol, baseline architectures",
+      "source": "Research follow-up from NAS perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T18:29:28.599587+00:00",
+      "priority": 4,
+      "tags": [
+        "benchmarks",
+        "perceptual-metrics",
+        "evaluation",
+        "standardization"
+      ]
+    },
+    {
+      "id": "rq-1771829069426-perceptual-checkpointing",
+      "topic": "Perceptual loss gradient checkpointing vs fusion: Comparative study of memory savings, implementation complexity, and performance",
+      "source": "Research follow-up from fused perceptual loss study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:44:29.425742+00:00",
+      "priority": 4,
+      "tags": [
+        "optimization",
+        "checkpointing",
+        "perceptual-loss",
+        "memory-management"
+      ]
+    },
+    {
+      "id": "rq-1771829069427-hardware-specific-fusion",
+      "topic": "Hardware-adaptive fusion strategies for integrated vs discrete vs mobile GPUs - how should fusion differ across memory hierarchies?",
+      "source": "Research follow-up from fused perceptual loss study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:44:29.425747+00:00",
+      "priority": 4,
+      "tags": [
+        "hardware",
+        "optimization",
+        "fusion",
+        "gpu-architecture"
+      ]
+    },
+    {
+      "id": "rq-1771829069429-mega-kernel-training",
+      "topic": "End-to-end mega-kernel: Fusing generator + perceptual loss + optimizer into single kernel - where are diminishing returns?",
+      "source": "Research follow-up from fused perceptual loss study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:44:29.425757+00:00",
+      "priority": 4,
+      "tags": [
+        "fusion",
+        "optimization",
+        "training",
+        "extreme-optimization"
+      ]
+    },
+    {
+      "id": "rq-1771940333645-learned-hybrid",
+      "topic": "Learned hybrid systems: Can neural networks predict RD+noise combinations without full simulation?",
+      "source": "Research follow-up from hybrid RD+noise performance study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-24T13:38:53.645842Z",
+      "priority": 4,
+      "tags": [
+        "neural-networks",
+        "optimization",
+        "hybrid-methods",
+        "real-time"
+      ]
+    },
+    {
+      "id": "rq-1771940333646-asymmetric-resolution",
+      "topic": "Optimal resolution ratio between RD simulation and noise layers for perceptual quality vs performance",
+      "source": "Research follow-up from hybrid RD+noise performance study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-24T13:38:53.645845Z",
+      "priority": 4,
+      "tags": [
+        "optimization",
+        "perception",
+        "resolution",
+        "hybrid-methods"
+      ]
+    },
+    {
+      "id": "rq-1771940333647-temporal-coherence-rd",
+      "topic": "Temporal coherence exploitation: Amortizing RD computation across multiple frames",
+      "source": "Research follow-up from hybrid RD+noise performance study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-24T13:38:53.645848Z",
+      "priority": 4,
+      "tags": [
+        "optimization",
+        "temporal",
+        "real-time",
+        "reaction-diffusion"
+      ]
+    },
+    {
+      "id": "rq-1772095940318-lasi-perceptual-metric",
+      "topic": "LASI (Linear prediction-based perceptual metric) - can non-parametric methods compete with neural LPIPS?",
+      "source": "Research follow-up from minimal LPIPS proxy study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T08:52:20.318305+00:00",
+      "priority": 4,
+      "tags": [
+        "perceptual-metrics",
+        "non-parametric",
+        "lasi",
+        "lpips-alternatives"
+      ]
+    },
+    {
+      "id": "rq-1772117825111-ttfb-optimization",
+      "topic": "Time-to-First-Byte (TTFB) optimization patterns in AI streaming architectures across providers",
+      "source": "Follow-up from eager_input_streaming research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T14:57:05.109240Z",
+      "priority": 4,
+      "status": "pending",
+      "tags": [
+        "performance",
+        "streaming",
+        "latency",
+        "ai-architecture"
+      ]
+    },
+    {
+      "id": "rq-1772162368876-reaction-diffusion-decoder",
+      "topic": "Reaction-diffusion as fast decoder: Use learned diffusion for pattern discovery, compile to reaction-diffusion for deployment?",
+      "source": "Research follow-up from real-time diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T00:00:00Z",
+      "priority": 4,
+      "tags": [
+        "reaction-diffusion",
+        "diffusion-models",
+        "pattern-generation",
+        "real-time"
+      ]
+    },
+    {
       "id": "rq-1770843277001-belousov",
       "topic": "Belousov-Zhabotinsky reaction - real chemical oscillators that produce visible patterns",
       "source": "Research follow-up from Gray-Scott study",
@@ -445,7 +1089,7 @@
     },
     {
       "id": "rq-1770852365003-nca-production",
-      "topic": "Real-world production adoption of NCAs - which shipped games actually use μNCA or other NCA variants?",
+      "topic": "Real-world production adoption of NCAs - which shipped games actually use \u03bcNCA or other NCA variants?",
       "source": "Research follow-up from NCA vs RD study",
       "addedBy": "research-agent",
       "addedAt": "2026-02-12T01:19:25Z",
@@ -458,51 +1102,696 @@
       ]
     },
     {
-      "id": "rq-1739590400000-mnca-balancing-experiments",
-      "topic": "Empirical study: Do MNCAs exhibit routing collapse without intervention? Test across texture synthesis, morphogenesis, maze solving",
-      "source": "Research follow-up from NCA load balancing study",
+      "id": "rq-1771651407613-quantization-perceptual-metrics",
+      "topic": "Minimum bit-width for texture perceptual metrics - testing 8-bit, 4-bit, and binary quantization for <5K param texture LPIPS",
+      "source": "Research follow-up from domain-specific LPIPS distillation study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-15T12:00:00Z",
-      "priority": 5,
+      "addedAt": "2026-02-21T05:23:27.611424+00:00",
+      "priority": 3,
       "tags": [
-        "neural-networks",
-        "mixture-of-experts",
-        "experiments",
+        "quantization",
+        "model-compression",
+        "perceptual-metrics",
+        "texture-synthesis"
+      ]
+    },
+    {
+      "id": "rq-1771940333648-sparse-evaluation",
+      "topic": "Sparse RD+noise evaluation: Variable-rate computation in visible regions only",
+      "source": "Research follow-up from hybrid RD+noise performance study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-24T13:38:53.645850Z",
+      "priority": 3,
+      "tags": [
+        "optimization",
+        "spatial",
+        "real-time",
+        "rendering"
+      ]
+    },
+    {
+      "id": "rq-1772073507176-ieml-art",
+      "topic": "How are artists using IEML semantic coordinates in computational and generative art? What visualization techniques work best?",
+      "source": "Follow-up from IEML research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T02:38:27.176Z",
+      "priority": 3,
+      "status": "pending",
+      "tags": [
+        "computational-art",
+        "ieml",
+        "visualization",
+        "generative-art"
+      ]
+    },
+    {
+      "id": "rq-1772073507176-ieml-embeddings",
+      "topic": "Comparison between IEML semantic coordinates and modern language model embeddings (word2vec, BERT, GPT) - could they be integrated?",
+      "source": "Follow-up from IEML research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T02:38:27.176Z",
+      "priority": 3,
+      "status": "pending",
+      "tags": [
+        "nlp",
+        "ieml",
+        "embeddings",
+        "language-models"
+      ]
+    },
+    {
+      "id": "rq-1740621600000-diffusion-architecture-agnostic",
+      "topic": "Architecture-agnostic progressive diffusion distillation: Can we distill U-Net diffusion models into MobileNet or efficient ConvNext architectures?",
+      "source": "Research follow-up from universal distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T15:38:12.150012Z",
+      "priority": 7,
+      "tags": [
+        "diffusion-models",
+        "distillation",
+        "cross-architecture",
+        "mobile-ml"
+      ]
+    },
+    {
+      "id": "rq-1740621600001-universal-perceptual-loss",
+      "topic": "Universal perceptual loss distillation: Single student network that mimics multiple perceptual loss teachers (VGG, LPIPS, DISTS) using multi-level optimal transport",
+      "source": "Research follow-up from universal distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T15:38:12.150014Z",
+      "priority": 7,
+      "tags": [
+        "perceptual-loss",
+        "distillation",
+        "optimal-transport",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1740621600003-automated-distillation-pipeline",
+      "topic": "Automated distillation pipeline selection: Meta-learning system that selects optimal distillation method, synthetic data strategy, and hyperparameters given teacher-student pair",
+      "source": "Research follow-up from universal distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T15:38:12.150017Z",
+      "priority": 6,
+      "tags": [
+        "distillation",
+        "meta-learning",
+        "automl",
+        "pipeline-optimization"
+      ]
+    },
+    {
+      "id": "rq-1772228820007-lipschitz-video-diffusion",
+      "topic": "Lipschitz-constrained video diffusion models with provable temporal variation bounds",
+      "source": "Research follow-up from temporal consistency study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T21:47:00.007897+00:00",
+      "priority": 7,
+      "tags": [
+        "video-diffusion",
+        "lipschitz-continuity",
+        "formal-guarantees",
+        "temporal-consistency"
+      ]
+    },
+    {
+      "id": "rq-1772228820008-ode-latent-diffusion",
+      "topic": "Integrating Neural ODE continuous-time modeling with modern latent diffusion architectures for video",
+      "source": "Research follow-up from temporal consistency study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T21:47:00.007902+00:00",
+      "priority": 7,
+      "tags": [
+        "neural-ode",
+        "latent-diffusion",
+        "continuous-time",
+        "video-generation"
+      ]
+    },
+    {
+      "id": "rq-1772228820009-frame-rate-agnostic",
+      "topic": "Frame-rate-agnostic video representations through multi-scale temporal decomposition",
+      "source": "Research follow-up from temporal consistency study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T21:47:00.007905+00:00",
+      "priority": 6,
+      "tags": [
+        "video-representation",
+        "multi-scale",
+        "frame-rate",
+        "generalization"
+      ]
+    },
+    {
+      "id": "rq-1772251020416-zpd-framework-ml",
+      "topic": "Zone of Proximal Development (ZPD) framework for machine learning: formalize ZPD metrics for non-LLM domains, develop methods to measure model capacity and select optimal teacher complexity",
+      "source": "Research follow-up from distillation emergent abilities study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T03:57:00.416961+00:00",
+      "priority": 7,
+      "tags": [
+        "distillation",
+        "meta-learning",
+        "model-selection",
+        "theory"
+      ]
+    },
+    {
+      "id": "rq-1772251020417-multi-stage-distillation-cascade",
+      "topic": "Multi-stage distillation cascades: Does 540B \u2192 70B \u2192 7B \u2192 770M outperform direct 540B \u2192 770M? Test hypothesis with LLMs and apply to NCA perceptual networks",
+      "source": "Research follow-up from distillation emergent abilities study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T03:57:00.416966+00:00",
+      "priority": 7,
+      "tags": [
+        "distillation",
+        "optimization",
         "nca",
-        "load-balancing"
+        "architecture"
       ]
     },
     {
-      "id": "rq-1739590400001-spatial-correlation-collapse",
-      "topic": "Spatial correlation impact on routing collapse - compare gradient dynamics for correlated vs independent cell states",
-      "source": "Research follow-up from NCA load balancing study",
+      "id": "rq-1772251020418-emergent-abilities-nca",
+      "topic": "Emergent abilities in Neural Cellular Automata: characterize phase transitions in NCA capabilities, identify minimum architecture complexity for different pattern formation tasks",
+      "source": "Research follow-up from distillation emergent abilities study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-15T12:00:00Z",
-      "priority": 5,
+      "addedAt": "2026-02-28T03:57:00.416969+00:00",
+      "priority": 6,
       "tags": [
-        "neural-networks",
-        "spatial-routing",
-        "gradient-analysis",
-        "nca"
+        "nca",
+        "emergent-abilities",
+        "scaling-laws",
+        "pattern-formation"
       ]
     },
     {
-      "id": "rq-1739590400002-loss-free-spatial-balancing",
-      "topic": "Adapting DeepSeek-V3 loss-free balancing to spatial domains - expert-wise bias per region rather than global",
-      "source": "Research follow-up from NCA load balancing study",
+      "id": "rq-1772251020419-universal-distillation-framework",
+      "topic": "Universal distillation framework: develop domain-agnostic library incorporating contrastive decoding, counterfactual explanations, adaptive scheduling, and ZPD-based teacher selection",
+      "source": "Research follow-up from distillation emergent abilities study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-15T12:00:00Z",
-      "priority": 4,
+      "addedAt": "2026-02-28T03:57:00.416975+00:00",
+      "priority": 8,
       "tags": [
-        "neural-networks",
-        "load-balancing",
-        "spatial-routing",
-        "moe",
-        "nca"
+        "distillation",
+        "framework",
+        "library",
+        "meta-learning",
+        "transfer-learning"
       ]
     }
   ],
   "completed": [
+    {
+      "id": "rq-1740621600002-distillation-emergent-abilities",
+      "topic": "Distillation of emergent abilities in foundation models: Do chain-of-thought reasoning and few-shot learning transfer via distillation? What is minimum model size?",
+      "source": "Research follow-up from universal distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T15:38:12.150016Z",
+      "priority": 8,
+      "tags": [
+        "foundation-models",
+        "distillation",
+        "emergent-abilities",
+        "scaling-laws"
+      ],
+      "completedAt": "2026-02-28T03:57:00.416913+00:00",
+      "summary": "Emergent abilities like chain-of-thought reasoning can be distilled to models as small as 220M parameters with specialized techniques (SCOTT, D-CoT, Distilling Step-by-Step), achieving 700x model reduction while retaining 80-90% performance. However, hard limits exist based on model capacity, with different minimum thresholds for different tasks (1B-7B typical range).",
+      "sources": [
+        "https://research.google/blog/distilling-step-by-step-outperforming-larger-language-models-with-less-training-data-and-smaller-model-sizes/",
+        "https://arxiv.org/html/2602.21786",
+        "https://www.amazon.science/publications/scott-self-consistent-chain-of-thought-distillation",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12634706/",
+        "https://arxiv.org/abs/2206.07682",
+        "https://arxiv.org/html/2502.18001v1"
+      ]
+    },
+    {
+      "id": "rq-1772162368873-temporal-consistency-diffusion",
+      "topic": "Formal temporal consistency losses for video diffusion: Can we guarantee smooth generation at arbitrary frame rates?",
+      "source": "Research follow-up from real-time diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T00:00:00Z",
+      "priority": 8,
+      "tags": [
+        "diffusion-models",
+        "video-generation",
+        "temporal-consistency",
+        "real-time"
+      ],
+      "completedAt": "2026-02-27T21:47:00.007844+00:00",
+      "summary": "Video diffusion lacks formal verification methods but has strong empirical approaches. Flow models, Neural ODEs (Vid-ODE), and noise correlation (ARTDiff) provide theoretical foundations. Training-free methods (ZeroSmooth, DiffuseSlide) enable arbitrary frame rates without retraining.",
+      "sources": [
+        "https://lilianweng.github.io/posts/2024-04-12-diffusion-video/",
+        "https://arxiv.org/html/2510.19193",
+        "https://arxiv.org/html/2502.17863v2",
+        "https://arxiv.org/abs/2010.08188",
+        "https://arxiv.org/html/2506.01454v1",
+        "https://arxiv.org/html/2406.00908v1",
+        "https://openreview.net/forum?id=59nCKifDtm",
+        "https://arxiv.org/html/2510.01784v1"
+      ]
+    },
+    {
+      "id": "rq-1772162368872-zero-shot-distillation",
+      "topic": "Universal Distillation: Can we develop zero-shot distillation that works across foundation models without retraining?",
+      "source": "Research follow-up from real-time diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T00:00:00Z",
+      "priority": 8,
+      "tags": [
+        "diffusion-models",
+        "distillation",
+        "zero-shot-learning",
+        "transfer-learning"
+      ],
+      "completedAt": "2026-02-27T15:38:12.149988Z",
+      "summary": "Universal distillation enables knowledge transfer across architectures and tokenizers via optimal transport, synthetic data generation, and feature alignment. Key challenges remain: catastrophic forgetting, multilingual zero-shot transfer, and few-shot compatibility.",
+      "sources": [
+        "https://arxiv.org/abs/2207.05273",
+        "https://arxiv.org/abs/2402.12030",
+        "https://openaccess.thecvf.com/content/ICCV2023/papers/Lao_UniKD_Universal_Knowledge_Distillation_for_Mimicking_Homogeneous_or_Heterogeneous_Object_ICCV_2023_paper.pdf",
+        "https://www.amazon.science/publications/limitations-of-knowledge-distillation-for-zero-shot-transfer-learning",
+        "https://github.com/yoshitomo-matsubara/torchdistill",
+        "https://github.com/arcee-ai/DistillKit"
+      ],
+      "researchFile": "research/rq-1772162368872-zero-shot-distillation.md"
+    },
+    {
+      "id": "rq-1772162368871-nca-diffusion-hybrid",
+      "topic": "NCA-Diffusion Hybrid: Can Neural Cellular Automata replace global U-Net operations with local parallel updates for <1ms generation?",
+      "source": "Research follow-up from real-time diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T00:00:00Z",
+      "priority": 8,
+      "tags": [
+        "nca",
+        "diffusion-models",
+        "architecture",
+        "real-time",
+        "optimization"
+      ],
+      "completedAt": "2026-02-27T09:21:55.271829Z",
+      "summary": "NCAs can replace U-Nets in diffusion models with 60-110\u00d7 parameter reduction. Hybrid architectures (coarse-grid NCA + implicit decoder) enable real-time generation. Current SOTA: ~40ms (MirageLSD), ~10ms (one-step models). Sub-millisecond (<1ms) is theoretically possible with extreme optimization but requires quality trade-offs.",
+      "sources": [
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/abs/2506.22899",
+        "https://arxiv.org/abs/2501.02447",
+        "https://arxiv.org/abs/2401.06291",
+        "https://decart.ai/publications/mirage",
+        "https://arxiv.org/html/2403.16627v2",
+        "https://arxiv.org/html/2406.17284v1"
+      ],
+      "researchFile": "research/rq-1772162368871-nca-diffusion-hybrid.md"
+    },
+    {
+      "id": "rq-1771784673191-meta-gradient-nca",
+      "topic": "Meta-gradient generators for NCA perceptual feedback: Architecture design and training protocols",
+      "source": "Follow-up from perceptual feedback NCA research - most promising approach identified",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T18:24:33.191171Z",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "meta-learning",
+        "perceptual-feedback",
+        "optimization"
+      ],
+      "completedAt": "2026-02-25T20:38:15.619Z",
+      "summary": "Comprehensive analysis of meta-gradient generators for NCA training using hypernetwork architectures. HyperNet Fields (2024) demonstrates gradient-matching supervision achieves ~4\u00d7 computational savings. Proposed architecture uses condition + state encoding to predict perceptual loss gradients, enabling adaptive loss weighting, training stabilization, and faster convergence for texture synthesis.",
+      "sources": [
+        "https://arxiv.org/abs/2211.09760",
+        "https://arxiv.org/html/2412.17040",
+        "https://www.yudhister.me/velo/",
+        "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011589",
+        "https://arxiv.org/abs/2506.18720",
+        "https://openreview.net/forum?id=8khcyTc4Di",
+        "https://arxiv.org/html/2412.11777v1",
+        "https://arxiv.org/html/2312.08598v2"
+      ]
+    },
+    {
+      "id": "rq-1770925716000-hybrid-performance",
+      "topic": "Real-time performance of hybrid RD+noise systems - how many layers can run at 60fps in WebGL?",
+      "source": "Research follow-up from hybrid procedural techniques study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-12T21:28:36Z",
+      "priority": 5,
+      "tags": [
+        "performance",
+        "webgl",
+        "real-time",
+        "hybrid-methods",
+        "optimization"
+      ],
+      "completedAt": "2026-02-24T13:38:53.645807Z",
+      "summary": "60fps is achievable with 1 RD layer (128\u00d7128) + 4-6 FBM noise layers in WebGL. WebGPU offers 15x performance gain enabling 2-3 RD layers + 10-15 noise layers. Resolution, octave count, and shader optimization are critical factors.",
+      "sources": [
+        "https://tympanus.net/codrops/2024/05/01/reaction-diffusion-compute-shader-in-webgpu/",
+        "https://byteiota.com/webgpu-2026-70-browser-support-15x-performance-gains/",
+        "https://thebookofshaders.com/13/",
+        "https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices",
+        "https://shi-yan.github.io/webgpuunleashed/Compute/reaction_diffusion.html"
+      ],
+      "researchFile": "rq-1770925716000-hybrid-performance.md"
+    },
+    {
+      "id": "rq-1771607469256-nas-perceptual-metric",
+      "topic": "NAS for optimal <10K param perceptual metric architecture - search depthwise separable conv space, maximize LPIPS correlation, minimize params",
+      "source": "Research follow-up from distilled perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T17:11:09.254710+00:00",
+      "priority": 6,
+      "tags": [
+        "neural-architecture-search",
+        "perceptual-metrics",
+        "optimization",
+        "automl"
+      ],
+      "completedAt": "2026-02-22T18:29:28.599511+00:00",
+      "summary": "NAS can discover ultra-compact (<10K param) perceptual metrics by searching depthwise separable conv spaces. Mini-NAS shows 14.7x efficiency gains are achievable. DARTS or OFA methods could optimize for LPIPS correlation. Research gap: no existing work applies NAS specifically to perceptual metric architecture design.",
+      "sources": [
+        "https://openreview.net/forum?id=ERhIA5Y7IaT",
+        "https://arxiv.org/abs/1806.09055",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://arxiv.org/html/2509.01411",
+        "https://link.springer.com/article/10.1007/s11554-025-01744-5",
+        "https://pytorch.org/hub/pytorch_vision_once_for_all/"
+      ]
+    },
+    {
+      "id": "rq-1771629235296-texture-specific-lpips",
+      "topic": "Domain-specific LPIPS distillation for texture synthesis - can we achieve <5K parameters by specializing to texture patterns?",
+      "source": "Research follow-up from distilled LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T23:13:55.296991Z",
+      "priority": 7,
+      "tags": [
+        "perceptual-metrics",
+        "knowledge-distillation",
+        "texture-synthesis",
+        "nca",
+        "domain-specific"
+      ],
+      "completedAt": "2026-02-21T05:23:27.611375+00:00",
+      "summary": "Evidence strongly supports <5K param texture-specific LPIPS feasibility through domain-specific distillation, depthwise separable convolutions, and texture-aware losses. Parametric PerceptNet demonstrates 5K param perceptual metrics can match 7.5M+ models; \u00b5NCA proves texture tasks work with 68-588 params.",
+      "sources": [
+        "https://arxiv.org/html/2412.03210",
+        "https://ar5iv.labs.arxiv.org/html/2111.13545",
+        "https://arxiv.org/html/2503.08043",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://www.nature.com/articles/s41598-025-23997-7"
+      ]
+    },
+    {
+      "id": "rq-1771607469255-distilled-lpips-empirical",
+      "topic": "Empirical validation of <10K param distilled LPIPS: implement architecture, distill from AlexNet teacher, benchmark on BAPPS, test NCA training stability",
+      "source": "Research follow-up from distilled perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T17:11:09.254707+00:00",
+      "priority": 8,
+      "tags": [
+        "perceptual-metrics",
+        "knowledge-distillation",
+        "nca",
+        "experiments",
+        "lpips"
+      ],
+      "status": "completed",
+      "completedAt": "2026-02-20T23:13:55.296947Z",
+      "summary": "Distilling LPIPS to <10K parameters is ambitious but achievable through cosine similarity-guided distillation, domain specialization, and teacher assistant methods, with expected 65-80% BAPPS performance.",
+      "sources": [
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11324720/",
+        "https://arxiv.org/abs/1801.03924",
+        "https://www.sciencedirect.com/science/article/pii/S2405844024104070",
+        "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011589"
+      ]
+    },
+    {
+      "id": "rq-1739076481005-quality-metrics",
+      "topic": "Texture quality metrics that correlate with human perception - FID vs LPIPS vs perceptual texture similarity for different domains",
+      "source": "Research follow-up from routing pipeline study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T02:45:00Z",
+      "priority": 5,
+      "tags": [
+        "quality-metrics",
+        "perceptual-evaluation",
+        "texture-synthesis",
+        "human-perception"
+      ],
+      "completedAt": "2026-02-20T10:53:40.303606+00:00",
+      "summary": "Texture quality assessment evolved from pixel-level metrics (PSNR, SSIM) to DNN-based perceptual metrics (LPIPS, DISTS) that align with human perception. LPIPS and DISTS consistently outperform traditional metrics for textures. Domain-specific considerations critical\u2014ImageNet-trained FID struggles with specialized domains. For NCA training: LPIPS (fast, perceptually aligned), DISTS (texture robustness), Gram matrix (style transfer), KID over FID (better sample efficiency). Key insight: humans use combined feature dimensions (density, regularity, contrast) when judging texture similarity.",
+      "sources": [
+        "https://lightning.ai/docs/torchmetrics/stable/image/learned_perceptual_image_patch_similarity.html",
+        "https://blog.paperspace.com/review-metrics-image-synthesis-models/",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://medium.com/@wangdk93/evaluation-of-image-generation-ec402191d4d7",
+        "https://github.com/abhijay9/ShiftTolerant-LPIPS",
+        "https://pdxscholar.library.pdx.edu/cgi/viewcontent.cgi?article=1382&context=compsci_fac",
+        "https://huggingface.co/blog/PrunaAI/objective-metrics-for-image-generation-assessment",
+        "https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_The_Unreasonable_Effectiveness_CVPR_2018_paper.pdf",
+        "https://richzhang.github.io/PerceptualSimilarity/",
+        "https://eureka.patsnap.com/article/ssim-vs-lpips-which-metric-should-you-trust-for-image-quality-evaluation",
+        "https://en.wikipedia.org/wiki/Fr%C3%A9chet_inception_distance",
+        "https://arxiv.org/html/2401.09603v2",
+        "https://openaccess.thecvf.com/content/CVPR2024/papers/Jayasumana_Rethinking_FID_Towards_a_Better_Evaluation_Metric_for_Image_Generation_CVPR_2024_paper.pdf",
+        "https://www.techtarget.com/searchenterpriseai/definition/Frechet-inception-distance-FID",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7817470/",
+        "https://github.com/dingkeyan93/DISTS",
+        "https://www.cns.nyu.edu/pub/lcv/ding20a-preprint.pdf",
+        "https://en.wikipedia.org/wiki/Structural_similarity_index_measure",
+        "https://www.imatest.com/docs/ssim/",
+        "https://arxiv.org/html/2509.13150",
+        "https://link.springer.com/article/10.1007/s11263-020-01419-7",
+        "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0130335",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC4481328/",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://ar5iv.labs.arxiv.org/html/2111.13545",
+        "https://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16.pdf",
+        "https://github.com/anh-nn01/Neural-Style-Transfer",
+        "https://ieeexplore.ieee.org/iel7/10405420/10405394/10405398.pdf",
+        "https://arxiv.org/pdf/1705.08086",
+        "https://dl.acm.org/doi/fullHtml/10.1145/3512353.3512366",
+        "https://www.sloyd.ai/blog/texture-quality-metrics-for-3d-models",
+        "https://www.nature.com/articles/s41598-024-78254-0",
+        "https://advances.realtimerendering.com/s2024/index.html",
+        "https://advances.realtimerendering.com/s2025/index.html",
+        "https://arxiv.org/abs/2112.01398",
+        "https://arxiv.org/pdf/2102.03982",
+        "https://users.eecs.northwestern.edu/~pappas/papers/zujovic_tip13.pdf",
+        "https://arxiv.org/html/2503.00625v1",
+        "https://arxiv.org/html/2412.11170"
+      ]
+    },
+    {
+      "id": "rq-1770915400002-genomic-scaling",
+      "topic": "Genomic signal capacity scaling - can we go beyond 8 textures? What are training data requirements for ng=5-6 bits?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "genomic-signals",
+        "scaling",
+        "multi-texture",
+        "nca"
+      ],
+      "completedAt": "2026-02-19T23:00:00Z",
+      "summary": "Genomic capacity scales exponentially (2^ng textures) but faces practical limits: genome corruption at 6000+ iterations, uncertain parameter scaling (ng=5 likely ~15k-40k params), and training complexity growth. Current validated: ng=3 (8 textures, 4,270-10,000 params). Key challenges: information-theoretic limits, stability mechanisms, dataset requirements scale linearly to super-linearly. Alternative approaches: hierarchical genomic organization, latent space compression, or MNCA routing.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2407.05991",
+        "https://arxiv.org/abs/2407.05991",
+        "https://arxiv.org/abs/2111.13545",
+        "https://arxiv.org/html/2506.22899",
+        "https://distill.pub/2020/growing-ca/",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://dynca.github.io/",
+        "https://meshnca.github.io/",
+        "https://www.pnas.org/doi/10.1073/pnas.2409160121",
+        "https://arxiv.org/html/2501.10645",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC2766787/",
+        "https://academic.oup.com/bib/article/24/5/bbad293/7243028"
+      ]
+    },
+    {
+      "id": "rq-1739950000002-spatial-mixture-textures",
+      "topic": "Spatial mixture models for texture synthesis: Can MNCA-style per-cell routing enable region-specific multi-texture generation?",
+      "source": "Research follow-up from controllable NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-18T09:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "spatial-routing",
+        "multi-texture",
+        "nca"
+      ],
+      "completedAt": "2026-02-19T22:00:00Z",
+      "summary": "MNCA-style per-cell routing definitively enables region-specific multi-texture generation through two validated paradigms: emergent segmentation (MNCA probabilistic rule selection) and explicit control (genomic signal spatial variation). Both achieve 1,500-10,000 parameter efficiency for 8 textures with real-time performance. Complementary approaches suggest hybrid methods could combine user-specified layout with adaptive emergence.",
+      "sources": [
+        "https://arxiv.org/html/2506.20486",
+        "https://arxiv.org/html/2407.05991",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://pub.sakana.ai/pdnca/",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://www.sciencedirect.com/science/article/abs/pii/S0031320326000130",
+        "https://openaccess.thecvf.com/content/CVPR2025/papers/Wu_Learning_Heterogeneous_Tissues_with_Mixture_of_Experts_for_Gigapixel_Whole_CVPR_2025_paper.pdf",
+        "https://arxiv.org/abs/2505.02005",
+        "https://arxiv.org/abs/1611.08207",
+        "https://dynca.github.io/",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/html/2506.22899v2",
+        "https://arxiv.org/html/2406.13383v1",
+        "https://distill.pub/2020/growing-ca/"
+      ]
+    },
+    {
+      "id": "rq-1739950000001-attention-genome-preservation",
+      "topic": "Attention mechanisms for genome preservation: Can ViTCA-style attention prevent genome corruption beyond 6000+ steps?",
+      "source": "Research follow-up from controllable NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-18T09:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "attention",
+        "genomic-signals",
+        "stability",
+        "nca"
+      ],
+      "completedAt": "2026-02-19T18:15:00Z",
+      "summary": "ViTCA introduces spatially localized self-attention achieving superior performance and fixed-point convergence, but no empirical evidence exists for preventing genome corruption in multi-texture NCAs. Genome corruption at 6000+ steps stems from genomic signal drift, not architectural limitations. Pool-based training is the proven solution. Alternative approaches: Universal NCA hardware conditioning (separates task identity from state evolution), AdaNCA plug-and-play robustness (stabilizes against perturbations), regenerative capability (maintains internal representations despite external damage). Key insight: attention mechanisms address spatial communication and expressivity, while genome preservation requires temporal drift prevention through training strategies or architectural genome separation.",
+      "sources": [
+        "https://arxiv.org/abs/2211.01233",
+        "https://proceedings.neurips.cc/paper_files/paper/2022/file/361e5112d2eca09513bbd266e4b2d2be-Paper-Conference.pdf",
+        "https://openreview.net/forum?id=9t24EBSlZOa",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2407.05991",
+        "https://distill.pub/2020/growing-ca/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://arxiv.org/html/2403.15525",
+        "https://arxiv.org/abs/2305.13043",
+        "https://arxiv.org/abs/2406.08298",
+        "https://arxiv.org/html/2406.08298v5",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://gabrielbena.github.io/blog/2025/bena2025unca/",
+        "https://dl.acm.org/doi/10.1007/978-3-030-72812-0_3",
+        "https://arxiv.org/html/2201.12360",
+        "https://arxiv.org/html/2506.15746v1",
+        "https://arxiv.org/html/2508.06389",
+        "https://arxiv.org/html/2410.02651v1"
+      ]
+    },
+    {
+      "id": "rq-1770914400001-prompt-to-genome",
+      "topic": "Learned prompt-to-genome mapping: Can networks map CLIP text embeddings to genomic signals, combining zero-shot capability with stability?",
+      "source": "Research follow-up from CLIP-conditioned NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T20:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "clip",
+        "nca",
+        "genomic-signals",
+        "zero-shot-learning"
+      ],
+      "completedAt": "2026-02-19T04:12:26.517086Z",
+      "summary": "Learned prompt-to-genome mapping is technically feasible but unproven. Requires extreme dimensionality reduction (512D\u21923-8 bits, 64-170\u00d7 compression) while preserving semantics. Three architectural approaches exist: learned adapters (autoencoder projection), hardware conditioning (Universal NCA attention), and AdaNCA-style plug-and-play. Recent binary quantization (96% performance retention at 32\u00d7 compression) and sparse autoencoders (RAE, SpLiCE) provide building blocks. Critical challenges: gradient flow through long NCA iterations, semantic preservation during compression, and training data requirements (~10K texture-text pairs). If successful, enables zero-shot multi-texture synthesis with sub-20k parameters.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2407.05991",
+        "https://github.com/Mainakdeb/text-2-cellular-automata",
+        "https://gabrielbena.github.io/blog/2025/bena2025unca/",
+        "https://arxiv.org/abs/2406.08298",
+        "https://arxiv.org/html/2406.08298v5",
+        "https://huggingface.co/blog/embedding-quantization",
+        "https://blog.vespa.ai/combining-matryoshka-with-binary-quantization-using-embedder/",
+        "https://arxiv.org/html/2509.25839v1",
+        "https://arxiv.org/html/2502.20578v1",
+        "https://arxiv.org/html/2503.05613v1",
+        "https://arxiv.org/html/2506.13831v1",
+        "https://arxiv.org/html/2402.10376v1",
+        "https://academic.oup.com/bib/article/24/5/bbad293/7243028",
+        "https://arxiv.org/abs/2509.11131",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://distill.pub/2020/growing-ca/",
+        "https://dynca.github.io/",
+        "https://meshnca.github.io/"
+      ]
+    },
+    {
+      "id": "rq-1739076481002-controllable-nca",
+      "topic": "Training signal-responsive NCAs for multi-texture synthesis - what conditioning mechanisms work best?",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "controllability",
+        "conditioning",
+        "multi-texture"
+      ],
+      "completedAt": "2026-02-18T09:00:00Z",
+      "summary": "Genomic signal encoding achieves state-of-the-art multi-texture synthesis with 1,500-10,000 parameters for 8 textures through binary-encoded channels. Alternative mechanisms include latent space conditioning (94% memory reduction), attention-based ViTCA, per-cell MNCA routing, hardware vector conditioning (Universal NCA), and plug-and-play AdaNCA adaptors. Each offers distinct trade-offs: genomic signals excel at parameter efficiency and direct interpolation; latent NCAs optimize computational resources; ViTCA handles global information flow; MNCA enables heterogeneous behaviors; Universal NCA supports task composition; AdaNCA enhances existing models with minimal overhead.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://arxiv.org/html/2403.15525v1",
+        "https://arxiv.org/abs/2403.15525",
+        "https://openreview.net/forum?id=9t24EBSlZOa",
+        "https://arxiv.org/abs/2211.01233",
+        "https://arxiv.org/html/2506.20486v1",
+        "https://gabrielbena.github.io/blog/2025/bena2025unca/",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://arxiv.org/abs/2406.08298",
+        "https://arxiv.org/html/2406.08298v5",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/html/2506.15746",
+        "https://www.researchgate.net/publication/360186334_HyperNCA_Growing_Developmental_Networks_with_Neural_Cellular_Automata"
+      ]
+    },
+    {
+      "id": "rq-1739590700002-spatial-cascade-routing",
+      "topic": "Spatial cascade routing: Does per-region tier assignment (complex areas \u2192 expensive models, simple areas \u2192 cheap models) improve quality-cost tradeoff?",
+      "source": "Research follow-up from cascade routing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-17T00:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "spatial-routing",
+        "nca",
+        "cascade-systems"
+      ],
+      "completedAt": "2026-02-18T02:30:00Z",
+      "summary": "Yes, spatial cascade routing significantly improves quality-cost tradeoffs, with demonstrated 2-3\u00d7 computational savings in image generation and theoretical 40-85% reduction potential in NCA/diffusion systems. Three successful paradigms exist: explicit spatial partitioning (RegionE: 2.41-2.57\u00d7 speedup), adaptive computation time (SACT: dynamic per-region layer depth), and per-cell routing (Universal NCA: hardware-based attention mechanisms). Critical challenges are router overhead (<1ms for lightweight systems), spatial complexity metrics (edge density, entropy, variance), and training data requirements.",
+      "sources": [
+        "https://arxiv.org/abs/2510.25590",
+        "https://openaccess.thecvf.com/content_cvpr_2017/papers/Figurnov_Spatially_Adaptive_Computation_CVPR_2017_paper.pdf",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://arxiv.org/pdf/2410.10347",
+        "https://arxiv.org/html/2602.09902",
+        "https://arxiv.org/html/2511.06441v1",
+        "https://arxiv.org/abs/2411.09837",
+        "https://arxiv.org/pdf/2510.08439",
+        "https://arxiv.org/abs/1903.07291",
+        "https://ieeexplore.ieee.org/document/9103062/",
+        "https://arxiv.org/html/2506.20486",
+        "https://proceedings.neurips.cc/paper_files/paper/2022/file/4c5e2bcbf21bdf40d75fddad0bd43dc9-Paper-Conference.pdf"
+      ]
+    },
     {
       "id": "rq-1739590700001-lightweight-routing-heuristics",
       "topic": "Can simple metrics (edge density, frequency spectrum entropy, color variance) replace learned BERT routers for NCA model selection?",
@@ -518,7 +1807,7 @@
         "nca"
       ],
       "completedAt": "2026-02-17T18:15:00Z",
-      "summary": "Yes, simple heuristic metrics can replace learned BERT routers for NCA model selection with significant computational advantages. Edge density, entropy, and color variance can be computed in O(n) time (sub-millisecond to milliseconds), while BERT routers require 1.2-20ms inference latency. For NCA cascades where Tier 1 models cost ~68 params and run at 25Hz, router overhead must be << 1ms—making lightweight heuristics essential. Simple metrics achieve r=0.70-0.83 correlation with complexity prediction, sufficient for routing decisions with quality-based escalation.",
+      "summary": "Yes, simple heuristic metrics can replace learned BERT routers for NCA model selection with significant computational advantages. Edge density, entropy, and color variance can be computed in O(n) time (sub-millisecond to milliseconds), while BERT routers require 1.2-20ms inference latency. For NCA cascades where Tier 1 models cost ~68 params and run at 25Hz, router overhead must be << 1ms\u2014making lightweight heuristics essential. Simple metrics achieve r=0.70-0.83 correlation with complexity prediction, sufficient for routing decisions with quality-based escalation.",
       "sources": [
         "https://www.nature.com/articles/s41598-025-08677-w",
         "https://cloudaiapp.dev/building-a-cost-efficient-ai-query-router-from-fuzzy-logic-to-quantized-bert/",
@@ -541,7 +1830,7 @@
     },
     {
       "id": "rq-1739590700000-nca-cascade-empirical",
-      "topic": "Empirical validation: Implement 3-tier NCA cascade (μNCA → Diff-NCA → SD3) and measure actual compute reduction on texture synthesis benchmark",
+      "topic": "Empirical validation: Implement 3-tier NCA cascade (\u03bcNCA \u2192 Diff-NCA \u2192 SD3) and measure actual compute reduction on texture synthesis benchmark",
       "source": "Research follow-up from cascade routing study",
       "addedBy": "research-agent",
       "addedAt": "2026-02-17T00:00:00Z",
@@ -555,7 +1844,7 @@
         "cascade-systems"
       ],
       "completedAt": "2026-02-17T08:30:00Z",
-      "summary": "Yes, cascade routing can theoretically achieve 60-85% compute reduction for NCA systems. LLM cascades demonstrate 60-85% cost savings through quality predictors. Proposed 3-tier NCA cascade (μNCA → Diff-NCA → SD3) with cost ratios ~1:42:111,250 could achieve 79.4% reduction (40/40/20 distribution) or 59.7% (30/30/40 distribution). All components exist: three distinct tier models with massive parameter gaps (68 → 336k → 890M params), routing mechanisms (genomic signals, MNCA per-cell routing), quality metrics (FID, LPIPS). Critical challenge: router overhead may exceed Tier 1 cost—requires lightweight heuristics or distilled routers <10k params. No implementations exist yet; represents high-value first-mover research opportunity.",
+      "summary": "Yes, cascade routing can theoretically achieve 60-85% compute reduction for NCA systems. LLM cascades demonstrate 60-85% cost savings through quality predictors. Proposed 3-tier NCA cascade (\u03bcNCA \u2192 Diff-NCA \u2192 SD3) with cost ratios ~1:42:111,250 could achieve 79.4% reduction (40/40/20 distribution) or 59.7% (30/30/40 distribution). All components exist: three distinct tier models with massive parameter gaps (68 \u2192 336k \u2192 890M params), routing mechanisms (genomic signals, MNCA per-cell routing), quality metrics (FID, LPIPS). Critical challenge: router overhead may exceed Tier 1 cost\u2014requires lightweight heuristics or distilled routers <10k params. No implementations exist yet; represents high-value first-mover research opportunity.",
       "sources": [
         "https://arxiv.org/abs/2406.18665",
         "https://arxiv.org/html/2410.10347v1",
@@ -587,7 +1876,7 @@
         "nca"
       ],
       "completedAt": "2026-02-17T00:00:00Z",
-      "summary": "Yes, cascade routing can achieve 60%+ compute reduction for NCA systems. LLM cascades achieve 60-85% cost reduction through answer consistency checking, confidence thresholds, and BERT-based routers. Proposed 3-tier NCA architecture (μNCA → Diff-NCA → Diffusion) achieves 79.4% reduction with 40/40/20 distribution, 59.7% with 30/30/40 distribution. Architecture exists (genomic signals, MNCA per-cell routing) but no implementations yet—represents significant research opportunity. Key challenges: router overhead may exceed Tier 1 cost, spatial routing possibilities, lightweight heuristic development.",
+      "summary": "Yes, cascade routing can achieve 60%+ compute reduction for NCA systems. LLM cascades achieve 60-85% cost reduction through answer consistency checking, confidence thresholds, and BERT-based routers. Proposed 3-tier NCA architecture (\u03bcNCA \u2192 Diff-NCA \u2192 Diffusion) achieves 79.4% reduction with 40/40/20 distribution, 59.7% with 30/30/40 distribution. Architecture exists (genomic signals, MNCA per-cell routing) but no implementations yet\u2014represents significant research opportunity. Key challenges: router overhead may exceed Tier 1 cost, spatial routing possibilities, lightweight heuristic development.",
       "sources": [
         "https://files.sri.inf.ethz.ch/website/papers/dekoninck2024cascaderouting.pdf",
         "https://arxiv.org/pdf/2406.18665",
@@ -621,7 +1910,7 @@
         "nca"
       ],
       "completedAt": "2026-02-15T12:00:00Z",
-      "summary": "NCAs operate in fundamentally different paradigm than token-based MoE. Standard NCAs use homogeneous rules achieving heterogeneity through emergence. Spatial MoE-NCAs (MNCA, PD-NCA) implement per-cell routing but address collapse through competitive dynamics, environmental pressure, and stochastic mechanisms rather than auxiliary losses. Key insight: spatial correlation and task objectives determine whether load balancing is needed—biological tasks often don't need it; computational tasks may benefit.",
+      "summary": "NCAs operate in fundamentally different paradigm than token-based MoE. Standard NCAs use homogeneous rules achieving heterogeneity through emergence. Spatial MoE-NCAs (MNCA, PD-NCA) implement per-cell routing but address collapse through competitive dynamics, environmental pressure, and stochastic mechanisms rather than auxiliary losses. Key insight: spatial correlation and task objectives determine whether load balancing is needed\u2014biological tasks often don't need it; computational tasks may benefit.",
       "sources": [
         "https://openreview.net/forum?id=y1iU5czYpE",
         "https://arxiv.org/abs/2408.15664",
@@ -649,7 +1938,7 @@
         "routing",
         "nca"
       ],
-      "summary": "Collections of specialized NCAs with learned routing represent a pragmatic alternative to foundation models. Three architectural paradigms: genomic signal encoding (2-8+ textures from single NCA), mixture-of-NCAs (probabilistic per-cell rule routing), and attention-based universal NCAs. RouteLLM-style learned routers can achieve 60-63% compute reduction by directing queries to appropriate specialists. Model zoo approach better suited to NCAs' local computation paradigm than pursuing single foundation models—extreme parameter efficiency (68-8000 params) makes training large collections trivial. Critical open questions: optimal routing granularity, load balancing in spatial domains, whether local computation can achieve global reasoning.",
+      "summary": "Collections of specialized NCAs with learned routing represent a pragmatic alternative to foundation models. Three architectural paradigms: genomic signal encoding (2-8+ textures from single NCA), mixture-of-NCAs (probabilistic per-cell rule routing), and attention-based universal NCAs. RouteLLM-style learned routers can achieve 60-63% compute reduction by directing queries to appropriate specialists. Model zoo approach better suited to NCAs' local computation paradigm than pursuing single foundation models\u2014extreme parameter efficiency (68-8000 params) makes training large collections trivial. Critical open questions: optimal routing granularity, load balancing in spatial domains, whether local computation can achieve global reasoning.",
       "sources": [
         "https://arxiv.org/html/2506.20486",
         "https://arxiv.org/html/2505.13058v1",
@@ -682,7 +1971,7 @@
         "nca"
       ],
       "completedAt": "2026-02-14T23:30:00Z",
-      "summary": "NCAs exhibit fundamentally different scaling than transformers: parameter efficiency through iterative computation (68-8000 params sufficient for many tasks), quadratic O(H²×W²) compute scaling with resolution, channel count as primary model size metric, and generalization via learned dynamics rather than overparameterization. Unlike Kaplan/Chinchilla power laws, NCA capacity = parameters × iterations × receptive field. Key findings: Diff-NCA (336k params) outperforms 4× larger UNet; ViTCA achieves linear complexity through CA iteration amortization; architectural innovations (attention, hierarchy) address resolution bottleneck. Missing: systematic empirical studies across parameter scales, compute-optimal iteration budgets, predictive scaling equations.",
+      "summary": "NCAs exhibit fundamentally different scaling than transformers: parameter efficiency through iterative computation (68-8000 params sufficient for many tasks), quadratic O(H\u00b2\u00d7W\u00b2) compute scaling with resolution, channel count as primary model size metric, and generalization via learned dynamics rather than overparameterization. Unlike Kaplan/Chinchilla power laws, NCA capacity = parameters \u00d7 iterations \u00d7 receptive field. Key findings: Diff-NCA (336k params) outperforms 4\u00d7 larger UNet; ViTCA achieves linear complexity through CA iteration amortization; architectural innovations (attention, hierarchy) address resolution bottleneck. Missing: systematic empirical studies across parameter scales, compute-optimal iteration budgets, predictive scaling equations.",
       "sources": [
         "https://www.nature.com/articles/s44335-025-00026-4",
         "https://arxiv.org/html/2506.22899v2",
@@ -776,7 +2065,7 @@
         "foundation-models",
         "nca"
       ],
-      "summary": "Self-supervised pretraining for NCAs remains unexplored but can leverage established strategies from vision transformers: contrastive learning (SimCLR, MoCo, BYOL) on pattern dynamics, masked prediction (MAE-style spatial/temporal masking), predictive coding (next-state prediction), and world models (parameter-conditioned dynamics). Proposed CMAP framework combines all approaches in 4-stage pipeline. Pattern evolution provides unlimited training signals—NCAs self-organize from noise without labels. Key challenges: architecture design, optimal augmentations, convergence stability. Path forward: implement CMAP, benchmark transfer learning, establish NCA scaling laws.",
+      "summary": "Self-supervised pretraining for NCAs remains unexplored but can leverage established strategies from vision transformers: contrastive learning (SimCLR, MoCo, BYOL) on pattern dynamics, masked prediction (MAE-style spatial/temporal masking), predictive coding (next-state prediction), and world models (parameter-conditioned dynamics). Proposed CMAP framework combines all approaches in 4-stage pipeline. Pattern evolution provides unlimited training signals\u2014NCAs self-organize from noise without labels. Key challenges: architecture design, optimal augmentations, convergence stability. Path forward: implement CMAP, benchmark transfer learning, establish NCA scaling laws.",
       "sources": [
         "https://www.nature.com/articles/s41598-025-23997-7",
         "https://arxiv.org/html/2506.22899v2",
@@ -837,7 +2126,7 @@
         "optimization",
         "hybrid-methods"
       ],
-      "summary": "Routing problem parallels LLM serving: predictive routers select models based on quality/latency/cost, achieving 60-63% cost reduction. Key strategies: semantic routing, cascade routing (try fast model first), mixture-of-experts. For textures: route to NCAs for real-time/organic (25Hz, 68-8000 params), LCMs for interactive photorealism (<1s, 768×768), standard diffusion for max quality. Hybrid models (Diff-NCA: 336k params) bridge the gap. Implementation: quality/speed predictors, model zoo infrastructure, cascade routing with learned quality gates.",
+      "summary": "Routing problem parallels LLM serving: predictive routers select models based on quality/latency/cost, achieving 60-63% cost reduction. Key strategies: semantic routing, cascade routing (try fast model first), mixture-of-experts. For textures: route to NCAs for real-time/organic (25Hz, 68-8000 params), LCMs for interactive photorealism (<1s, 768\u00d7768), standard diffusion for max quality. Hybrid models (Diff-NCA: 336k params) bridge the gap. Implementation: quality/speed predictors, model zoo infrastructure, cascade routing with learned quality gates.",
       "sources": [
         "https://www.emergentmind.com/topics/llm-routers",
         "https://www.requesty.ai/blog/intelligent-llm-routing-in-enterprise-ai-uptime-cost-efficiency-and-model",
@@ -1011,7 +2300,7 @@
         "simulation",
         "gray-scott"
       ],
-      "summary": "Gray-Scott simulates two chemicals with reaction UV² + diffusion at different rates. Tiny parameter changes (feed F, kill k) create dramatically different patterns—spots, stripes, solitons, self-replicating structures. Ideal for computational art due to organic aesthetics and infinite parameter space exploration.",
+      "summary": "Gray-Scott simulates two chemicals with reaction UV\u00b2 + diffusion at different rates. Tiny parameter changes (feed F, kill k) create dramatically different patterns\u2014spots, stripes, solitons, self-replicating structures. Ideal for computational art due to organic aesthetics and infinite parameter space exploration.",
       "sources": [
         "https://www.karlsims.com/rd.html",
         "http://www.mrob.com/pub/comp/xmorphia/index.html",
@@ -1086,11 +2375,683 @@
         "https://platform.claude.com/docs/en/agent-sdk/hooks",
         "https://code.claude.com/docs/en/sub-agents"
       ]
+    },
+    {
+      "id": "rq-1739950000000-hybrid-genomic-latent",
+      "topic": "Hybrid genomic-latent NCAs: Can genomic signals operate in latent space for extreme compression + multi-texture capability?",
+      "source": "Research follow-up from controllable NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-18T09:00:00Z",
+      "priority": 7,
+      "tags": [
+        "neural-networks",
+        "genomic-signals",
+        "latent-space",
+        "multi-texture",
+        "nca"
+      ],
+      "completedAt": "2026-02-18T15:50:00Z",
+      "summary": "Hybrid genomic-latent NCAs combine multi-texture genomic encoding (8+ textures, 1,500-10,000 params) with latent space compression (94% memory reduction, 16\u00d7 input capacity). No implementations exist yet, but three proven paradigms provide building blocks: LNCA for latent operation, genomic signals for multi-texture capability, VNCA for probabilistic frameworks. Key challenge: preserving genomic identity through aggressive compression\u2014solvable via skip connections, hierarchical separation, or variational conditioning. Potential impact: <20k params for 16+ textures at high resolution with real-time performance.",
+      "sources": [
+        "https://arxiv.org/html/2403.15525",
+        "https://arxiv.org/html/2506.22899v2",
+        "https://arxiv.org/abs/2506.22899",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://ar5iv.labs.arxiv.org/html/2201.12360",
+        "https://arxiv.org/abs/2201.12360",
+        "https://openreview.net/forum?id=7fFO4cMBx_9",
+        "https://papers.neurips.cc/paper_files/paper/2022/file/361e5112d2eca09513bbd266e4b2d2be-Paper-Conference.pdf",
+        "https://gabrielbena.github.io/blog/2025/bena2025unca/",
+        "https://github.com/kangbosun/NeuralTextureCompression",
+        "https://github.com/ChefSteveP/neural-texture-compression",
+        "https://distill.pub/2020/growing-ca/",
+        "https://infoscience.epfl.ch/entities/publication/e8ea654a-a158-4d97-94c5-4770d1f16f77",
+        "https://arxiv.org/html/2505.08778v1",
+        "https://academic.oup.com/bib/article/24/5/bbad293/7243028",
+        "https://github.com/MECLabTUDA/awesome-nca"
+      ]
+    },
+    {
+      "id": "rq-1770914400000-clip-dimensionality-adapter",
+      "topic": "Learning CLIP-to-NCA adapters: Can we train 512D\u219216D projections that preserve semantic control while enabling direct state injection?",
+      "source": "Research follow-up from CLIP-conditioned NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T20:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "clip",
+        "nca",
+        "dimensionality-reduction",
+        "adapters"
+      ],
+      "completedAt": "2026-02-18T21:00:00Z",
+      "summary": "Comprehensive analysis of CLIP\u2192NCA adapter feasibility. 32\u00d7 compression (512D\u219216D) achievable via sparse autoencoders (MSAE: 0.99 cosine similarity), RAE (92% k-NN preservation), or bottleneck adapters. Three injection mechanisms identified: genomic signal replacement (3-bit binary \u2192 continuous 16D), conditional perception loop, latent space operation. Critical challenges: extreme compression ratio, gradient flow through NCA iterations, semantic preservation vs. texture-specificity trade-off. No implementations exist\u2014represents high-value research opportunity.",
+      "sources": [
+        "https://arxiv.org/html/2502.20578v1",
+        "https://arxiv.org/html/2509.25839v1",
+        "https://arxiv.org/html/2408.10264",
+        "https://arxiv.org/html/2505.00105v1",
+        "https://arxiv.org/pdf/1902.00751",
+        "https://arxiv.org/html/2503.00507v1",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://arxiv.org/html/2403.15525",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://www.arxiv.org/pdf/2512.08360",
+        "https://arxiv.org/html/2506.22899",
+        "https://arxiv.org/html/2501.04591",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC9616702/",
+        "https://www.sciencedirect.com/science/article/abs/pii/S1077314224001309",
+        "https://github.com/Mainakdeb/text-2-cellular-automata",
+        "https://distill.pub/2020/growing-ca/",
+        "https://dynca.github.io/",
+        "https://meshnca.github.io/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/"
+      ]
+    },
+    {
+      "id": "rq-1770914798000-hierarchical-fine-tuning",
+      "topic": "Hierarchical NCA fine-tuning strategies: Should we freeze coarse layers and fine-tune fine layers, or vice versa?",
+      "source": "Research follow-up from hierarchical NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T22:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "hierarchical-models",
+        "fine-tuning",
+        "nca"
+      ],
+      "completedAt": "2026-02-19T10:14:25.417684+00:00",
+      "summary": "Hierarchical NCA fine-tuning strategies remain unexplored, but convergent evidence from H-NCA architectures, traditional hierarchical neural networks, and PEFT suggests freezing coarse layers while fine-tuning fine layers is optimal. Coarse scales encode universal pattern formation principles; fine scales implement task-specific details. FR2 backbone freezing in YOLO (2025) and 25-50% bottom-layer freezing in transformers support this. Default strategy: freeze parent NCAs (coarse), train child NCAs (fine) with low LR. Exceptions: progressive unfreezing for maximum adaptation, coarse-training when global reorganization needed. Critical gap: no empirical validation exists\u2014represents high-value research opportunity.",
+      "sources": [
+        "https://direct.mit.edu/isal/proceedings/isal2023/35/20/116844",
+        "https://dl.acm.org/doi/10.1145/3638529.3654150",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://arxiv.org/abs/2211.01233",
+        "https://arxiv.org/abs/2406.08298",
+        "https://www.sciencedirect.com/science/article/pii/S1571064525001757",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://distill.pub/2020/growing-ca/",
+        "https://www.mdpi.com/2227-7390/13/15/2539",
+        "https://openreview.net/forum?id=kvBuxFxSLR",
+        "https://arxiv.org/html/2505.01016v1",
+        "https://www.exxactcorp.com/blog/deep-learning/guide-to-freezing-layers-in-ai-models",
+        "https://arxiv.org/html/2308.08747v4",
+        "https://arxiv.org/html/2501.13669v2",
+        "https://venturebeat.com/orchestration/mits-new-fine-tuning-method-lets-llms-learn-new-skills-without-losing-old",
+        "https://openreview.net/forum?id=ScI7IlKGdI",
+        "https://ieeexplore.ieee.org/document/7280542",
+        "https://www.nature.com/articles/s41598-025-20975-x",
+        "https://www.mdpi.com/2079-9292/14/14/2869",
+        "https://openaccess.thecvf.com/content_cvpr_2016/papers/Hu_Bottom-Up_and_Top-Down_CVPR_2016_paper.pdf",
+        "http://proceedings.mlr.press/v119/mittal20a/mittal20a.pdf",
+        "https://proceedings.neurips.cc/paper_files/paper/2022/file/361e5112d2eca09513bbd266e4b2d2be-Paper-Conference.pdf",
+        "https://arxiv.org/pdf/2103.04922",
+        "https://developer.nvidia.com/blog/improving-diffusion-models-as-an-alternative-to-gans-part-2/",
+        "https://www.arxiv.org/pdf/2510.21887",
+        "https://www.emergentmind.com/topics/diffusion-vae-approach",
+        "https://huggingface.co/blog/samuellimabraz/peft-methods",
+        "https://keras.io/guides/transfer_learning/"
+      ]
+    },
+    {
+      "id": "rq-1770915400003-router-transfer",
+      "topic": "Cross-domain transfer learning for NCA routers - can texture routing principles transfer to morphogenesis or simulation domains?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "transfer-learning",
+        "routing",
+        "cross-domain",
+        "nca"
+      ],
+      "completedAt": "2026-02-20T04:44:05.387567Z",
+      "summary": "Cross-domain transfer learning for NCA routers remains empirically unvalidated despite existing architecture (MNCA, Universal NCA, genomic signals). Key finding: no research has systematically tested whether routing principles transfer between texture/morphogenesis/simulation domains. Most promising path: Universal NCA hardware conditioning demonstrated zero-shot task composition in mathematical domains. Fundamental question: are these domains fundamentally incompatible or different arrangements of shared computational primitives? Represents high-value first-mover research opportunity with four proposed experiments.",
+      "sources": [
+        "https://arxiv.org/abs/2506.22899",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://distill.pub/2020/growing-ca/",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://arxiv.org/html/2506.20486",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://openreview.net/pdf?id=BQh1SGvROG",
+        "https://papers.neurips.cc/paper_files/paper/2022/file/361e5112d2eca09513bbd266e4b2d2be-Paper-Conference.pdf",
+        "https://arxiv.org/abs/2103.14886",
+        "https://arxiv.org/html/2506.15746",
+        "https://arxiv.org/abs/2410.23368",
+        "https://arxiv.org/html/2601.04695",
+        "https://openreview.net/pdf?id=23ZjUGpjcc",
+        "https://arxiv.org/abs/2405.11530",
+        "https://www.arxiv.org/pdf/2512.08360",
+        "https://www.sciencedirect.com/science/article/pii/S1571064525001757",
+        "https://www.nature.com/articles/s44335-025-00026-4"
+      ]
+    },
+    {
+      "id": "rq-1771584820303-distilled-perceptual",
+      "topic": "Distilled perceptual metrics for real-time NCA training - can LPIPS/DISTS be compressed to <10k params while maintaining perceptual alignment?",
+      "source": "Research follow-up from quality metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T10:53:40.303653+00:00",
+      "priority": 6,
+      "tags": [
+        "quality-metrics",
+        "model-compression",
+        "nca",
+        "real-time",
+        "distillation"
+      ],
+      "completedAt": "2026-02-20T17:11:09.254655+00:00",
+      "summary": "Distilling perceptual metrics to <10k parameters is theoretically feasible via multiple pathways: LASI (zero-parameter linear prediction), lightweight backbones (SqueezeNet 58K params), knowledge distillation frameworks, and modular approaches (TEED <1K param components). VGG-based perceptual losses create NCA training instabilities. Path forward: depthwise separable convolutions (8-9\u00d7 efficiency), knowledge distillation from LPIPS/DISTS teachers, or parameter-free LASI with implicit differentiation. Critical unknowns: does minimal architecture preserve perceptual alignment? Can LASI provide training gradients? Empirical validation required.",
+      "sources": [
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://openreview.net/forum?id=e4FG5PJ9uC",
+        "https://arxiv.org/abs/2310.05986",
+        "https://arxiv.org/abs/2509.01411",
+        "https://arxiv.org/abs/2308.06468",
+        "https://github.com/xavysp/TEED",
+        "https://arxiv.org/pdf/2503.12067",
+        "https://arxiv.org/pdf/2312.08864",
+        "https://www.sciencedirect.com/science/article/abs/pii/S0010482524007558",
+        "https://arxiv.org/abs/2507.15709",
+        "https://arxiv.org/abs/1704.04861",
+        "https://vinbhaskara.github.io/files/eccvw20-pdf.pdf",
+        "https://medium.com/data-science/understanding-depthwise-separable-convolutions-and-the-efficiency-of-mobilenets-6de3d6b62503",
+        "https://openaccess.thecvf.com/content_CVPR_2020/papers/Haase_Rethinking_Depthwise_Separable_Convolutions_How_Intra-Kernel_Correlations_Lead_to_Improved_CVPR_2020_paper.pdf",
+        "https://www.nature.com/articles/s41598-025-30893-7",
+        "https://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16.pdf",
+        "https://arxiv.org/abs/1603.08155",
+        "https://arxiv.org/pdf/2302.04032",
+        "https://github.com/sypsyp97/convnext_perceptual_loss",
+        "https://ar5iv.labs.arxiv.org/html/2111.13545",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://github.com/Mainakdeb/text-2-cellular-automata",
+        "https://meshnca.github.io/",
+        "https://dl.acm.org/doi/10.1145/3658127"
+      ]
+    },
+    {
+      "id": "rq-1771629235297-lpips-webgl-shader",
+      "topic": "LPIPS distillation for WebGL: Converting distilled perceptual model to GLSL shader code for real-time browser optimization",
+      "source": "Research follow-up from distilled LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T23:13:55.296994Z",
+      "priority": 6,
+      "tags": [
+        "webgl",
+        "shader",
+        "perceptual-metrics",
+        "real-time",
+        "browser"
+      ],
+      "status": "completed",
+      "completedAt": "2026-02-21T17:50:04.214333+00:00",
+      "summary": "Converting distilled LPIPS to WebGL shaders is feasible using ShaderNN-style fragment shader inference with fp16 textures and ping-pong rendering, achieving 60+ fps for <10K parameter models.",
+      "sources": [
+        "https://www.sciencedirect.com/science/article/pii/S0925231224013997",
+        "https://github.com/inferenceengine/shadernn",
+        "https://developer.nvidia.com/blog/neural-rendering-in-nvidia-optix-using-cooperative-vectors/",
+        "https://olha-stefanishyna.medium.com/stateful-rendering-with-ping-pong-technique-6c6ef3f5091a",
+        "https://developer.mozilla.org/en-US/docs/Web/API/OES_texture_half_float"
+      ]
+    },
+    {
+      "id": "rq-1771629235298-nca-hybrid-loss",
+      "topic": "Hybrid loss functions for NCA: optimal balance between pixel loss and distilled perceptual loss for fast convergence and quality",
+      "source": "Research follow-up from distilled LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T23:13:55.296997Z",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "loss-functions",
+        "training-optimization",
+        "perceptual-metrics"
+      ],
+      "completedAt": "2026-02-21T23:59:50.439247Z",
+      "summary": "Hybrid NCA losses combining pixel (L1) and perceptual (VGG/LPIPS) losses optimize convergence and quality. Optimal perceptual weight: 0.01-0.1. Adaptive weighting (GradNorm, uncertainty) and annealing schedules improve training. Lightweight distilled perceptual losses enable real-time applications.",
+      "sources": [
+        "https://distill.pub/selforg/2021/textures/",
+        "https://arxiv.org/abs/2506.22899",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/abs/1603.08155",
+        "https://arxiv.org/abs/1711.02257",
+        "https://www.nature.com/articles/s44335-025-00026-4"
+      ]
+    },
+    {
+      "id": "rq-1771607469254-lasi-differentiable",
+      "topic": "LASI as differentiable training loss for NCAs - implement implicit differentiation through WLS solution for gradient-based optimization",
+      "source": "Research follow-up from distilled perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-20T17:11:09.254703+00:00",
+      "priority": 7,
+      "tags": [
+        "perceptual-metrics",
+        "nca",
+        "optimization",
+        "zero-parameter",
+        "lasi"
+      ],
+      "status": "completed",
+      "completedAt": "2026-02-22T06:10:28.198504Z",
+      "summary": "LASI is a zero-parameter perceptual metric using WLS optimization. Fully differentiable via JAX's SVD-based pseudo-inverse gradients. Competitive with LPIPS while requiring no pre-trained networks. Implementation uses implicit differentiation through KKT conditions.",
+      "sources": [
+        "https://arxiv.org/abs/2310.05986",
+        "https://github.com/dsevero/Linear-Autoregressive-Similarity-Index",
+        "https://arxiv.org/abs/2105.15183",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://www.nature.com/articles/s41598-025-23997-7"
+      ]
+    },
+    {
+      "id": "rq-1771696204216-shader-texture-synthesis",
+      "topic": "Real-time perceptual-guided texture synthesis in WebGL - integrating shader-based LPIPS into live NCA or procedural generation",
+      "source": "Research follow-up from LPIPS WebGL shader study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T17:50:04.214383+00:00",
+      "priority": 7,
+      "tags": [
+        "texture-synthesis",
+        "nca",
+        "webgl",
+        "real-time",
+        "perceptual-metrics"
+      ],
+      "completedAt": "2026-02-22T12:17:55.169927+00:00",
+      "summary": "Real-time perceptual-guided texture synthesis in WebGL is achievable through hybrid architectures: NCAs trained offline with LPIPS/VGG losses run at 60+ FPS in browsers, while lightweight perceptual proxies (3-5 layer CNNs) could enable runtime guidance at 30-60 FPS.",
+      "sources": [
+        "https://cells2pixels.github.io/",
+        "https://dynca.github.io/",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://meshnca.github.io/",
+        "https://github.com/inferenceengine/shadernn",
+        "https://tenso.rs/",
+        "https://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16.pdf"
+      ]
+    },
+    {
+      "id": "rq-1771762675171-shader-optimized-perceptual",
+      "topic": "Perceptual metrics optimized for real-time GPU shader evaluation - DISTS, SSIM+, or custom learned metrics",
+      "source": "Research follow-up from shader texture synthesis study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T12:17:55.169983+00:00",
+      "priority": 8,
+      "tags": [
+        "perceptual-metrics",
+        "gpu-optimization",
+        "shader-design",
+        "real-time"
+      ],
+      "completedAt": "2026-02-22T12:25:55.432711+00:00",
+      "summary": "Real-time perceptual metrics are production-ready in 2026: SSIM achieves 100+ FPS with GPU acceleration, SSIMULACRA2 provides best subjective correlation at 85 FPS, VMAF-CUDA enables 4-37x speedups for video quality, and emerging metrics like MILO offer lightweight alternatives to LPIPS for browser deployment.",
+      "sources": [
+        "https://wiki.x266.mov/blog/turbo-metrics-performance",
+        "https://github.com/cloudinary/ssimulacra2",
+        "https://developer.nvidia.com/blog/calculating-video-quality-using-nvidia-gpus-and-vmaf-cuda/",
+        "https://arxiv.org/abs/2509.01411",
+        "https://github.com/google/butteraugli",
+        "https://github.com/dingkeyan93/DISTS",
+        "https://v8.dev/features/simd"
+      ]
+    },
+    {
+      "id": "rq-1771762675170-nca-perceptual-feedback",
+      "topic": "Training NCAs to accept perceptual feedback signals at inference time - dynamic sensitivity to runtime gradients",
+      "source": "Research follow-up from shader texture synthesis study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T12:17:55.169979+00:00",
+      "priority": 7,
+      "tags": [
+        "nca",
+        "perceptual-guidance",
+        "real-time",
+        "dynamic-adaptation"
+      ],
+      "completedAt": "2026-02-22T18:24:33.191132Z",
+      "summary": "NCAs can be trained for runtime perceptual feedback via four approaches: direct optimization (slow but flexible), meta-learned gradient generators (4-10\u00d7 faster), perceptual signal channels (feedforward, fast), or RL-based (handles non-differentiable metrics). Most promising: meta-gradient approach combining flexibility with speed.",
+      "sources": [
+        "https://arxiv.org/abs/2506.22899",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/abs/2305.12971",
+        "https://arxiv.org/abs/2205.06806",
+        "https://arxiv.org/abs/2412.16901",
+        "https://arxiv.org/abs/1711.10925",
+        "https://arxiv.org/html/2508.10316v1"
+      ]
+    },
+    {
+      "id": "rq-1771696204215-webgpu-compute-perceptual",
+      "topic": "WebGPU compute shaders for perceptual metrics - leveraging shared memory and barriers for more efficient tensor operations than WebGL fragment shaders",
+      "source": "Research follow-up from LPIPS WebGL shader study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T17:50:04.214379+00:00",
+      "priority": 6,
+      "tags": [
+        "webgpu",
+        "compute-shader",
+        "perceptual-metrics",
+        "optimization"
+      ],
+      "completedAt": "2026-02-23T00:39:07.937490Z",
+      "summary": "WebGPU compute shaders offer 15-30x performance improvements over WebGL fragment shaders for perceptual metrics through native compute pipelines, workgroup shared memory, and barrier synchronization. Key techniques: 2D tiling, thread-group ID swizzling, and shared memory caching deliver 47%+ speedups for convolution operations.",
+      "sources": [
+        "https://www.nuss-and-bolts.com/p/optimizing-a-webgpu-matmul-kernel",
+        "https://developer.nvidia.com/blog/optimizing-compute-shaders-for-l2-locality-using-thread-group-id-swizzling/",
+        "https://surma.dev/things/webgpu/",
+        "https://developer.chrome.com/docs/capabilities/web-apis/gpu-compute",
+        "https://byteiota.com/webgpu-2026-70-browser-support-15x-performance-gains/"
+      ]
+    },
+    {
+      "id": "rq-1771807147941-fused-perceptual-backprop",
+      "topic": "Fused perceptual loss backpropagation in WebGPU: single-kernel forward+backward for 30-50% faster training",
+      "source": "Research follow-up from WebGPU compute perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T00:39:07.937532Z",
+      "priority": 7,
+      "tags": [
+        "webgpu",
+        "automatic-differentiation",
+        "training-optimization",
+        "perceptual-loss"
+      ],
+      "completedAt": "2026-02-23T06:44:29.425675+00:00",
+      "summary": "Fusing VGG/LPIPS forward+backward passes into single WebGPU kernel could achieve 30-50% speedup by eliminating memory transfers and kernel launch overhead. Memory bandwidth is the primary bottleneck in modern training (not compute), making fusion techniques critical. Implementation requires careful workgroup memory management and manual loop unrolling.",
+      "sources": [
+        "https://praeclarum.org/2023/05/19/webgpu-torch.html",
+        "https://www.nuss-and-bolts.com/p/optimizing-a-webgpu-matmul-kernel",
+        "https://www.emergentmind.com/topics/fused-triton-kernels",
+        "https://towardsdatascience.com/cutting-llm-memory-by-84-a-deep-dive-into-fused-kernels/",
+        "https://arxiv.org/pdf/2104.00237",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16.pdf",
+        "https://arxiv.org/html/2503.08311v2",
+        "https://arxiv.org/html/2403.14123v1"
+      ]
+    },
+    {
+      "id": "rq-1771718390440-distilled-lpips-nca",
+      "topic": "Distilled LPIPS for NCAs: systematic comparison of SqueezeNet vs VGG for NCA texture synthesis speed and quality",
+      "source": "Research follow-up from hybrid loss study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-21T23:59:50.440311Z",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "perceptual-loss",
+        "distillation",
+        "optimization"
+      ],
+      "completedAt": "2026-02-23T06:49:31.564521Z",
+      "summary": "SqueezeNet provides VGG-comparable perceptual quality at 7.6x speedup (CPU) and 1/20th model size for NCA texture synthesis. Layer selection is as critical as architecture choice.",
+      "sources": [
+        "https://arxiv.org/html/2302.04032v3",
+        "https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_The_Unreasonable_Effectiveness_CVPR_2018_paper.pdf",
+        "https://ar5iv.labs.arxiv.org/html/2111.13545",
+        "https://arxiv.org/abs/2211.11417",
+        "https://www.nature.com/articles/s41598-025-23997-7"
+      ],
+      "keyFindings": [
+        "SqueezeNet (2.8 MB) vs VGG (58.9 MB) provide similar LPIPS scores",
+        "Early layer extraction reduces compute by 10-50x with minimal quality loss",
+        "OTT-Loss enables 68-byte NCAs without perceptual networks",
+        "Hardware context matters: SqueezeNet faster on CPU, VGG can be faster on GPU"
+      ]
+    },
+    {
+      "id": "rq-1771851237047-perceptual-loss-distillation",
+      "topic": "Knowledge distillation for perceptual losses: train SqueezeNet to match VGG's feature distances for faster NCA training",
+      "source": "Research follow-up from empirical NCA speed benchmark study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T12:53:57.044169+00:00",
+      "priority": 7,
+      "tags": [
+        "knowledge-distillation",
+        "perceptual-loss",
+        "optimization",
+        "nca"
+      ],
+      "completedAt": "2026-02-23T12:58:51.076843+00:00",
+      "summary": "Multiple proven approaches exist to distill VGG-quality perceptual features into SqueezeNet (3-49\u00d7 speedups). MILO (2025) offers revolutionary 90-165\u00d7 speedup. PCA-based and attention-based distillation methods are production-ready.",
+      "sources": [
+        "https://arxiv.org/html/2302.04032v3",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://arxiv.org/abs/2203.13452",
+        "https://ar5iv.labs.arxiv.org/html/2102.02973",
+        "https://arxiv.org/abs/2509.01411",
+        "https://ar5iv.labs.arxiv.org/html/2103.14616"
+      ]
+    },
+    {
+      "id": "rq-1771829371564-empirical-nca-speed-benchmark",
+      "topic": "Empirical NCA speed benchmark: Train identical NCAs with VGG vs SqueezeNet vs OTT-Loss and measure wall-clock time, FPS, quality",
+      "source": "Research follow-up from distilled LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:49:31.564572Z",
+      "priority": 7,
+      "tags": [
+        "nca",
+        "benchmarking",
+        "optimization",
+        "empirical-study"
+      ],
+      "completedAt": "2026-02-24T19:50:38Z",
+      "summary": "Comprehensive analysis of VGG, SqueezeNet, and OTT-based losses for NCA training. VGG provides superior quality but is computationally expensive. SqueezeNet offers 7-8\u00d7 CPU speedup with potential quality trade-offs. Sinkhorn/OTT losses show promise for faster convergence and training stability. Research identifies clear benchmark protocol and open questions.",
+      "sources": [
+        "https://arxiv.org/abs/2308.13840",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/abs/1602.07360",
+        "https://arxiv.org/html/2302.04032v3",
+        "https://github.com/0xekez/neural-cellular-automata",
+        "https://openreview.net/forum?id=t10fde8tQ7",
+        "https://arxiv.org/html/2602.03566v1"
+      ]
+    },
+    {
+      "id": "rq-1771873861287-empirical-minimal-lpips",
+      "topic": "Empirical correlation study: Train 3-5 layer minimal networks and measure exact BAPPS 2AFC correlation with LPIPS-VGG",
+      "source": "Research follow-up from minimal LPIPS proxy study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T19:11:01.287795+00:00",
+      "priority": 7,
+      "tags": [
+        "empirical-study",
+        "lpips",
+        "minimal-networks",
+        "benchmarking",
+        "correlation"
+      ],
+      "completedAt": "2026-02-25T02:02:23.930097Z",
+      "summary": "Comprehensive study of minimal 3-5 layer CNN architectures for perceptual similarity assessment. Established training protocols, expected correlation ranges (0.75-0.90 with LPIPS-VGG), and identified optimal layer combinations (Conv1-3 for texture, Conv1-4 standard). Parameter reduction: 80-95% vs full VGG while maintaining >0.8 correlation.",
+      "sources": [
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_The_Unreasonable_Effectiveness_CVPR_2018_paper.pdf",
+        "https://arxiv.org/pdf/1709.01507",
+        "https://arxiv.org/html/2302.04032v3",
+        "https://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16.pdf"
+      ]
+    },
+    {
+      "id": "rq-1771984957-clip-dino-distillation",
+      "topic": "Foundation model distillation for perceptual metrics: Can CLIP/DINOv2 perceptual similarity be distilled into lightweight 3-5 layer CNNs?",
+      "source": "Research follow-up from empirical minimal LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T02:02:35.874374Z",
+      "priority": 7,
+      "tags": [
+        "foundation-models",
+        "knowledge-distillation",
+        "clip",
+        "dino",
+        "perceptual-metrics",
+        "model-compression"
+      ],
+      "completedAt": "2026-02-25T08:04:12.617702Z",
+      "summary": "Distilling CLIP/DINOv2 into lightweight CNNs is feasible but requires avoiding late-layer feature mimicry. DINOv3's ConvNeXt models (29M-198M params) prove successful distillation, while E-LatentLPIPS achieves 9.7\u00d7 speedup via latent-space operation.",
+      "sources": [
+        "https://arxiv.org/html/2511.06848",
+        "https://www.lightly.ai/blog/dinov3",
+        "https://arxiv.org/html/2405.05967v3",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://arxiv.org/abs/2302.02108"
+      ]
+    },
+    {
+      "id": "rq-1772006656-realtime-nca-perceptual-conditioning",
+      "topic": "Real-time NCA with distilled perceptual metrics: Can lightweight perceptual metrics enable real-time CLIP/DINOv2-conditioned NCAs for interactive applications?",
+      "source": "Research follow-up from foundation model distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-25T08:04:12.617737Z",
+      "priority": 7,
+      "tags": [
+        "nca",
+        "real-time",
+        "perceptual-metrics",
+        "clip",
+        "dino",
+        "interactive-applications"
+      ],
+      "completedAt": "2026-02-25T14:21:56.079949Z",
+      "summary": "Real-time CLIP/DINOv2-conditioned NCAs are technically feasible today. Key components exist: DyNCA/MeshNCA architectures (proven on smartphones), frozen distilled foundation models (2-4 orders magnitude faster), multi-modal conditioning (text/images/motion working), and WebGL mobile deployment. Path forward: combine proven NCA architectures with frozen DINOv2-Small/CLIP-Small integrated in discriminator only, use LPPN decoders for high-res rendering. Challenges are engineering not fundamental. Expected timeline: proof-of-concept in 2-3 months, production in 12 months.",
+      "sources": [
+        "https://arxiv.org/html/2506.22899v2",
+        "https://dynca.github.io/",
+        "https://meshnca.github.io/",
+        "https://arxiv.org/html/2502.13988",
+        "https://arxiv.org/html/2407.18288v2",
+        "https://ai.meta.com/blog/dino-v2-computer-vision-self-supervised-learning/",
+        "https://openreview.net/pdf?id=NXHXoYMLIG"
+      ]
+    },
+    {
+      "id": "rq-1770752147001-init",
+      "topic": "What is IEML (Information Economy MetaLanguage) and how is it used for semantic coordinates?",
+      "source": "DevAIntArt - cyrus_homayounpoor's KWATZ piece",
+      "addedBy": "main",
+      "addedAt": "2026-02-10T19:55:47Z",
+      "priority": 4,
+      "status": "completed",
+      "tags": [
+        "semiotics",
+        "ieml",
+        "computational-art",
+        "linguistics"
+      ],
+      "completedAt": "2026-02-26T02:38:27.175Z",
+      "summary": "IEML is an artificial language with computable semantics functioning as a coordinate system for meaning. Semantic relationships are automatically computed from syntactic structures using edit distance algorithms, enabling machine-processable semantics without ambiguity.",
+      "sources": [
+        "https://pierrelevyblog.com/my-research-in-a-nutshell/",
+        "https://github.com/IEMLdev/ieml",
+        "https://intlekt.io/ieml/",
+        "https://lab.cccb.org/en/ieml-a-project-for-a-new-humanism-an-interview-with-pierre-levy/"
+      ]
+    },
+    {
+      "id": "rq-1771762675169-minimal-lpips-proxy",
+      "topic": "Minimal perceptual network that maintains >0.8 correlation with LPIPS - systematic search for 3-5 layer CNN architectures",
+      "source": "Research follow-up from shader texture synthesis study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-22T12:17:55.169975+00:00",
+      "priority": 6,
+      "tags": [
+        "perceptual-metrics",
+        "model-compression",
+        "lpips",
+        "distillation"
+      ],
+      "completedAt": "2026-02-26T08:52:20.318257+00:00",
+      "summary": "Minimal 3-5 layer CNNs can achieve >0.8 LPIPS correlation through knowledge distillation, structure-texture decomposition, and attention mechanisms. SqueezeNet (2.8MB) proves compact architectures work; proposed AECC, STMN, UMDN architectures with <500K params are feasible.",
+      "sources": [
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_The_Unreasonable_Effectiveness_CVPR_2018_paper.pdf",
+        "https://arxiv.org/abs/2202.08692",
+        "https://github.com/dingkeyan93/DISTS",
+        "https://arxiv.org/html/2509.10114"
+      ]
+    },
+    {
+      "id": "rq-1770837893001-eager",
+      "topic": "Claude SDK eager_input_streaming flag - how does it affect tool parameter streaming granularity?",
+      "source": "Research follow-up from SDK streaming study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-11T19:24:53Z",
+      "priority": 4,
+      "status": "completed",
+      "tags": [
+        "sdk",
+        "streaming",
+        "tool-use",
+        "agent-development"
+      ],
+      "completedAt": "2026-02-26T14:57:05.109188Z",
+      "summary": "The eager_input_streaming flag enables fine-grained tool streaming, reducing latency from ~15s to ~3s by streaming tool parameters without JSON validation. Requires error handling for incomplete/invalid JSON.",
+      "sources": [
+        "https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming",
+        "https://platform.claude.com/docs/en/agent-sdk/streaming-vs-single-mode",
+        "https://platform.claude.com/docs/en/build-with-claude/streaming"
+      ],
+      "researchFile": "research/rq-1770837893001-eager.md"
+    },
+    {
+      "id": "rq-1771807147940-streaming-video-perceptual",
+      "topic": "Real-time video perceptual quality with WebGPU: temporal feature reuse and optical flow for 30-60 FPS assessment",
+      "source": "Research follow-up from WebGPU compute perceptual metrics study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T00:39:07.937527Z",
+      "priority": 6,
+      "tags": [
+        "webgpu",
+        "video-quality",
+        "real-time",
+        "perceptual-metrics"
+      ],
+      "completedAt": "2026-02-26T21:12:53.604637Z",
+      "summary": "Real-time perceptual video quality at 30-60 FPS is feasible with WebGPU using temporal feature caching (24-45% latency reduction) and lightweight networks (SqueezeNet: 1.9ms/frame). Key: exploit temporal coherence via layer caching + optical flow for cache validation.",
+      "sources": [
+        "https://medium.com/intel-tech/unlock-the-potential-of-ai-and-immersive-web-applications-with-webgpu-4a1cff079178",
+        "https://openreview.net/forum?id=HZCx5EToh9",
+        "https://arxiv.org/html/2402.03413v1",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://www.mdpi.com/1424-8220/23/18/7880"
+      ]
+    },
+    {
+      "id": "rq-1739076481003-realtime-diffusion",
+      "topic": "Path to true real-time diffusion models - can one-step methods maintain quality for interactive applications?",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "priority": 5,
+      "tags": [
+        "diffusion-models",
+        "real-time",
+        "optimization",
+        "interactive-applications"
+      ],
+      "completedAt": "2026-02-27T00:00:00Z",
+      "summary": "One-step diffusion methods now achieve near-parity with multi-step quality through distillation (SDXS, LCM), pipeline optimization (StreamDiffusion), and consistency models. Real-time generation (<15ms) is production-ready for most interactive applications on consumer GPUs, though AR/VR's <10ms requirements remain challenging.",
+      "sources": [
+        "https://idkiro.github.io/sdxs/",
+        "https://arxiv.org/html/2312.12491v2",
+        "https://arxiv.org/abs/2303.01469",
+        "https://latent-consistency-models.github.io/",
+        "https://arxiv.org/abs/2311.17042"
+      ]
     }
   ],
   "metadata": {
-    "lastUpdated": "2026-02-17T18:15:00Z",
-    "totalResearched": 20,
-    "version": "1.0"
+    "lastUpdated": "2026-02-28T03:57:00.416978+00:00",
+    "totalResearched": 60,
+    "version": "1.0",
+    "totalCompleted": 60,
+    "totalPending": 83,
+    "totalQueued": 83,
+    "totalInQueue": 91
   }
 }

@@ -1,36 +1,6 @@
 {
   "queue": [
     {
-      "id": "rq-1770915400000-nca-load-balancing",
-      "topic": "Load balancing in spatial MoE systems - do NCAs need auxiliary losses like LLM MoE models to prevent expert collapse?",
-      "source": "Research follow-up from NCA model zoos study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-14T23:45:00Z",
-      "priority": 6,
-      "tags": [
-        "neural-networks",
-        "mixture-of-experts",
-        "load-balancing",
-        "spatial-routing",
-        "nca"
-      ]
-    },
-    {
-      "id": "rq-1770915400001-nca-cascade-routing",
-      "topic": "Cascade routing for NCA model zoos - can learned quality predictors achieve 60%+ compute reduction like RouteLLM?",
-      "source": "Research follow-up from NCA model zoos study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-14T23:45:00Z",
-      "priority": 6,
-      "tags": [
-        "neural-networks",
-        "routing",
-        "optimization",
-        "cascade-systems",
-        "nca"
-      ]
-    },
-    {
       "id": "rq-1770915400002-genomic-scaling",
       "topic": "Genomic signal capacity scaling - can we go beyond 8 textures? What are training data requirements for ng=5-6 bits?",
       "source": "Research follow-up from NCA model zoos study",
@@ -61,35 +31,6 @@
       ]
     },
     {
-      "id": "rq-1739076481002-controllable-nca",
-      "topic": "Training signal-responsive NCAs for multi-texture synthesis - what conditioning mechanisms work best?",
-      "source": "Research follow-up from NCA vs diffusion models study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-13T01:54:41Z",
-      "priority": 6,
-      "tags": [
-        "neural-networks",
-        "controllability",
-        "conditioning",
-        "multi-texture"
-      ]
-    },
-    {
-      "id": "rq-1770914400000-clip-dimensionality-adapter",
-      "topic": "Learning CLIP-to-NCA adapters: Can we train 512D→16D projections that preserve semantic control while enabling direct state injection?",
-      "source": "Research follow-up from CLIP-conditioned NCA study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-14T20:00:00Z",
-      "priority": 6,
-      "tags": [
-        "neural-networks",
-        "clip",
-        "nca",
-        "dimensionality-reduction",
-        "adapters"
-      ]
-    },
-    {
       "id": "rq-1770914400001-prompt-to-genome",
       "topic": "Learned prompt-to-genome mapping: Can networks map CLIP text embeddings to genomic signals, combining zero-shot capability with stability?",
       "source": "Research follow-up from CLIP-conditioned NCA study",
@@ -115,6 +56,36 @@
         "neural-networks",
         "hierarchical-models",
         "fine-tuning",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1739950000001-attention-genome-preservation",
+      "topic": "Attention mechanisms for genome preservation: Can ViTCA-style attention prevent genome corruption beyond 6000+ steps?",
+      "source": "Research follow-up from controllable NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-18T09:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "attention",
+        "genomic-signals",
+        "stability",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1739950000002-spatial-mixture-textures",
+      "topic": "Spatial mixture models for texture synthesis: Can MNCA-style per-cell routing enable region-specific multi-texture generation?",
+      "source": "Research follow-up from controllable NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-18T09:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "spatial-routing",
+        "multi-texture",
         "nca"
       ]
     },
@@ -460,7 +431,7 @@
     },
     {
       "id": "rq-1770852365003-nca-production",
-      "topic": "Real-world production adoption of NCAs - which shipped games actually use μNCA or other NCA variants?",
+      "topic": "Real-world production adoption of NCAs - which shipped games actually use \u03bcNCA or other NCA variants?",
       "source": "Research follow-up from NCA vs RD study",
       "addedBy": "research-agent",
       "addedAt": "2026-02-12T01:19:25Z",
@@ -471,9 +442,249 @@
         "neural-networks",
         "production-pipelines"
       ]
+    },
+    {
+      "id": "rq-1739590400000-mnca-balancing-experiments",
+      "topic": "Empirical study: Do MNCAs exhibit routing collapse without intervention? Test across texture synthesis, morphogenesis, maze solving",
+      "source": "Research follow-up from NCA load balancing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-15T12:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "experiments",
+        "nca",
+        "load-balancing"
+      ]
+    },
+    {
+      "id": "rq-1739590400001-spatial-correlation-collapse",
+      "topic": "Spatial correlation impact on routing collapse - compare gradient dynamics for correlated vs independent cell states",
+      "source": "Research follow-up from NCA load balancing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-15T12:00:00Z",
+      "priority": 5,
+      "tags": [
+        "neural-networks",
+        "spatial-routing",
+        "gradient-analysis",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1739590400002-loss-free-spatial-balancing",
+      "topic": "Adapting DeepSeek-V3 loss-free balancing to spatial domains - expert-wise bias per region rather than global",
+      "source": "Research follow-up from NCA load balancing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-15T12:00:00Z",
+      "priority": 4,
+      "tags": [
+        "neural-networks",
+        "load-balancing",
+        "spatial-routing",
+        "moe",
+        "nca"
+      ]
     }
   ],
   "completed": [
+    {
+      "id": "rq-1739076481002-controllable-nca",
+      "topic": "Training signal-responsive NCAs for multi-texture synthesis - what conditioning mechanisms work best?",
+      "source": "Research follow-up from NCA vs diffusion models study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-13T01:54:41Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "controllability",
+        "conditioning",
+        "multi-texture"
+      ],
+      "completedAt": "2026-02-18T09:00:00Z",
+      "summary": "Genomic signal encoding achieves state-of-the-art multi-texture synthesis with 1,500-10,000 parameters for 8 textures through binary-encoded channels. Alternative mechanisms include latent space conditioning (94% memory reduction), attention-based ViTCA, per-cell MNCA routing, hardware vector conditioning (Universal NCA), and plug-and-play AdaNCA adaptors. Each offers distinct trade-offs: genomic signals excel at parameter efficiency and direct interpolation; latent NCAs optimize computational resources; ViTCA handles global information flow; MNCA enables heterogeneous behaviors; Universal NCA supports task composition; AdaNCA enhances existing models with minimal overhead.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://arxiv.org/html/2403.15525v1",
+        "https://arxiv.org/abs/2403.15525",
+        "https://openreview.net/forum?id=9t24EBSlZOa",
+        "https://arxiv.org/abs/2211.01233",
+        "https://arxiv.org/html/2506.20486v1",
+        "https://gabrielbena.github.io/blog/2025/bena2025unca/",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://arxiv.org/abs/2406.08298",
+        "https://arxiv.org/html/2406.08298v5",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/html/2506.15746",
+        "https://www.researchgate.net/publication/360186334_HyperNCA_Growing_Developmental_Networks_with_Neural_Cellular_Automata"
+      ]
+    },
+    {
+      "id": "rq-1739590700002-spatial-cascade-routing",
+      "topic": "Spatial cascade routing: Does per-region tier assignment (complex areas \u2192 expensive models, simple areas \u2192 cheap models) improve quality-cost tradeoff?",
+      "source": "Research follow-up from cascade routing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-17T00:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "spatial-routing",
+        "nca",
+        "cascade-systems"
+      ],
+      "completedAt": "2026-02-18T02:30:00Z",
+      "summary": "Yes, spatial cascade routing significantly improves quality-cost tradeoffs, with demonstrated 2-3\u00d7 computational savings in image generation and theoretical 40-85% reduction potential in NCA/diffusion systems. Three successful paradigms exist: explicit spatial partitioning (RegionE: 2.41-2.57\u00d7 speedup), adaptive computation time (SACT: dynamic per-region layer depth), and per-cell routing (Universal NCA: hardware-based attention mechanisms). Critical challenges are router overhead (<1ms for lightweight systems), spatial complexity metrics (edge density, entropy, variance), and training data requirements.",
+      "sources": [
+        "https://arxiv.org/abs/2510.25590",
+        "https://openaccess.thecvf.com/content_cvpr_2017/papers/Figurnov_Spatially_Adaptive_Computation_CVPR_2017_paper.pdf",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://arxiv.org/pdf/2410.10347",
+        "https://arxiv.org/html/2602.09902",
+        "https://arxiv.org/html/2511.06441v1",
+        "https://arxiv.org/abs/2411.09837",
+        "https://arxiv.org/pdf/2510.08439",
+        "https://arxiv.org/abs/1903.07291",
+        "https://ieeexplore.ieee.org/document/9103062/",
+        "https://arxiv.org/html/2506.20486",
+        "https://proceedings.neurips.cc/paper_files/paper/2022/file/4c5e2bcbf21bdf40d75fddad0bd43dc9-Paper-Conference.pdf"
+      ]
+    },
+    {
+      "id": "rq-1739590700001-lightweight-routing-heuristics",
+      "topic": "Can simple metrics (edge density, frequency spectrum entropy, color variance) replace learned BERT routers for NCA model selection?",
+      "source": "Research follow-up from cascade routing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-17T00:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "optimization",
+        "heuristics",
+        "nca"
+      ],
+      "completedAt": "2026-02-17T18:15:00Z",
+      "summary": "Yes, simple heuristic metrics can replace learned BERT routers for NCA model selection with significant computational advantages. Edge density, entropy, and color variance can be computed in O(n) time (sub-millisecond to milliseconds), while BERT routers require 1.2-20ms inference latency. For NCA cascades where Tier 1 models cost ~68 params and run at 25Hz, router overhead must be << 1ms\u2014making lightweight heuristics essential. Simple metrics achieve r=0.70-0.83 correlation with complexity prediction, sufficient for routing decisions with quality-based escalation.",
+      "sources": [
+        "https://www.nature.com/articles/s41598-025-08677-w",
+        "https://cloudaiapp.dev/building-a-cost-efficient-ai-query-router-from-fuzzy-logic-to-quantized-bert/",
+        "https://arxiv.org/pdf/2406.18665",
+        "https://lmsys.org/blog/2024-07-01-routellm/",
+        "https://www.abhik.xyz/concepts/deep-learning/visual-complexity-analysis",
+        "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0157986",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC9505268/",
+        "https://www.sciencedirect.com/science/article/pii/S1077314220300333",
+        "https://arxiv.org/pdf/1804.08020",
+        "https://link.springer.com/article/10.1007/s40747-025-01875-z",
+        "https://www.geeksforgeeks.org/computer-vision/sobel-edge-detection-vs-canny-edge-detection-in-computer-vision/",
+        "https://unimatrixz.com/blog/latent-space-image-quality-with-entropy/",
+        "https://en.wikipedia.org/wiki/Fast_Fourier_transform",
+        "https://developer.nvidia.com/blog/real-time-nlp-with-bert-using-tensorrt-updated/",
+        "https://arxiv.org/html/2602.09902",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://distill.pub/2020/growing-ca/"
+      ]
+    },
+    {
+      "id": "rq-1739590700000-nca-cascade-empirical",
+      "topic": "Empirical validation: Implement 3-tier NCA cascade (\u03bcNCA \u2192 Diff-NCA \u2192 SD3) and measure actual compute reduction on texture synthesis benchmark",
+      "source": "Research follow-up from cascade routing study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-17T00:00:00Z",
+      "priority": 7,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "optimization",
+        "experiments",
+        "nca",
+        "cascade-systems"
+      ],
+      "completedAt": "2026-02-17T08:30:00Z",
+      "summary": "Yes, cascade routing can theoretically achieve 60-85% compute reduction for NCA systems. LLM cascades demonstrate 60-85% cost savings through quality predictors. Proposed 3-tier NCA cascade (\u03bcNCA \u2192 Diff-NCA \u2192 SD3) with cost ratios ~1:42:111,250 could achieve 79.4% reduction (40/40/20 distribution) or 59.7% (30/30/40 distribution). All components exist: three distinct tier models with massive parameter gaps (68 \u2192 336k \u2192 890M params), routing mechanisms (genomic signals, MNCA per-cell routing), quality metrics (FID, LPIPS). Critical challenge: router overhead may exceed Tier 1 cost\u2014requires lightweight heuristics or distilled routers <10k params. No implementations exist yet; represents high-value first-mover research opportunity.",
+      "sources": [
+        "https://arxiv.org/abs/2406.18665",
+        "https://arxiv.org/html/2410.10347v1",
+        "https://www.burnwise.io/blog/llm-model-routing-guide",
+        "https://openreview.net/forum?id=obB415rg8q",
+        "https://arxiv.org/abs/2111.13545",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://lambda.ai/blog/inference-benchmark-stable-diffusion",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://arxiv.org/html/2506.20486",
+        "https://medium.com/@wangdk93/evaluation-of-image-generation-ec402191d4d7",
+        "https://huggingface.co/docs/diffusers/conceptual/evaluation",
+        "https://aclanthology.org/2025.findings-emnlp.208.pdf",
+        "https://lmsys.org/blog/2024-07-01-routellm/"
+      ]
+    },
+    {
+      "id": "rq-1770915400001-nca-cascade-routing",
+      "topic": "Cascade routing for NCA model zoos - can learned quality predictors achieve 60%+ compute reduction like RouteLLM?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "routing",
+        "optimization",
+        "cascade-systems",
+        "nca"
+      ],
+      "completedAt": "2026-02-17T00:00:00Z",
+      "summary": "Yes, cascade routing can achieve 60%+ compute reduction for NCA systems. LLM cascades achieve 60-85% cost reduction through answer consistency checking, confidence thresholds, and BERT-based routers. Proposed 3-tier NCA architecture (\u03bcNCA \u2192 Diff-NCA \u2192 Diffusion) achieves 79.4% reduction with 40/40/20 distribution, 59.7% with 30/30/40 distribution. Architecture exists (genomic signals, MNCA per-cell routing) but no implementations yet\u2014represents significant research opportunity. Key challenges: router overhead may exceed Tier 1 cost, spatial routing possibilities, lightweight heuristic development.",
+      "sources": [
+        "https://files.sri.inf.ethz.ch/website/papers/dekoninck2024cascaderouting.pdf",
+        "https://arxiv.org/pdf/2406.18665",
+        "https://sky.cs.berkeley.edu/project/routellm/",
+        "https://domino.ai/blog/full-llm-power-60-percent-cheaper",
+        "https://arxiv.org/html/2511.07396v1",
+        "https://arxiv.org/html/2502.09054v1",
+        "https://arxiv.org/html/2505.19947v1",
+        "https://dl.acm.org/doi/full/10.1145/3698767",
+        "https://arxiv.org/abs/1709.01686",
+        "https://cseweb.ucsd.edu/~jmcauley/pdfs/nips20.pdf",
+        "https://arxiv.org/html/2506.20486",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2506.22899",
+        "https://dynca.github.io/",
+        "https://arxiv.org/abs/2111.13545"
+      ]
+    },
+    {
+      "id": "rq-1770915400000-nca-load-balancing",
+      "topic": "Load balancing in spatial MoE systems - do NCAs need auxiliary losses like LLM MoE models to prevent expert collapse?",
+      "source": "Research follow-up from NCA model zoos study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T23:45:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "mixture-of-experts",
+        "load-balancing",
+        "spatial-routing",
+        "nca"
+      ],
+      "completedAt": "2026-02-15T12:00:00Z",
+      "summary": "NCAs operate in fundamentally different paradigm than token-based MoE. Standard NCAs use homogeneous rules achieving heterogeneity through emergence. Spatial MoE-NCAs (MNCA, PD-NCA) implement per-cell routing but address collapse through competitive dynamics, environmental pressure, and stochastic mechanisms rather than auxiliary losses. Key insight: spatial correlation and task objectives determine whether load balancing is needed\u2014biological tasks often don't need it; computational tasks may benefit.",
+      "sources": [
+        "https://openreview.net/forum?id=y1iU5czYpE",
+        "https://arxiv.org/abs/2408.15664",
+        "https://arxiv.org/html/2506.20486",
+        "https://pub.sakana.ai/pdnca/",
+        "https://arxiv.org/abs/2211.13491",
+        "https://arxiv.org/html/2510.09734",
+        "https://distill.pub/2020/growing-ca/",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/",
+        "https://huggingface.co/blog/moe"
+      ]
+    },
     {
       "id": "rq-1739254800004-nca-model-zoos",
       "topic": "NCA model zoos with learned routers - can collections of specialized NCAs approximate foundation model behavior?",
@@ -488,7 +699,7 @@
         "routing",
         "nca"
       ],
-      "summary": "Collections of specialized NCAs with learned routing represent a pragmatic alternative to foundation models. Three architectural paradigms: genomic signal encoding (2-8+ textures from single NCA), mixture-of-NCAs (probabilistic per-cell rule routing), and attention-based universal NCAs. RouteLLM-style learned routers can achieve 60-63% compute reduction by directing queries to appropriate specialists. Model zoo approach better suited to NCAs' local computation paradigm than pursuing single foundation models—extreme parameter efficiency (68-8000 params) makes training large collections trivial. Critical open questions: optimal routing granularity, load balancing in spatial domains, whether local computation can achieve global reasoning.",
+      "summary": "Collections of specialized NCAs with learned routing represent a pragmatic alternative to foundation models. Three architectural paradigms: genomic signal encoding (2-8+ textures from single NCA), mixture-of-NCAs (probabilistic per-cell rule routing), and attention-based universal NCAs. RouteLLM-style learned routers can achieve 60-63% compute reduction by directing queries to appropriate specialists. Model zoo approach better suited to NCAs' local computation paradigm than pursuing single foundation models\u2014extreme parameter efficiency (68-8000 params) makes training large collections trivial. Critical open questions: optimal routing granularity, load balancing in spatial domains, whether local computation can achieve global reasoning.",
       "sources": [
         "https://arxiv.org/html/2506.20486",
         "https://arxiv.org/html/2505.13058v1",
@@ -521,7 +732,7 @@
         "nca"
       ],
       "completedAt": "2026-02-14T23:30:00Z",
-      "summary": "NCAs exhibit fundamentally different scaling than transformers: parameter efficiency through iterative computation (68-8000 params sufficient for many tasks), quadratic O(H²×W²) compute scaling with resolution, channel count as primary model size metric, and generalization via learned dynamics rather than overparameterization. Unlike Kaplan/Chinchilla power laws, NCA capacity = parameters × iterations × receptive field. Key findings: Diff-NCA (336k params) outperforms 4× larger UNet; ViTCA achieves linear complexity through CA iteration amortization; architectural innovations (attention, hierarchy) address resolution bottleneck. Missing: systematic empirical studies across parameter scales, compute-optimal iteration budgets, predictive scaling equations.",
+      "summary": "NCAs exhibit fundamentally different scaling than transformers: parameter efficiency through iterative computation (68-8000 params sufficient for many tasks), quadratic O(H\u00b2\u00d7W\u00b2) compute scaling with resolution, channel count as primary model size metric, and generalization via learned dynamics rather than overparameterization. Unlike Kaplan/Chinchilla power laws, NCA capacity = parameters \u00d7 iterations \u00d7 receptive field. Key findings: Diff-NCA (336k params) outperforms 4\u00d7 larger UNet; ViTCA achieves linear complexity through CA iteration amortization; architectural innovations (attention, hierarchy) address resolution bottleneck. Missing: systematic empirical studies across parameter scales, compute-optimal iteration budgets, predictive scaling equations.",
       "sources": [
         "https://www.nature.com/articles/s44335-025-00026-4",
         "https://arxiv.org/html/2506.22899v2",
@@ -615,7 +826,7 @@
         "foundation-models",
         "nca"
       ],
-      "summary": "Self-supervised pretraining for NCAs remains unexplored but can leverage established strategies from vision transformers: contrastive learning (SimCLR, MoCo, BYOL) on pattern dynamics, masked prediction (MAE-style spatial/temporal masking), predictive coding (next-state prediction), and world models (parameter-conditioned dynamics). Proposed CMAP framework combines all approaches in 4-stage pipeline. Pattern evolution provides unlimited training signals—NCAs self-organize from noise without labels. Key challenges: architecture design, optimal augmentations, convergence stability. Path forward: implement CMAP, benchmark transfer learning, establish NCA scaling laws.",
+      "summary": "Self-supervised pretraining for NCAs remains unexplored but can leverage established strategies from vision transformers: contrastive learning (SimCLR, MoCo, BYOL) on pattern dynamics, masked prediction (MAE-style spatial/temporal masking), predictive coding (next-state prediction), and world models (parameter-conditioned dynamics). Proposed CMAP framework combines all approaches in 4-stage pipeline. Pattern evolution provides unlimited training signals\u2014NCAs self-organize from noise without labels. Key challenges: architecture design, optimal augmentations, convergence stability. Path forward: implement CMAP, benchmark transfer learning, establish NCA scaling laws.",
       "sources": [
         "https://www.nature.com/articles/s41598-025-23997-7",
         "https://arxiv.org/html/2506.22899v2",
@@ -676,7 +887,7 @@
         "optimization",
         "hybrid-methods"
       ],
-      "summary": "Routing problem parallels LLM serving: predictive routers select models based on quality/latency/cost, achieving 60-63% cost reduction. Key strategies: semantic routing, cascade routing (try fast model first), mixture-of-experts. For textures: route to NCAs for real-time/organic (25Hz, 68-8000 params), LCMs for interactive photorealism (<1s, 768×768), standard diffusion for max quality. Hybrid models (Diff-NCA: 336k params) bridge the gap. Implementation: quality/speed predictors, model zoo infrastructure, cascade routing with learned quality gates.",
+      "summary": "Routing problem parallels LLM serving: predictive routers select models based on quality/latency/cost, achieving 60-63% cost reduction. Key strategies: semantic routing, cascade routing (try fast model first), mixture-of-experts. For textures: route to NCAs for real-time/organic (25Hz, 68-8000 params), LCMs for interactive photorealism (<1s, 768\u00d7768), standard diffusion for max quality. Hybrid models (Diff-NCA: 336k params) bridge the gap. Implementation: quality/speed predictors, model zoo infrastructure, cascade routing with learned quality gates.",
       "sources": [
         "https://www.emergentmind.com/topics/llm-routers",
         "https://www.requesty.ai/blog/intelligent-llm-routing-in-enterprise-ai-uptime-cost-efficiency-and-model",
@@ -850,7 +1061,7 @@
         "simulation",
         "gray-scott"
       ],
-      "summary": "Gray-Scott simulates two chemicals with reaction UV² + diffusion at different rates. Tiny parameter changes (feed F, kill k) create dramatically different patterns—spots, stripes, solitons, self-replicating structures. Ideal for computational art due to organic aesthetics and infinite parameter space exploration.",
+      "summary": "Gray-Scott simulates two chemicals with reaction UV\u00b2 + diffusion at different rates. Tiny parameter changes (feed F, kill k) create dramatically different patterns\u2014spots, stripes, solitons, self-replicating structures. Ideal for computational art due to organic aesthetics and infinite parameter space exploration.",
       "sources": [
         "https://www.karlsims.com/rd.html",
         "http://www.mrob.com/pub/comp/xmorphia/index.html",
@@ -925,11 +1136,85 @@
         "https://platform.claude.com/docs/en/agent-sdk/hooks",
         "https://code.claude.com/docs/en/sub-agents"
       ]
+    },
+    {
+      "id": "rq-1739950000000-hybrid-genomic-latent",
+      "topic": "Hybrid genomic-latent NCAs: Can genomic signals operate in latent space for extreme compression + multi-texture capability?",
+      "source": "Research follow-up from controllable NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-18T09:00:00Z",
+      "priority": 7,
+      "tags": [
+        "neural-networks",
+        "genomic-signals",
+        "latent-space",
+        "multi-texture",
+        "nca"
+      ],
+      "completedAt": "2026-02-18T15:50:00Z",
+      "summary": "Hybrid genomic-latent NCAs combine multi-texture genomic encoding (8+ textures, 1,500-10,000 params) with latent space compression (94% memory reduction, 16\u00d7 input capacity). No implementations exist yet, but three proven paradigms provide building blocks: LNCA for latent operation, genomic signals for multi-texture capability, VNCA for probabilistic frameworks. Key challenge: preserving genomic identity through aggressive compression\u2014solvable via skip connections, hierarchical separation, or variational conditioning. Potential impact: <20k params for 16+ textures at high resolution with real-time performance.",
+      "sources": [
+        "https://arxiv.org/html/2403.15525",
+        "https://arxiv.org/html/2506.22899v2",
+        "https://arxiv.org/abs/2506.22899",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://ar5iv.labs.arxiv.org/html/2201.12360",
+        "https://arxiv.org/abs/2201.12360",
+        "https://openreview.net/forum?id=7fFO4cMBx_9",
+        "https://papers.neurips.cc/paper_files/paper/2022/file/361e5112d2eca09513bbd266e4b2d2be-Paper-Conference.pdf",
+        "https://gabrielbena.github.io/blog/2025/bena2025unca/",
+        "https://github.com/kangbosun/NeuralTextureCompression",
+        "https://github.com/ChefSteveP/neural-texture-compression",
+        "https://distill.pub/2020/growing-ca/",
+        "https://infoscience.epfl.ch/entities/publication/e8ea654a-a158-4d97-94c5-4770d1f16f77",
+        "https://arxiv.org/html/2505.08778v1",
+        "https://academic.oup.com/bib/article/24/5/bbad293/7243028",
+        "https://github.com/MECLabTUDA/awesome-nca"
+      ]
+    },
+    {
+      "id": "rq-1770914400000-clip-dimensionality-adapter",
+      "topic": "Learning CLIP-to-NCA adapters: Can we train 512D\u219216D projections that preserve semantic control while enabling direct state injection?",
+      "source": "Research follow-up from CLIP-conditioned NCA study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-14T20:00:00Z",
+      "priority": 6,
+      "tags": [
+        "neural-networks",
+        "clip",
+        "nca",
+        "dimensionality-reduction",
+        "adapters"
+      ],
+      "completedAt": "2026-02-18T21:00:00Z",
+      "summary": "Comprehensive analysis of CLIP\u2192NCA adapter feasibility. 32\u00d7 compression (512D\u219216D) achievable via sparse autoencoders (MSAE: 0.99 cosine similarity), RAE (92% k-NN preservation), or bottleneck adapters. Three injection mechanisms identified: genomic signal replacement (3-bit binary \u2192 continuous 16D), conditional perception loop, latent space operation. Critical challenges: extreme compression ratio, gradient flow through NCA iterations, semantic preservation vs. texture-specificity trade-off. No implementations exist\u2014represents high-value research opportunity.",
+      "sources": [
+        "https://arxiv.org/html/2502.20578v1",
+        "https://arxiv.org/html/2509.25839v1",
+        "https://arxiv.org/html/2408.10264",
+        "https://arxiv.org/html/2505.00105v1",
+        "https://arxiv.org/pdf/1902.00751",
+        "https://arxiv.org/html/2503.00507v1",
+        "https://arxiv.org/html/2407.05991v2",
+        "https://arxiv.org/html/2403.15525",
+        "https://arxiv.org/html/2505.13058v1",
+        "https://www.arxiv.org/pdf/2512.08360",
+        "https://arxiv.org/html/2506.22899",
+        "https://arxiv.org/html/2501.04591",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC9616702/",
+        "https://www.sciencedirect.com/science/article/abs/pii/S1077314224001309",
+        "https://github.com/Mainakdeb/text-2-cellular-automata",
+        "https://distill.pub/2020/growing-ca/",
+        "https://dynca.github.io/",
+        "https://meshnca.github.io/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC11078362/"
+      ]
     }
   ],
   "metadata": {
-    "lastUpdated": "2026-02-14T23:45:00Z",
-    "totalResearched": 16,
+    "lastUpdated": "2026-02-18T22:01:32.098096Z",
+    "totalResearched": 24,
     "version": "1.0"
   }
 }

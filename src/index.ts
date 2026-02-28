@@ -10,6 +10,9 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 import { CronExpressionParser } from 'cron-parser';
 
+import { handleGitHubIpc } from './github-handler.js';
+import { initGitHubClient } from './github-api.js';
+
 import {
   ASSISTANT_NAME,
   DATA_DIR,
@@ -1238,7 +1241,29 @@ async function processTaskIpc(
     }
 
     default:
-      logger.warn({ type: data.type }, 'Unknown IPC task type');
+      // Check if it's a GitHub IPC request
+      if (data.type.startsWith('github_')) {
+        if (!isMain) {
+          logger.warn({ sourceGroup, type: data.type }, 'Non-main group attempted GitHub operation');
+          return;
+        }
+
+        try {
+          const reply = await handleGitHubIpc(data as any);
+
+          // Write reply if requestId present
+          if (data.requestId) {
+            await sendIpcReply(sourceGroup, data.requestId, reply.status, JSON.stringify(reply.data), reply.error);
+          }
+        } catch (err) {
+          logger.error({ err, type: data.type }, 'GitHub IPC handler error');
+          if (data.requestId) {
+            await sendIpcReply(sourceGroup, data.requestId, 'error', undefined, err instanceof Error ? err.message : String(err));
+          }
+        }
+      } else {
+        logger.warn({ type: data.type }, 'Unknown IPC task type');
+      }
   }
 }
 
@@ -1522,6 +1547,15 @@ async function main(): Promise<void> {
     initOpenAI(openaiKey);
   } else {
     logger.warn('OPENAI_API_KEY not set - audio transcription and TTS disabled');
+  }
+
+  // Initialize GitHub API client
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (githubToken) {
+    initGitHubClient(githubToken);
+    logger.info('GitHub integration enabled');
+  } else {
+    logger.warn('GITHUB_TOKEN not set - GitHub integration disabled');
   }
 
   loadState();
