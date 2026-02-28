@@ -173,13 +173,16 @@ Conversation history and context for this repository's issues and PRs are stored
       fs.writeFileSync(path.join(groupFolder, 'CLAUDE.md'), claudeMd);
     }
 
-    // Register the group
+    // Register the group with a longer timeout for codebase exploration + planning
     const newGroup = {
       name: `GitHub: ${repoOwner}/${repoName}`,
       folder: folderName,
       trigger: '@Bagel', // Not used for GitHub groups
       added_at: new Date().toISOString(),
-      jid: groupKey, // Use groupKey as JID for GitHub groups
+      jid: groupKey,
+      containerConfig: {
+        timeout: 900000, // 15 minutes — GitHub tasks involve deep codebase exploration
+      },
     };
 
     setRegisteredGroup(groupKey, newGroup);
