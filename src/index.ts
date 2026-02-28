@@ -470,6 +470,12 @@ async function runAgent(
 }
 
 async function sendMessage(jid: string, text: string): Promise<void> {
+  // GitHub groups don't have a real chat JID - skip sending
+  if (jid.startsWith('github-')) {
+    logger.debug({ jid }, 'Skipping sendMessage for GitHub group (no chat)');
+    return;
+  }
+
   if (jid.startsWith('discord:')) {
     await sendDiscordMessage(jid, text);
   } else {
@@ -1247,8 +1253,10 @@ async function processTaskIpc(
     default:
       // Check if it's a GitHub IPC request
       if (data.type.startsWith('github_')) {
-        if (!isMain) {
-          logger.warn({ sourceGroup, type: data.type }, 'Non-main group attempted GitHub operation');
+        // Allow GitHub operations from main OR GitHub groups
+        const isGitHubGroup = sourceGroup.startsWith('github-');
+        if (!isMain && !isGitHubGroup) {
+          logger.warn({ sourceGroup, type: data.type }, 'Non-GitHub group attempted GitHub operation');
           return;
         }
 
