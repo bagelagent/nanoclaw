@@ -870,13 +870,16 @@ async function processTaskIpc(
         const buildOutput = execSync('./container/build.sh', {
           cwd: process.cwd(),
           encoding: 'utf-8',
-          timeout: 300000
+          timeout: 600000
         });
         logger.info({ output: buildOutput }, 'Container build test succeeded');
 
         // Send success message back to agent
         const successMsg = `Container build test SUCCEEDED:\n\n${buildOutput}`;
-        await sendMessage(data.chatJid || registeredGroups[Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup) || '']?.name || 'unknown', successMsg);
+        const successJid = data.chatJid || Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup);
+        if (successJid) {
+          await sendMessage(successJid, successMsg);
+        }
       } catch (err) {
         logger.error({ err }, 'Container build test failed');
 
@@ -891,7 +894,7 @@ async function processTaskIpc(
         }
 
         // Find the chatJid for the source group
-        const chatJid = Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup);
+        const chatJid = data.chatJid || Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup);
         if (chatJid) {
           await sendMessage(chatJid, errorMsg);
         }
@@ -1205,7 +1208,7 @@ async function processTaskIpc(
           const buildOutput = execSync('./container/build.sh', {
             cwd: process.cwd(),
             stdio: 'pipe',
-            timeout: 300000,
+            timeout: 600000,
             encoding: 'utf-8'
           });
           logger.info({ output: buildOutput }, 'Container build succeeded');
