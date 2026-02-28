@@ -10,9 +10,12 @@ import {
   createGitHubAssignment,
   getGitHubAssignmentByIssue,
   GitHubAssignment,
+  getAllRegisteredGroups,
+
 } from './db.js';
+import { RegisteredGroup } from './types.js';
 import { fetchIssue } from './github-api.js';
-import { startWorkingOnIssue } from './github-issue-worker.js';
+import { runContainerAgent } from './container-runner.js';
 
 const app = express();
 app.use(express.json());
@@ -83,6 +86,121 @@ function verifyGitHubSignature(
   const hmac = crypto.createHmac('sha256', secret);
   const digest = 'sha256=' + hmac.update(payload).digest('hex');
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+}
+
+/**
+ * Spawn a container to handle GitHub webhook events
+ */
+function spawnGitHubContainer(eventType: string, data: any) {
+  // Get main group (GitHub integration is main-only)
+  const registeredGroups = getAllRegisteredGroups();
+  const mainGroup = Object.values(registeredGroups).find((g: RegisteredGroup) => g.folder === 'main');
+
+  if (!mainGroup) {
+    logger.error('Main group not found - cannot spawn GitHub container');
+    return;
+  }
+
+  // Build prompt based on event type
+  let prompt = '';
+  if (eventType === 'issue_assigned') {
+    prompt = buildIssueAssignedPrompt(data);
+  } else if (eventType === 'plan_approved') {
+    prompt = buildPlanApprovedPrompt(data);
+  } else {
+    logger.warn({ eventType }, 'Unknown GitHub event type');
+    return;
+  }
+
+  const chatJid = `github-${eventType}-${data.issue_number}-${Date.now()}`;
+  const sessionId = `github-${data.assignmentId || data.issue_number}-${Date.now()}`;
+
+  // Spawn container in background (don't await)
+  runContainerAgent(
+    mainGroup,
+    {
+      prompt,
+      sessionId,
+      groupFolder: mainGroup.folder,
+      chatJid,
+      isMain: true,
+    },
+    () => {}, // No-op callback
+  ).catch((err) => {
+    logger.error({ err, eventType, issue: data.issue_number }, 'GitHub container failed');
+  });
+
+  logger.info({ eventType, issue: data.issue_number, chatJid }, 'Spawned GitHub container');
+}
+
+/**
+ * Build prompt for issue_assigned event
+ */
+function buildIssueAssignedPrompt(data: any): string {
+  return `You've been assigned to work on a GitHub issue. Here are the details:
+
+**Repository**: ${data.repo_owner}/${data.repo_name}
+**Issue #${data.issue_number}**: ${data.title}
+**URL**: ${data.issue_url}
+
+**Description**:
+${data.description || '(No description provided)'}
+
+---
+
+**YOUR WORKFLOW**:
+
+1. **Post initial comment** on the issue saying you've started work
+2. **Clone the repository** using github_clone_repo
+3. **Explore the codebase** thoroughly to understand the issue
+4. **Enter plan mode** (use EnterPlanMode) to design your solution
+5. **Post your plan** as a comment on issue #${data.issue_number} using github_comment
+6. **Stop and wait** - DO NOT implement yet. Your work is done for now.
+
+A new container will be spawned when the user approves your plan.
+
+**Important**:
+- Focus on creating a thorough, well-thought-out plan
+- Be specific about what files you'll change and why
+- Don't implement anything in this phase - just plan
+
+Begin by posting an initial comment and cloning the repository.`;
+}
+
+/**
+ * Build prompt for plan_approved event
+ */
+function buildPlanApprovedPrompt(data: any): string {
+  return `Your plan for GitHub issue #${data.issue_number} has been approved by ${data.approver}!
+
+**Repository**: ${data.repo_owner}/${data.repo_name}
+**Issue**: ${data.title}
+**URL**: ${data.issue_url}
+
+---
+
+**YOUR WORKFLOW**:
+
+1. **Clone the repository** using github_clone_repo
+2. **Read your plan** - Use github_get_comments to see what you previously proposed
+3. **Implement the solution**:
+   - Create a new branch: github_create_branch (format: "bagel/issue-${data.issue_number}-brief-description")
+   - Make your code changes using Edit/Write tools
+   - Follow the plan you created
+   - Test your changes if possible
+4. **Commit and push** using github_commit_push with a clear message
+5. **Create a pull request** using github_create_pr:
+   - Title should reference the issue
+   - Body should describe the changes
+   - Include "Fixes #${data.issue_number}"
+6. **Comment on the issue** with the PR link using github_comment
+
+**Important**:
+- Follow the plan you created earlier
+- Write clean, tested code
+- Create a professional PR ready for review
+
+Begin by cloning the repository and reviewing your approved plan.`;
 }
 
 /**
@@ -157,20 +275,16 @@ async function handleIssueWebhook(payload: GitHubWebhookPayload) {
     'Created GitHub assignment from webhook',
   );
 
-  // Get the full assignment record and start working on it immediately
-  const fullAssignment = getGitHubAssignmentByIssue(
-    repository.owner.login,
-    repository.name,
-    issue.number,
-  );
-
-  if (fullAssignment) {
-    // Start working on the issue in the background (don't await)
-    // This allows the webhook to respond quickly
-    startWorkingOnIssue(fullAssignment).catch((err) => {
-      logger.error({ err, assignmentId }, 'Background issue worker failed');
-    });
-  }
+  // Spawn a container to handle this issue assignment
+  spawnGitHubContainer('issue_assigned', {
+    assignmentId,
+    repo_owner: repository.owner.login,
+    repo_name: repository.name,
+    issue_number: issue.number,
+    title: issue.title,
+    description: issue.body || '',
+    issue_url: issue.html_url,
+  });
 }
 
 /**
@@ -226,11 +340,19 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
         issue: issue.number,
         approver: comment.user.login,
       },
-      'Approval detected in comment - agent should proceed with implementation',
+      'Approval detected in comment - spawning container to implement',
     );
 
-    // The agent is polling for comments and will detect this approval
-    // We don't need to do anything here - just log it
+    // Spawn a container to handle the approved implementation
+    spawnGitHubContainer('plan_approved', {
+      assignmentId: assignment.id,
+      repo_owner: repository.owner.login,
+      repo_name: repository.name,
+      issue_number: issue.number,
+      title: issue.title,
+      issue_url: issue.html_url,
+      approver: comment.user.login,
+    });
   }
 }
 
