@@ -90,7 +90,7 @@ export function createGitHubMcpTools(ctx: GitHubMcpContext) {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(reply.data, null, 2),
+                  text: reply.data ? JSON.stringify(reply.data, null, 2) : 'Success (no data)',
                 },
               ],
             };
