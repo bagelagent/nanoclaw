@@ -1261,7 +1261,7 @@ async function processTaskIpc(
         }
 
         try {
-          const reply = await handleGitHubIpc(data as any);
+          const reply = await handleGitHubIpc(data as any, sourceGroup);
 
           // Write reply if requestId present
           if (data.requestId) {

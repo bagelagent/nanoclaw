@@ -19,12 +19,16 @@ const CONTAINER_PROJECT_PREFIX = '/workspace/project';
 
 /**
  * Translate a container path to a host path for git/fs operations.
- * Container sends paths like /workspace/project/github-work/owner/repo,
- * but the host needs <project-root>/github-work/owner/repo.
+ * Container sends paths like /workspace/project/github-work/owner/repo
+ * or /workspace/group/repo — both need to map to host filesystem paths.
  */
-function containerToHostPath(p: string): string {
+function containerToHostPath(p: string, sourceGroup?: string): string {
   if (p.startsWith(CONTAINER_PROJECT_PREFIX + '/')) {
     return path.join(process.cwd(), p.slice(CONTAINER_PROJECT_PREFIX.length));
+  }
+  if (p.startsWith('/workspace/group/') && sourceGroup) {
+    const relPath = p.slice('/workspace/group/'.length);
+    return path.join(process.cwd(), 'groups', sourceGroup, relPath);
   }
   return p;
 }
@@ -137,9 +141,17 @@ export async function createWorkBranch(
   repoPath: string,
   branchName: string,
   baseBranch?: string,
+  sourceGroup?: string,
 ): Promise<void> {
   // Translate container path to host path if needed
-  repoPath = containerToHostPath(repoPath);
+  repoPath = containerToHostPath(repoPath, sourceGroup);
+
+  // Ensure auth is configured (repo may have been cloned by the agent via bash)
+  const token = process.env.GITHUB_TOKEN;
+  if (token) {
+    configureRepoAuth(repoPath, token);
+  }
+
   try {
     // Fetch latest from remote
     execSync('git fetch origin', { cwd: repoPath, stdio: 'pipe' });
@@ -178,9 +190,17 @@ export async function commitAndPush(
   repoPath: string,
   branchName: string,
   commitMessage: string,
+  sourceGroup?: string,
 ): Promise<void> {
   // Translate container path to host path if needed
-  repoPath = containerToHostPath(repoPath);
+  repoPath = containerToHostPath(repoPath, sourceGroup);
+
+  // Ensure auth is configured for push
+  const token = process.env.GITHUB_TOKEN;
+  if (token) {
+    configureRepoAuth(repoPath, token);
+  }
+
   try {
     // Stage all changes
     execSync('git add -A', { cwd: repoPath, stdio: 'pipe' });
@@ -222,6 +242,7 @@ export async function commitAndPush(
  */
 export async function handleGitHubIpc(
   data: GitHubIpcRequest,
+  sourceGroup?: string,
 ): Promise<GitHubIpcReply> {
   try {
     switch (data.type) {
@@ -258,7 +279,7 @@ export async function handleGitHubIpc(
           base_branch?: string;
         };
 
-        await createWorkBranch(repo_path, branch_name, base_branch);
+        await createWorkBranch(repo_path, branch_name, base_branch, sourceGroup);
 
         return {
           status: 'success',
@@ -273,7 +294,7 @@ export async function handleGitHubIpc(
           commit_message: string;
         };
 
-        await commitAndPush(repo_path, branch_name, commit_message);
+        await commitAndPush(repo_path, branch_name, commit_message, sourceGroup);
 
         return {
           status: 'success',
