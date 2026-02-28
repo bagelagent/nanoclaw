@@ -58,10 +58,11 @@ export interface GitHubMcpContext {
 }
 
 export function createGitHubMcpTools(ctx: GitHubMcpContext) {
-  const { isMain } = ctx;
+  const { isMain, groupFolder } = ctx;
 
-  // Only main group can use GitHub tools
-  if (!isMain) {
+  // Only main group or GitHub groups can use GitHub tools
+  const isGitHubGroup = groupFolder.startsWith('github-');
+  if (!isMain && !isGitHubGroup) {
     return [];
   }
 
