@@ -12,6 +12,7 @@ import { CronExpressionParser } from 'cron-parser';
 
 import { handleGitHubIpc } from './github-handler.js';
 import { initGitHubClient } from './github-api.js';
+import { startWebhookServer } from './webhook-server.js';
 
 import {
   ASSISTANT_NAME,
@@ -1557,6 +1558,10 @@ async function main(): Promise<void> {
   if (githubToken) {
     initGitHubClient(githubToken);
     logger.info('GitHub integration enabled');
+
+    // Start webhook server for GitHub events
+    const webhookPort = parseInt(process.env.WEBHOOK_PORT || '3000', 10);
+    startWebhookServer(webhookPort);
   } else {
     logger.warn('GITHUB_TOKEN not set - GitHub integration disabled');
   }
