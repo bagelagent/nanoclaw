@@ -11,7 +11,36 @@ import {
 } from './github-api.js';
 import { logger } from './logger.js';
 
-const GITHUB_WORK_DIR = '/workspace/project/github-work';
+// Host path for actual file operations (process.cwd() = project root)
+const GITHUB_WORK_DIR = path.join(process.cwd(), 'github-work');
+
+// Container path prefix — containers see the project root at /workspace/project/
+const CONTAINER_PROJECT_PREFIX = '/workspace/project';
+
+/**
+ * Translate a container path to a host path for git/fs operations.
+ * Container sends paths like /workspace/project/github-work/owner/repo,
+ * but the host needs <project-root>/github-work/owner/repo.
+ */
+function containerToHostPath(p: string): string {
+  if (p.startsWith(CONTAINER_PROJECT_PREFIX + '/')) {
+    return path.join(process.cwd(), p.slice(CONTAINER_PROJECT_PREFIX.length));
+  }
+  return p;
+}
+
+/**
+ * Translate a host path to a container path for return values.
+ * Host clones to <project-root>/github-work/owner/repo,
+ * container needs /workspace/project/github-work/owner/repo.
+ */
+function hostToContainerPath(p: string): string {
+  const cwd = process.cwd();
+  if (p.startsWith(cwd)) {
+    return CONTAINER_PROJECT_PREFIX + p.slice(cwd.length);
+  }
+  return p;
+}
 
 export interface GitHubIpcRequest {
   type: string;
@@ -26,6 +55,17 @@ export interface GitHubIpcReply {
 }
 
 /**
+ * Configure git credential helper for a cloned repo so pull/push work
+ */
+function configureRepoAuth(repoPath: string, token: string): void {
+  // Use a store-based credential helper that injects the token for github.com
+  execSync(
+    `git config credential.helper '!f() { echo "username=x-access-token"; echo "password=${token}"; }; f'`,
+    { cwd: repoPath, stdio: 'pipe' },
+  );
+}
+
+/**
  * Clone a GitHub repository to the workspace
  */
 export async function cloneRepository(
@@ -37,9 +77,14 @@ export async function cloneRepository(
   // Check if already cloned
   if (fs.existsSync(path.join(repoPath, '.git'))) {
     logger.info({ owner, repo }, 'Repository already cloned, pulling latest');
+    // Ensure auth is configured (token may have changed)
+    const token = process.env.GITHUB_TOKEN;
+    if (token) {
+      configureRepoAuth(repoPath, token);
+    }
     try {
       execSync('git pull', { cwd: repoPath, stdio: 'pipe' });
-      return { path: repoPath };
+      return { path: hostToContainerPath(repoPath) };
     } catch (err) {
       logger.warn({ err, owner, repo }, 'Failed to pull, will re-clone');
       // Fall through to clone
@@ -49,18 +94,34 @@ export async function cloneRepository(
   // Clone repository
   fs.mkdirSync(path.dirname(repoPath), { recursive: true });
 
-  // Use global git config for authentication
-  const cloneUrl = `https://github.com/${owner}/${repo}.git`;
+  // Inject token into clone URL for authentication
+  const token = process.env.GITHUB_TOKEN;
+  const cloneUrl = token
+    ? `https://x-access-token:${token}@github.com/${owner}/${repo}.git`
+    : `https://github.com/${owner}/${repo}.git`;
 
-  logger.info({ owner, repo, cloneUrl }, 'Cloning repository');
+  logger.info({ owner, repo }, 'Cloning repository');
 
   try {
     execSync(`git clone "${cloneUrl}" "${repoPath}"`, {
       stdio: 'pipe',
       timeout: 120000, // 2 minute timeout
     });
+
+    // Set the clean remote URL (without token) so it's not leaked in logs/config
+    // Auth for future operations uses the credential helper below
+    execSync(`git remote set-url origin "https://github.com/${owner}/${repo}.git"`, {
+      cwd: repoPath,
+      stdio: 'pipe',
+    });
+
+    // Configure token-based credential helper for this repo
+    if (token) {
+      configureRepoAuth(repoPath, token);
+    }
+
     logger.info({ owner, repo, repoPath }, 'Repository cloned successfully');
-    return { path: repoPath };
+    return { path: hostToContainerPath(repoPath) };
   } catch (err) {
     logger.error({ err, owner, repo }, 'Failed to clone repository');
     throw new Error(
@@ -77,6 +138,8 @@ export async function createWorkBranch(
   branchName: string,
   baseBranch?: string,
 ): Promise<void> {
+  // Translate container path to host path if needed
+  repoPath = containerToHostPath(repoPath);
   try {
     // Fetch latest from remote
     execSync('git fetch origin', { cwd: repoPath, stdio: 'pipe' });
@@ -116,6 +179,8 @@ export async function commitAndPush(
   branchName: string,
   commitMessage: string,
 ): Promise<void> {
+  // Translate container path to host path if needed
+  repoPath = containerToHostPath(repoPath);
   try {
     // Stage all changes
     execSync('git add -A', { cwd: repoPath, stdio: 'pipe' });
