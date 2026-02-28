@@ -20,6 +20,11 @@ import { GROUPS_DIR } from './config.js';
 const app = express();
 app.use(express.json());
 
+// Dedup: prevent duplicate container spawns from near-simultaneous webhooks
+// Key = "eventType-owner/repo-issueNumber", value = timestamp
+const recentEvents = new Map<string, number>();
+const DEDUP_WINDOW_MS = 60_000; // 60 seconds
+
 interface GitHubWebhookPayload {
   action: string;
   issue: {
@@ -198,6 +203,21 @@ Conversation history and context for this repository's issues and PRs are stored
  * Spawn a container to handle GitHub webhook events
  */
 function spawnGitHubContainer(eventType: string, data: any) {
+  // Dedup check: skip if we recently spawned for the same event+issue
+  const dedupKey = `${eventType}-${data.repo_owner}/${data.repo_name}-${data.issue_number}`;
+  const now = Date.now();
+  const lastSeen = recentEvents.get(dedupKey);
+  if (lastSeen && now - lastSeen < DEDUP_WINDOW_MS) {
+    logger.info({ dedupKey }, 'Duplicate GitHub event within dedup window, skipping');
+    return;
+  }
+  recentEvents.set(dedupKey, now);
+
+  // Clean up old entries to prevent unbounded growth
+  for (const [key, ts] of recentEvents) {
+    if (now - ts > DEDUP_WINDOW_MS) recentEvents.delete(key);
+  }
+
   // Get or create GitHub group for this repository
   const group = getOrCreateGitHubGroup(data.repo_owner, data.repo_name);
 
@@ -207,6 +227,8 @@ function spawnGitHubContainer(eventType: string, data: any) {
     prompt = buildIssueAssignedPrompt(data);
   } else if (eventType === 'plan_approved') {
     prompt = buildPlanApprovedPrompt(data);
+  } else if (eventType === 'question_answered') {
+    prompt = buildQuestionAnsweredPrompt(data);
   } else {
     logger.warn({ eventType }, 'Unknown GitHub event type');
     return;
@@ -261,19 +283,25 @@ ${data.description || '(No description provided)'}
 
 3. **Explore the codebase** thoroughly to understand the issue
 
-4. **Enter plan mode** (use EnterPlanMode) to design your solution
+4. **Ask questions if ANYTHING is unclear**:
+   - If the issue is vague, ambiguous, or you need clarification — post your questions as a comment on issue #${data.issue_number} using github_comment
+   - Prefer asking over guessing. It's better to ask a clarifying question than to build the wrong thing.
+   - After posting questions, **stop and exit**. A new container will spawn when the user replies.
 
-5. **Post your plan** as a comment on issue #${data.issue_number} using github_comment
+5. **If the issue is clear enough**, design your solution:
+   - Post your plan as a comment on issue #${data.issue_number} using github_comment
+   - Be specific about what files you'll change and why
 
 6. **Stop and wait** - DO NOT implement yet. Your work is done for now.
 
-A new container will be spawned when the user approves your plan.
+A new container will be spawned when the user approves your plan (or answers your questions).
 
 **Important**:
 - The repository persists in /workspace/group/ across runs - don't clone unnecessarily
 - Focus on creating a thorough, well-thought-out plan
 - Be specific about what files you'll change and why
 - Don't implement anything in this phase - just plan
+- When in doubt, ASK. Questions are free, bad implementations are expensive.
 
 Begin by posting an initial comment and checking if the repository exists.`;
 }
@@ -314,15 +342,60 @@ function buildPlanApprovedPrompt(data: any): string {
    - Body should describe the changes
    - Include "Fixes #${data.issue_number}"
 
-6. **Comment on the issue** with the PR link using github_comment
+6. **Merge the pull request** using github_merge_pr:
+   - Use the PR number from step 5
+   - Squash merge (default) is preferred
+   - The plan was already human-approved, so no separate review is needed
+
+7. **Comment on the issue** with the PR link and confirmation that it's been merged
 
 **Important**:
 - The repository persists in /workspace/group/${data.repo_name}/ - use it directly
 - Follow the plan you created earlier
 - Write clean, tested code
-- Create a professional PR ready for review
+- After creating the PR, merge it immediately — your plan was already approved
 
 Begin by navigating to the repository and reviewing your approved plan.`;
+}
+
+/**
+ * Build prompt for question_answered event (user replied to agent's questions)
+ */
+function buildQuestionAnsweredPrompt(data: any): string {
+  return `A user has replied to your questions on GitHub issue #${data.issue_number}.
+
+**Repository**: ${data.repo_owner}/${data.repo_name}
+**Issue #${data.issue_number}**: ${data.title}
+**URL**: ${data.issue_url}
+
+**Latest comment from ${data.commenter}**:
+${data.comment_body}
+
+---
+
+**WORKSPACE**: The repository is in \`/workspace/group/${data.repo_name}/\`
+
+**YOUR WORKFLOW**:
+
+1. **Read the full comment history** using github_get_comments on issue #${data.issue_number} to understand the full context
+
+2. **Check the repository**:
+   - \`cd /workspace/group/${data.repo_name}\` and \`git pull\`
+   - If it doesn't exist, clone it first
+
+3. **Continue planning** based on the user's answers:
+   - If you now have enough clarity, post your implementation plan as a comment
+   - If you still have questions, post them as a comment and exit
+
+4. **Stop and wait** - DO NOT implement yet.
+
+**Important**:
+- Read ALL comments, not just the latest — you need the full conversation context
+- If the answer resolves your questions, proceed to post a complete plan
+- If you need more clarification, ask specific follow-up questions and exit
+- Don't implement anything in this phase - just plan
+
+Begin by reading the full comment history.`;
 }
 
 /**
@@ -437,6 +510,25 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
       title: issue.title,
       issue_url: issue.html_url,
       approver: comment.user.login,
+    });
+  } else {
+    // Non-approval comment on an assigned issue — user may be answering agent's questions
+    logger.info(
+      {
+        issue: issue.number,
+        commenter: comment.user.login,
+      },
+      'User comment on assigned issue - spawning question_answered container',
+    );
+
+    spawnGitHubContainer('question_answered', {
+      repo_owner: repository.owner.login,
+      repo_name: repository.name,
+      issue_number: issue.number,
+      title: issue.title,
+      issue_url: issue.html_url,
+      commenter: comment.user.login,
+      comment_body: comment.body,
     });
   }
 }

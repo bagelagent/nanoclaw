@@ -400,6 +400,62 @@ export function createGitHubMcpTools(ctx: GitHubMcpContext) {
     ),
 
     tool(
+      'github_merge_pr',
+      'Merge a pull request on GitHub. Use after creating a PR to auto-merge it.',
+      {
+        owner: z.string().describe('Repository owner'),
+        repo: z.string().describe('Repository name'),
+        pull_number: z.number().describe('Pull request number'),
+        merge_method: z.enum(['merge', 'squash', 'rebase']).optional().describe('Merge method (defaults to squash)'),
+      },
+      async (args: { owner: string; repo: string; pull_number: number; merge_method?: 'merge' | 'squash' | 'rebase' }) => {
+        const requestId = writeIpcFile(TASKS_DIR, {
+          type: 'github_merge_pr',
+          owner: args.owner,
+          repo: args.repo,
+          pull_number: args.pull_number,
+          merge_method: args.merge_method,
+        });
+
+        try {
+          const reply = await waitForReply(requestId, 30000);
+
+          if (reply.status === 'success') {
+            const result = reply.data;
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Pull request merged!\n\nSHA: ${result.sha}\nMerged: ${result.merged}\nMessage: ${result.message}`,
+                },
+              ],
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Failed to merge PR: ${reply.error}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Timeout or error merging PR: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    ),
+
+    tool(
       'github_get_comments',
       'Get all comments on a GitHub issue or pull request. Use this to check for user approval after posting a plan.',
       {

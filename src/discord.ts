@@ -7,10 +7,14 @@ import {
   Partials,
   TextChannel,
 } from 'discord.js';
+import fs from 'fs';
+import path from 'path';
+import { tmpdir } from 'os';
 
 import { DISCORD_BOT_TOKEN } from './config.js';
 import { storeChatMetadata, storeGenericMessage, getAllRegisteredGroups } from './db.js';
 import { logger } from './logger.js';
+import { initOpenAI } from './audio.js';
 
 const DISCORD_API_TIMEOUT = 15000;
 
@@ -40,24 +44,105 @@ function toJid(msg: Message): string {
 }
 
 /**
+ * Check if an attachment is an audio file
+ */
+function isAudioAttachment(contentType: string | null, name: string | null): boolean {
+  if (contentType?.startsWith('audio/')) return true;
+  if (name?.endsWith('.ogg') || name?.endsWith('.mp3') || name?.endsWith('.wav')) return true;
+  return false;
+}
+
+/**
+ * Transcribe an audio attachment from Discord
+ */
+async function transcribeDiscordAudio(url: string, filename: string): Promise<string | null> {
+  try {
+    // Download the audio file
+    const response = await fetch(url);
+    if (!response.ok) {
+      logger.error({ url, status: response.status }, 'Failed to download Discord audio');
+      return null;
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!buffer || buffer.length === 0) {
+      logger.warn('Empty audio buffer from Discord');
+      return null;
+    }
+
+    // Save to temporary file
+    const tempDir = path.join(tmpdir(), 'nanoclaw-discord-audio');
+    fs.mkdirSync(tempDir, { recursive: true });
+    const tempFilePath = path.join(tempDir, `${Date.now()}-${filename}`);
+    fs.writeFileSync(tempFilePath, buffer);
+
+    try {
+      // Import OpenAI dynamically to get the client
+      const { default: OpenAI } = await import('openai');
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        logger.warn('OpenAI API key not set, skipping Discord audio transcription');
+        return null;
+      }
+
+      const openai = new OpenAI({ apiKey });
+
+      // Transcribe with Whisper
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(tempFilePath),
+        model: 'whisper-1',
+      });
+
+      logger.info({ text: transcription.text, filename }, 'Discord audio transcribed');
+      return transcription.text;
+    } finally {
+      // Clean up temp file
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+      }
+    }
+  } catch (error) {
+    logger.error({ error, url }, 'Discord audio transcription failed');
+    return null;
+  }
+}
+
+/**
  * Build attachment description lines for a Discord message.
  * Returns URLs with content type hints so the agent can fetch/view them.
+ * Audio files are transcribed automatically.
  */
-function buildAttachmentLines(msg: Message): string {
+async function buildAttachmentLines(msg: Message): Promise<string> {
   if (msg.attachments.size === 0) return '';
-  return msg.attachments
-    .map((a) => {
-      const type = a.contentType?.startsWith('image/') ? 'image' : 'file';
-      return `[Attached ${type}: ${a.name || 'unknown'}] ${a.url}`;
-    })
-    .join('\n');
+
+  const lines: string[] = [];
+
+  for (const a of msg.attachments.values()) {
+    const contentType = a.contentType;
+    const name = a.name || 'unknown';
+
+    // Check if it's an audio file
+    if (isAudioAttachment(contentType, name)) {
+      const transcription = await transcribeDiscordAudio(a.url, name);
+      if (transcription) {
+        lines.push(`[Voice message transcription]: ${transcription}`);
+      } else {
+        lines.push(`[Attached audio: ${name}] ${a.url}`);
+      }
+    } else {
+      const type = contentType?.startsWith('image/') ? 'image' : 'file';
+      lines.push(`[Attached ${type}: ${name}] ${a.url}`);
+    }
+  }
+
+  return lines.join('\n');
 }
 
 /**
  * Build full content string from a Discord message (text + attachments).
  */
-function buildContent(msg: Message): string {
-  const attachmentLines = buildAttachmentLines(msg);
+async function buildContent(msg: Message): Promise<string> {
+  const attachmentLines = await buildAttachmentLines(msg);
   if (!attachmentLines) return msg.content;
   return msg.content ? `${msg.content}\n${attachmentLines}` : attachmentLines;
 }
@@ -80,7 +165,7 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
     logger.info({ user: c.user.tag }, 'Connected to Discord');
   });
 
-  client.on(Events.MessageCreate, (msg) => {
+  client.on(Events.MessageCreate, async (msg) => {
     // Ignore bot messages (including our own)
     if (msg.author.bot) return;
 
@@ -95,12 +180,13 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
       const OWNER_DISCORD_ID = '237014586480525313';
       if (msg.author.id !== OWNER_DISCORD_ID) {
         // Store message for context but don't process
+        const content = await buildContent(msg);
         storeGenericMessage(
           msg.id,
           chatJid,
           msg.author.id,
           msg.author.displayName || msg.author.username,
-          buildContent(msg),
+          content,
           timestamp,
           false,
         );
@@ -113,12 +199,13 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
 
       // Process all messages in guild channels without needing @mention
       // Each channel will be treated as its own group with separate memory
+      const content = await buildContent(msg);
       storeGenericMessage(
         msg.id,
         chatJid,
         msg.author.id,
         msg.author.displayName || msg.author.username,
-        buildContent(msg),
+        content,
         timestamp,
         false,
       );
@@ -143,7 +230,7 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
       }
 
       // Append attachment URLs (images, files, etc.)
-      const attachmentLines = buildAttachmentLines(msg);
+      const attachmentLines = await buildAttachmentLines(msg);
       if (attachmentLines) {
         content = content ? `${content}\n${attachmentLines}` : attachmentLines;
       }

@@ -1263,14 +1263,31 @@ async function processTaskIpc(
         try {
           const reply = await handleGitHubIpc(data as any, sourceGroup);
 
-          // Write reply if requestId present
+          // Write reply directly with { status, data, error } structure
+          // (sendIpcReply writes { status, message, error } which doesn't match
+          // what the container MCP tools expect — they read reply.data)
           if (data.requestId) {
-            await sendIpcReply(sourceGroup, data.requestId, reply.status, JSON.stringify(reply.data), reply.error);
+            const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+            fs.mkdirSync(repliesDir, { recursive: true });
+            const replyPath = path.join(repliesDir, `${data.requestId}.json`);
+            const replyPayload = { status: reply.status, data: reply.data, error: reply.error, timestamp: new Date().toISOString() };
+            const tempPath = `${replyPath}.tmp`;
+            fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+            fs.renameSync(tempPath, replyPath);
+            logger.debug({ requestId: data.requestId, status: reply.status }, 'GitHub IPC reply sent');
+            setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
           }
         } catch (err) {
           logger.error({ err, type: data.type }, 'GitHub IPC handler error');
           if (data.requestId) {
-            await sendIpcReply(sourceGroup, data.requestId, 'error', undefined, err instanceof Error ? err.message : String(err));
+            const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+            fs.mkdirSync(repliesDir, { recursive: true });
+            const replyPath = path.join(repliesDir, `${data.requestId}.json`);
+            const replyPayload = { status: 'error', error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() };
+            const tempPath = `${replyPath}.tmp`;
+            fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+            fs.renameSync(tempPath, replyPath);
+            setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
           }
         }
       } else {

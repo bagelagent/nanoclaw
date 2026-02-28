@@ -8,6 +8,7 @@ import {
   fetchIssue,
   getDefaultBranch,
   getIssueComments,
+  mergePullRequest,
 } from './github-api.js';
 import { logger } from './logger.js';
 
@@ -67,6 +68,9 @@ function configureRepoAuth(repoPath: string, token: string): void {
     `git config credential.helper '!f() { echo "username=x-access-token"; echo "password=${token}"; }; f'`,
     { cwd: repoPath, stdio: 'pipe' },
   );
+  // Set git identity so commits are attributed to bagelagent
+  execSync(`git config user.name 'bagelagent'`, { cwd: repoPath, stdio: 'pipe' });
+  execSync(`git config user.email 'bagel.agent@yahoo.com'`, { cwd: repoPath, stdio: 'pipe' });
 }
 
 /**
@@ -334,6 +338,22 @@ export async function handleGitHubIpc(
 
         return {
           status: 'success',
+        };
+      }
+
+      case 'github_merge_pr': {
+        const { owner, repo, pull_number, merge_method } = data as unknown as {
+          owner: string;
+          repo: string;
+          pull_number: number;
+          merge_method?: 'merge' | 'squash' | 'rebase';
+        };
+
+        const mergeResult = await mergePullRequest(owner, repo, pull_number, merge_method);
+
+        return {
+          status: 'success',
+          data: mergeResult,
         };
       }
 

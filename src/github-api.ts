@@ -113,6 +113,33 @@ export interface GitHubComment {
   updated_at: string;
 }
 
+export interface GitHubMergeResult {
+  sha: string;
+  merged: boolean;
+  message: string;
+}
+
+export async function mergePullRequest(
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  mergeMethod: 'merge' | 'squash' | 'rebase' = 'squash',
+): Promise<GitHubMergeResult> {
+  const client = getGitHubClient();
+  const response = await client.pulls.merge({
+    owner,
+    repo,
+    pull_number: pullNumber,
+    merge_method: mergeMethod,
+  });
+  logger.info({ owner, repo, pullNumber, mergeMethod }, 'Merged pull request');
+  return {
+    sha: response.data.sha,
+    merged: response.data.merged,
+    message: response.data.message,
+  };
+}
+
 export async function getIssueComments(
   owner: string,
   repo: string,

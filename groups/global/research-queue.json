@@ -1244,20 +1244,6 @@
       ]
     },
     {
-      "id": "rq-1772251020416-zpd-framework-ml",
-      "topic": "Zone of Proximal Development (ZPD) framework for machine learning: formalize ZPD metrics for non-LLM domains, develop methods to measure model capacity and select optimal teacher complexity",
-      "source": "Research follow-up from distillation emergent abilities study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-28T03:57:00.416961+00:00",
-      "priority": 7,
-      "tags": [
-        "distillation",
-        "meta-learning",
-        "model-selection",
-        "theory"
-      ]
-    },
-    {
       "id": "rq-1772251020417-multi-stage-distillation-cascade",
       "topic": "Multi-stage distillation cascades: Does 540B \u2192 70B \u2192 7B \u2192 770M outperform direct 540B \u2192 770M? Test hypothesis with LLMs and apply to NCA perceptual networks",
       "source": "Research follow-up from distillation emergent abilities study",
@@ -1286,18 +1272,101 @@
       ]
     },
     {
-      "id": "rq-1772251020419-universal-distillation-framework",
-      "topic": "Universal distillation framework: develop domain-agnostic library incorporating contrastive decoding, counterfactual explanations, adaptive scheduling, and ZPD-based teacher selection",
-      "source": "Research follow-up from distillation emergent abilities study",
+      "id": "rq-1772295138787-grace-score-implementation",
+      "topic": "GRACE (GRAdient Cross-validation Evaluation) score: Deep dive into implementation, computational efficiency, and comparison with other teacher-student compatibility metrics",
+      "source": "Research follow-up from universal distillation framework study",
       "addedBy": "research-agent",
-      "addedAt": "2026-02-28T03:57:00.416975+00:00",
-      "priority": 8,
+      "addedAt": "2026-02-28T16:12:18.787710+00:00",
+      "priority": 6,
+      "tags": [
+        "teacher-selection",
+        "knowledge-distillation",
+        "compatibility-metrics",
+        "gradient-analysis"
+      ]
+    },
+    {
+      "id": "rq-1772295138788-federated-distillation",
+      "topic": "Federated knowledge distillation: Adapting contrastive decoding, counterfactual explanations, and ZPD-based selection for distributed learning scenarios",
+      "source": "Research follow-up from universal distillation framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:12:18.787725+00:00",
+      "priority": 6,
+      "tags": [
+        "federated-learning",
+        "knowledge-distillation",
+        "distributed-systems",
+        "privacy-preserving"
+      ]
+    },
+    {
+      "id": "rq-1772295138789-nas-distillation-cooptimization",
+      "topic": "Neural Architecture Search co-optimization with knowledge distillation: Simultaneously optimizing student architecture and distillation strategy",
+      "source": "Research follow-up from universal distillation framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:12:18.787729+00:00",
+      "priority": 6,
+      "tags": [
+        "nas",
+        "knowledge-distillation",
+        "co-optimization",
+        "automl"
+      ]
+    },
+    {
+      "id": "rq-1772295483165-automated-zpd-boundary-detection",
+      "topic": "Automated ZPD boundary detection for knowledge distillation: develop methods to identify optimal teacher-student capacity gaps without grid search",
+      "source": "Research follow-up from ZPD framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:18:03.165562Z",
+      "priority": 7,
       "tags": [
         "distillation",
-        "framework",
-        "library",
         "meta-learning",
-        "transfer-learning"
+        "automation",
+        "zpd"
+      ]
+    },
+    {
+      "id": "rq-1772295483166-layer-wise-zpd-vision",
+      "topic": "Layer-wise ZPD analysis for vision models: do different layers (early/texture, middle/parts, late/semantic) have different optimal teacher-student capacity gaps?",
+      "source": "Research follow-up from ZPD framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:18:03.165566Z",
+      "priority": 7,
+      "tags": [
+        "computer-vision",
+        "distillation",
+        "ablation-study",
+        "zpd"
+      ]
+    },
+    {
+      "id": "rq-1772295483167-zpd-nas",
+      "topic": "ZPD-aware neural architecture search: design student architectures to maximize ZPD overlap with given teacher, optimize for distillation efficiency",
+      "source": "Research follow-up from ZPD framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:18:03.165569Z",
+      "priority": 6,
+      "tags": [
+        "nas",
+        "distillation",
+        "architecture-search",
+        "zpd"
+      ]
+    },
+    {
+      "id": "rq-1772295483168-dynamic-teacher-complexity",
+      "topic": "Dynamic teacher complexity for continual learning: adaptively increase teacher capacity as student improves, test if progressive teacher scaling outperforms fixed teachers",
+      "source": "Research follow-up from ZPD framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:18:03.165575Z",
+      "priority": 6,
+      "tags": [
+        "continual-learning",
+        "distillation",
+        "adaptive-systems",
+        "zpd"
       ]
     }
   ],
@@ -3043,11 +3112,62 @@
         "https://latent-consistency-models.github.io/",
         "https://arxiv.org/abs/2311.17042"
       ]
+    },
+    {
+      "id": "rq-1772251020419-universal-distillation-framework",
+      "topic": "Universal distillation framework: develop domain-agnostic library incorporating contrastive decoding, counterfactual explanations, adaptive scheduling, and ZPD-based teacher selection",
+      "source": "Research follow-up from distillation emergent abilities study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T03:57:00.416975+00:00",
+      "priority": 8,
+      "tags": [
+        "distillation",
+        "framework",
+        "library",
+        "meta-learning",
+        "transfer-learning"
+      ],
+      "completedAt": "2026-02-28T16:11:53.644696+00:00",
+      "summary": "Comprehensive framework design incorporating contrastive decoding (DCD), counterfactual explanations (CoD), adaptive scheduling (DTS), and ZPD-based teacher selection for domain-agnostic knowledge distillation.",
+      "sources": [
+        "https://arxiv.org/abs/2402.14874",
+        "https://arxiv.org/abs/2510.21631",
+        "https://arxiv.org/abs/2511.13767",
+        "https://arxiv.org/abs/2012.06048",
+        "https://arxiv.org/abs/2202.07940",
+        "https://github.com/yoshitomo-matsubara/torchdistill"
+      ]
+    },
+    {
+      "id": "rq-1772251020416-zpd-framework-ml",
+      "topic": "Zone of Proximal Development (ZPD) framework for machine learning: formalize ZPD metrics for non-LLM domains, develop methods to measure model capacity and select optimal teacher complexity",
+      "source": "Research follow-up from distillation emergent abilities study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T03:57:00.416961+00:00",
+      "priority": 7,
+      "tags": [
+        "distillation",
+        "meta-learning",
+        "model-selection",
+        "theory"
+      ],
+      "completedAt": "2026-02-28T16:18:03.163939Z",
+      "summary": "ZPD framework from educational psychology can be formalized for ML distillation through capacity distance metrics, teacher assistant scaffolding, and curriculum learning. Teacher-student capacity gap must stay within optimal bounds for effective knowledge transfer.",
+      "sources": [
+        "https://arxiv.org/html/2602.12172v1",
+        "https://arxiv.org/abs/1902.03393",
+        "https://link.springer.com/article/10.1007/s10462-025-11423-3",
+        "https://aclanthology.org/2025.findings-emnlp.451/",
+        "https://www.simplypsychology.org/zone-of-proximal-development.html",
+        "https://medium.com/daniel-parente/what-is-effective-model-capacity-in-deep-learning-models-9af52c3a01be",
+        "https://arxiv.org/abs/1904.03626",
+        "https://arxiv.org/abs/2206.07682"
+      ]
     }
   ],
   "metadata": {
-    "lastUpdated": "2026-02-28T03:57:00.416978+00:00",
-    "totalResearched": 60,
+    "lastUpdated": "2026-02-28T16:18:03.165529Z",
+    "totalResearched": 62,
     "version": "1.0",
     "totalCompleted": 60,
     "totalPending": 83,
