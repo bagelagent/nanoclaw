@@ -12,6 +12,7 @@ import {
   GitHubAssignment,
 } from './db.js';
 import { fetchIssue } from './github-api.js';
+import { startWorkingOnIssue } from './github-issue-worker.js';
 
 const app = express();
 app.use(express.json());
@@ -129,8 +130,20 @@ async function handleIssueWebhook(payload: GitHubWebhookPayload) {
     'Created GitHub assignment from webhook',
   );
 
-  // TODO: Optionally trigger immediate processing
-  // Could send a message to main group or trigger an agent run
+  // Get the full assignment record and start working on it immediately
+  const fullAssignment = getGitHubAssignmentByIssue(
+    repository.owner.login,
+    repository.name,
+    issue.number,
+  );
+
+  if (fullAssignment) {
+    // Start working on the issue in the background (don't await)
+    // This allows the webhook to respond quickly
+    startWorkingOnIssue(fullAssignment).catch((err) => {
+      logger.error({ err, assignmentId }, 'Background issue worker failed');
+    });
+  }
 }
 
 /**

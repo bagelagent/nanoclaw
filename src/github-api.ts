@@ -102,3 +102,27 @@ export async function getDefaultBranch(
   });
   return response.data.default_branch;
 }
+
+export interface GitHubComment {
+  id: number;
+  user: {
+    login: string;
+  };
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getIssueComments(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<GitHubComment[]> {
+  const client = getGitHubClient();
+  const response = await client.issues.listComments({
+    owner,
+    repo,
+    issue_number: issueNumber,
+  });
+  return response.data as GitHubComment[];
+}

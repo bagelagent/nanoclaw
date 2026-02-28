@@ -7,6 +7,7 @@ import {
   createPullRequest,
   fetchIssue,
   getDefaultBranch,
+  getIssueComments,
 } from './github-api.js';
 import { logger } from './logger.js';
 
@@ -247,6 +248,21 @@ export async function handleGitHubIpc(
 
         return {
           status: 'success',
+        };
+      }
+
+      case 'github_get_comments': {
+        const { owner, repo, issue_number } = data as unknown as {
+          owner: string;
+          repo: string;
+          issue_number: number;
+        };
+
+        const comments = await getIssueComments(owner, repo, issue_number);
+
+        return {
+          status: 'success',
+          data: comments,
         };
       }
 

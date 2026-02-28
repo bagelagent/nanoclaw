@@ -397,5 +397,58 @@ export function createGitHubMcpTools(ctx: GitHubMcpContext) {
         }
       },
     ),
+
+    tool(
+      'github_get_comments',
+      'Get all comments on a GitHub issue or pull request. Use this to check for user approval after posting a plan.',
+      {
+        owner: z.string().describe('Repository owner'),
+        repo: z.string().describe('Repository name'),
+        issue_number: z.number().describe('Issue or PR number'),
+      },
+      async (args: { owner: string; repo: string; issue_number: number }) => {
+        const requestId = writeIpcFile(TASKS_DIR, {
+          type: 'github_get_comments',
+          owner: args.owner,
+          repo: args.repo,
+          issue_number: args.issue_number,
+        });
+
+        try {
+          const reply = await waitForReply(requestId, 30000);
+
+          if (reply.status === 'success') {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: reply.data ? JSON.stringify(reply.data, null, 2) : 'No comments found',
+                },
+              ],
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Failed to get comments: ${reply.error}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Timeout or error getting comments: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    ),
   ];
 }
