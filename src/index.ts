@@ -1586,7 +1586,7 @@ async function main(): Promise<void> {
 
     // Start webhook server for GitHub events
     const webhookPort = parseInt(process.env.WEBHOOK_PORT || '3000', 10);
-    startWebhookServer(webhookPort);
+    startWebhookServer(webhookPort, queue);
   } else {
     logger.warn('GITHUB_TOKEN not set - GitHub integration disabled');
   }
