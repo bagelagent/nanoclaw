@@ -242,6 +242,93 @@ export async function commitAndPush(
 }
 
 /**
+ * Update a branch by merging the latest from a base branch (e.g. main).
+ * Returns status: 'updated' | 'up_to_date' | 'conflict'
+ * On conflict, leaves conflict markers in files for the agent to resolve.
+ * On other failures, aborts the merge and throws.
+ */
+export async function updateBranch(
+  repoPath: string,
+  baseBranch?: string,
+  sourceGroup?: string,
+): Promise<{ status: 'updated' | 'up_to_date' | 'conflict'; conflicted_files?: string[] }> {
+  repoPath = containerToHostPath(repoPath, sourceGroup);
+
+  const token = process.env.GITHUB_TOKEN;
+  if (token) {
+    configureRepoAuth(repoPath, token);
+  }
+
+  try {
+    execSync('git fetch origin', { cwd: repoPath, stdio: 'pipe' });
+  } catch (err) {
+    throw new Error(`Failed to fetch: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // Determine base branch if not specified
+  if (!baseBranch) {
+    try {
+      baseBranch = execSync('git symbolic-ref refs/remotes/origin/HEAD', {
+        cwd: repoPath,
+        encoding: 'utf-8',
+      })
+        .trim()
+        .replace('refs/remotes/origin/', '');
+    } catch {
+      baseBranch = 'main';
+    }
+  }
+
+  try {
+    const output = execSync(`git merge origin/${baseBranch} --no-edit`, {
+      cwd: repoPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    // Check for "Already up to date"
+    if (output.includes('Already up to date')) {
+      logger.info({ repoPath, baseBranch }, 'Branch already up to date');
+      return { status: 'up_to_date' };
+    }
+
+    // Clean merge — push
+    execSync('git push', { cwd: repoPath, stdio: 'pipe', timeout: 60000 });
+    logger.info({ repoPath, baseBranch }, 'Branch updated and pushed');
+    return { status: 'updated' };
+  } catch (err) {
+    // Check if this is a merge conflict
+    try {
+      const statusOutput = execSync('git status --porcelain', {
+        cwd: repoPath,
+        encoding: 'utf-8',
+      });
+
+      // Lines starting with "UU", "AA", "DD", etc. indicate conflicts
+      const conflictedFiles = statusOutput
+        .split('\n')
+        .filter((line) => /^(UU|AA|DD|AU|UA|DU|UD) /.test(line))
+        .map((line) => line.slice(3).trim());
+
+      if (conflictedFiles.length > 0) {
+        logger.info({ repoPath, baseBranch, conflictedFiles }, 'Merge conflicts detected');
+        return { status: 'conflict', conflicted_files: conflictedFiles };
+      }
+    } catch {
+      // Couldn't check status, fall through to abort
+    }
+
+    // Not a conflict — abort the merge and throw
+    try {
+      execSync('git merge --abort', { cwd: repoPath, stdio: 'pipe' });
+    } catch {
+      // merge --abort might fail if there's no merge in progress
+    }
+    throw new Error(`Merge failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
  * Handle GitHub IPC requests
  */
 export async function handleGitHubIpc(
@@ -354,6 +441,20 @@ export async function handleGitHubIpc(
         return {
           status: 'success',
           data: mergeResult,
+        };
+      }
+
+      case 'github_update_branch': {
+        const { repo_path, base_branch } = data as unknown as {
+          repo_path: string;
+          base_branch?: string;
+        };
+
+        const updateResult = await updateBranch(repo_path, base_branch, sourceGroup);
+
+        return {
+          status: 'success',
+          data: updateResult,
         };
       }
 

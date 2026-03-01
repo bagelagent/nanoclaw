@@ -456,6 +456,70 @@ export function createGitHubMcpTools(ctx: GitHubMcpContext) {
     ),
 
     tool(
+      'github_update_branch',
+      'Update the current branch by merging the latest changes from the base branch (e.g. main). Use this when a merge or push fails because the branch is behind. If conflicts are returned, resolve them in the conflicted files, then commit and push.',
+      {
+        repo_path: z.string().describe('Path to the repository'),
+        base_branch: z.string().optional().describe('Base branch to merge from (defaults to main/master)'),
+      },
+      async (args: { repo_path: string; base_branch?: string }) => {
+        const requestId = writeIpcFile(TASKS_DIR, {
+          type: 'github_update_branch',
+          repo_path: args.repo_path,
+          base_branch: args.base_branch,
+        });
+
+        try {
+          const reply = await waitForReply(requestId, 60000); // 1 min timeout
+
+          if (reply.status === 'success') {
+            const result = reply.data;
+            if (result.status === 'conflict') {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `Merge conflicts detected. Conflicted files:\n${result.conflicted_files.map((f: string) => `- ${f}`).join('\n')}\n\nResolve the conflicts in these files (remove conflict markers), then use github_commit_push to commit and push.`,
+                  },
+                ],
+              };
+            }
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: result.status === 'updated'
+                    ? 'Branch updated successfully with latest changes from base branch and pushed.'
+                    : 'Branch is already up to date with the base branch.',
+                },
+              ],
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Failed to update branch: ${reply.error}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Timeout or error updating branch: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    ),
+
+    tool(
       'github_get_comments',
       'Get all comments on a GitHub issue or pull request. Use this to check for user approval after posting a plan.',
       {
