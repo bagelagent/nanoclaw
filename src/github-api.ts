@@ -145,15 +145,32 @@ export async function reactToComment(
   repo: string,
   commentId: number,
   reaction: '+1' | '-1' | 'laugh' | 'confused' | 'heart' | 'hooray' | 'rocket' | 'eyes',
-): Promise<void> {
+): Promise<number> {
   const client = getGitHubClient();
-  await client.reactions.createForIssueComment({
+  const response = await client.reactions.createForIssueComment({
     owner,
     repo,
     comment_id: commentId,
     content: reaction,
   });
   logger.info({ owner, repo, commentId, reaction }, 'Reacted to comment');
+  return response.data.id;
+}
+
+export async function deleteReaction(
+  owner: string,
+  repo: string,
+  commentId: number,
+  reactionId: number,
+): Promise<void> {
+  const client = getGitHubClient();
+  await client.reactions.deleteForIssueComment({
+    owner,
+    repo,
+    comment_id: commentId,
+    reaction_id: reactionId,
+  });
+  logger.info({ owner, repo, commentId, reactionId }, 'Deleted reaction from comment');
 }
 
 export async function getIssueComments(
