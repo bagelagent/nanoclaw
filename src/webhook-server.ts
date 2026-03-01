@@ -13,7 +13,7 @@ import {
   setRegisteredGroup,
 } from './db.js';
 import { RegisteredGroup } from './types.js';
-import { fetchIssue } from './github-api.js';
+import { fetchIssue, reactToComment } from './github-api.js';
 import { runContainerAgent } from './container-runner.js';
 import { GROUPS_DIR } from './config.js';
 
@@ -288,20 +288,43 @@ ${data.description || '(No description provided)'}
    - Prefer asking over guessing. It's better to ask a clarifying question than to build the wrong thing.
    - After posting questions, **stop and exit**. A new container will spawn when the user replies.
 
-5. **If the issue is clear enough**, design your solution:
-   - Post your plan as a comment on issue #${data.issue_number} using github_comment
-   - Be specific about what files you'll change and why
+5. **Assess the task complexity**:
 
-6. **Stop and wait** - DO NOT implement yet. Your work is done for now.
+   **SMALL/MEDIUM TASKS** — implement directly without waiting for approval:
+   - Bug fixes (even if touching multiple files, as long as the fix is clear)
+   - Single-file or few-file feature additions
+   - Documentation updates (README, comments, docstrings, docs/)
+   - Config changes (updating values, adding env vars, updating dependencies)
+   - Adding functions, methods, or utilities with clear requirements
+   - Dependency version bumps or package updates
+   - Test additions or test fixes
+   - Refactoring within a single module/component
+   - UI tweaks and styling changes
+   - Error handling improvements
+   - Performance optimizations with obvious approaches
+   - Code cleanup and linting fixes
 
-A new container will be spawned when the user approves your plan (or answers your questions).
+   **General rule**: If the issue description is clear and the implementation approach is straightforward (even if it touches 3-5 files), proceed directly. Post a brief comment explaining what you'll do, then **implement it immediately** — create a branch, make changes, commit, open a PR, merge it, and comment with the result.
+
+   **LARGE TASKS** — post a plan and wait for approval:
+   - Major architectural changes or redesigns
+   - New features with ambiguous requirements or multiple possible approaches
+   - Changes affecting core system behavior in non-obvious ways
+   - Database schema migrations or data model changes
+   - Security-sensitive changes (auth, permissions, encryption)
+   - Breaking API changes
+   - Large refactors spanning many modules
+
+   **General rule**: Only ask for approval if the requirements are unclear, there are multiple reasonable approaches to consider, or the changes are risky/sensitive. When in doubt, lean toward implementing directly.
+
+   If the task is large: post your plan as a comment on issue #${data.issue_number} using github_comment, be specific about what files you'll change and why, then **stop and wait**. A new container will be spawned when the user approves.
 
 **Important**:
 - The repository persists in /workspace/group/ across runs - don't clone unnecessarily
-- Focus on creating a thorough, well-thought-out plan
-- Be specific about what files you'll change and why
-- Don't implement anything in this phase - just plan
-- When in doubt, ASK. Questions are free, bad implementations are expensive.
+- For small/medium tasks, implement end-to-end in one go (branch → code → commit → PR → merge)
+- For large tasks, focus on creating a thorough plan and don't implement anything
+- When in doubt about size, lean toward implementing directly — the user prefers fewer approval requests
+- When in doubt about requirements (not approach), ASK. Questions about what to build are valuable, but if the "what" is clear, proceed with confidence even if there are implementation details to figure out.
 
 Begin by posting an initial comment and checking if the repository exists.`;
 }
@@ -489,9 +512,16 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
   }
 
   // Check for approval keywords in the comment
-  const approvalKeywords = ['approved', 'lgtm', 'go ahead', 'looks good', 'ship it'];
+  const approvalKeywords = ['approved', 'lgtm', 'go ahead', 'looks good', 'ship it', '🚀'];
   const commentLower = comment.body.toLowerCase();
   const isApproval = approvalKeywords.some((keyword) => commentLower.includes(keyword));
+
+  // React with eyes to acknowledge the comment
+  try {
+    await reactToComment(repository.owner.login, repository.name, comment.id, 'eyes');
+  } catch (err) {
+    logger.warn({ err, commentId: comment.id }, 'Failed to add eyes reaction to comment');
+  }
 
   if (isApproval) {
     logger.info(

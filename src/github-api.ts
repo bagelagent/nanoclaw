@@ -140,6 +140,22 @@ export async function mergePullRequest(
   };
 }
 
+export async function reactToComment(
+  owner: string,
+  repo: string,
+  commentId: number,
+  reaction: '+1' | '-1' | 'laugh' | 'confused' | 'heart' | 'hooray' | 'rocket' | 'eyes',
+): Promise<void> {
+  const client = getGitHubClient();
+  await client.reactions.createForIssueComment({
+    owner,
+    repo,
+    comment_id: commentId,
+    content: reaction,
+  });
+  logger.info({ owner, repo, commentId, reaction }, 'Reacted to comment');
+}
+
 export async function getIssueComments(
   owner: string,
   repo: string,

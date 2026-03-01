@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y \
     libxshmfence1 \
     curl \
     git \
+    postgresql \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install GitHub CLI
@@ -74,6 +76,18 @@ RUN chown -R node:node /workspace
 
 # Switch to non-root user (required for --dangerously-skip-permissions)
 USER node
+
+# Initialize PostgreSQL data directory for node user
+ENV PATH="/usr/lib/postgresql/15/bin:$PATH"
+ENV PGDATA=/home/node/pgdata
+ENV PGHOST=localhost
+RUN initdb -D /home/node/pgdata && \
+    echo "host all all 127.0.0.1/32 trust" >> /home/node/pgdata/pg_hba.conf && \
+    echo "local all all trust" >> /home/node/pgdata/pg_hba.conf && \
+    echo "unix_socket_directories = '/tmp'" >> /home/node/pgdata/postgresql.conf && \
+    pg_ctl -D /home/node/pgdata -l /tmp/pg.log start && \
+    createdb node && \
+    pg_ctl -D /home/node/pgdata stop
 
 # Set working directory to group workspace
 WORKDIR /workspace/group
