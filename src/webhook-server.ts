@@ -5,17 +5,19 @@
 
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { logger } from './logger.js';
 import {
+  deleteRegisteredGroup,
   getRegisteredGroup,
   setRegisteredGroup,
 } from './db.js';
 import { RegisteredGroup } from './types.js';
 import { fetchIssue, reactToComment, deleteReaction } from './github-api.js';
-import { runContainerAgent } from './container-runner.js';
-import { GROUPS_DIR } from './config.js';
+import { runContainerAgent, restartContainer } from './container-runner.js';
+import { DATA_DIR, GROUPS_DIR } from './config.js';
 import { GroupQueue } from './group-queue.js';
 
 const app = express();
@@ -58,8 +60,10 @@ interface GitHubCommentWebhookPayload {
   issue: {
     number: number;
     title: string;
+    body?: string | null;
     html_url: string;
     assignees: Array<{ login: string }>;
+    pull_request?: { url: string };
   };
   comment: {
     id: number;
@@ -148,28 +152,49 @@ function verifyGitHubSignature(
 }
 
 /**
- * Get or create a GitHub group for a repository
+ * Get or create a GitHub group for a specific issue.
+ * Each issue gets its own group folder and container for isolation.
  */
-function getOrCreateGitHubGroup(repoOwner: string, repoName: string): RegisteredGroup {
-  const groupKey = `github-${repoOwner}-${repoName}`;
-  const folderName = `github-${repoOwner}-${repoName}`;
+function getOrCreateGitHubGroup(repoOwner: string, repoName: string, issueNumber: number): RegisteredGroup {
+  const groupKey = `github-${repoOwner}-${repoName}-issue-${issueNumber}`;
+  const folderName = `github-${repoOwner}-${repoName}-issue-${issueNumber}`;
 
   // Check if group already exists
   let group = getRegisteredGroup(groupKey);
 
   if (!group) {
-    // Create new GitHub group
+    // Create new GitHub issue group
     const groupFolder = path.join(GROUPS_DIR, folderName);
 
     // Create group directory if it doesn't exist
     if (!fs.existsSync(groupFolder)) {
       fs.mkdirSync(groupFolder, { recursive: true });
-      logger.info({ folder: folderName }, 'Created new GitHub group folder');
+      logger.info({ folder: folderName }, 'Created new GitHub issue group folder');
+
+      // Pre-populate repo from reference clone if available
+      const refClone = path.join(DATA_DIR, '..', 'github-work', repoOwner, repoName);
+      const repoDir = path.join(groupFolder, repoName);
+      if (fs.existsSync(path.join(refClone, '.git'))) {
+        try {
+          execSync(`cp -a ${JSON.stringify(refClone)} ${JSON.stringify(repoDir)}`, { stdio: 'pipe' });
+          // Reset to default branch, clean, and pull
+          execSync('git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@") 2>/dev/null || git checkout main', {
+            cwd: repoDir, stdio: 'pipe',
+          });
+          execSync('git clean -fd && git checkout .', { cwd: repoDir, stdio: 'pipe' });
+          execSync('git pull --ff-only', { cwd: repoDir, stdio: 'pipe' });
+          logger.info({ folder: folderName, refClone }, 'Pre-populated repo from reference clone');
+        } catch (err) {
+          logger.warn({ err, folder: folderName }, 'Reference clone pre-population failed, agent will clone fresh');
+          // Clean up partial copy
+          try { execSync(`rm -rf ${JSON.stringify(repoDir)}`, { stdio: 'pipe' }); } catch {}
+        }
+      }
 
       // Create initial CLAUDE.md
-      const claudeMd = `# GitHub: ${repoOwner}/${repoName}
+      const claudeMd = `# GitHub: ${repoOwner}/${repoName} — Issue #${issueNumber}
 
-This is an auto-created group for handling GitHub webhooks for the repository **${repoOwner}/${repoName}**.
+This is an auto-created group for handling GitHub issue #${issueNumber} on **${repoOwner}/${repoName}**.
 
 ## Workspace
 
@@ -177,14 +202,14 @@ The repository is cloned to \`/workspace/group/${repoName}/\` and persists acros
 
 ## Memory
 
-Conversation history and context for this repository's issues and PRs are stored here.
+Conversation history and context for this issue are stored here.
 `;
       fs.writeFileSync(path.join(groupFolder, 'CLAUDE.md'), claudeMd);
     }
 
     // Register the group with a longer timeout for codebase exploration + planning
     const newGroup = {
-      name: `GitHub: ${repoOwner}/${repoName}`,
+      name: `GitHub: ${repoOwner}/${repoName} #${issueNumber}`,
       folder: folderName,
       trigger: '@Bagel', // Not used for GitHub groups
       added_at: new Date().toISOString(),
@@ -195,7 +220,7 @@ Conversation history and context for this repository's issues and PRs are stored
     };
 
     setRegisteredGroup(groupKey, newGroup);
-    logger.info({ groupKey, folder: folderName }, 'Registered new GitHub group');
+    logger.info({ groupKey, folder: folderName }, 'Registered new GitHub issue group');
 
     group = newGroup;
   }
@@ -232,8 +257,9 @@ function spawnGitHubContainer(eventType: string, data: any, emojiSwap?: EmojiSwa
     if (now - ts > DEDUP_WINDOW_MS) recentEvents.delete(key);
   }
 
-  // Get or create GitHub group for this repository
-  const group = getOrCreateGitHubGroup(data.repo_owner, data.repo_name);
+  // Get or create GitHub group for this specific issue
+  const issueNumber = data.issue_number as number;
+  const group = getOrCreateGitHubGroup(data.repo_owner, data.repo_name, issueNumber);
 
   // Build prompt based on event type
   let prompt = '';
@@ -252,8 +278,8 @@ function spawnGitHubContainer(eventType: string, data: any, emojiSwap?: EmojiSwa
   const sessionId = `github-${data.assignmentId || data.issue_number}-${Date.now()}`;
   const taskId = `github-${eventType}-${data.repo_owner}-${data.repo_name}-${data.issue_number}-${Date.now()}`;
 
-  // Use the group's registration key as the queue key (matches getOrCreateGitHubGroup)
-  const groupKey = `github-${data.repo_owner}-${data.repo_name}`;
+  // Per-issue group key — each issue gets its own queue slot for parallelism
+  const groupKey = `github-${data.repo_owner}-${data.repo_name}-issue-${issueNumber}`;
 
   const taskFn = async () => {
     try {
@@ -321,7 +347,7 @@ ${data.description || '(No description provided)'}
 1. **Post initial comment** on the issue saying you've started work
 
 2. **Get the repository**:
-   - First check if \`/workspace/group/${data.repo_name}/\` exists (use Bash: \`ls -la /workspace/group/${data.repo_name} 2>&1\`)
+   - First check if \`/workspace/group/${data.repo_name}/\` exists (use Bash: \`ls -la /workspace/group/${data.repo_name} 2>&1\`) — it may already be pre-populated from a reference clone
    - If it exists: \`cd\` into it and \`git pull\` to update
    - If it doesn't exist: Use github_clone_repo to clone it (it will go to /workspace/project/github-work/, then you should move it to /workspace/group/)
 
@@ -555,6 +581,16 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     return;
   }
 
+  // Resolve issue number: if this is a PR comment, find the linked issue
+  let issueNumber = issue.number;
+  if (issue.pull_request && issue.body) {
+    const match = issue.body.match(/(?:fixes|closes|resolves)\s+#(\d+)/i);
+    if (match) {
+      issueNumber = parseInt(match[1], 10);
+      logger.info({ prNumber: issue.number, issueNumber }, 'PR comment routed to linked issue group');
+    }
+  }
+
   // Check for approval keywords in the comment
   const approvalKeywords = ['approved', 'lgtm', 'go ahead', 'looks good', 'ship it', '🚀'];
   const commentLower = comment.body.toLowerCase();
@@ -575,7 +611,7 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
   if (isApproval) {
     logger.info(
       {
-        issue: issue.number,
+        issue: issueNumber,
         approver: comment.user.login,
       },
       'Approval detected in comment - spawning container to implement',
@@ -585,7 +621,7 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     spawnGitHubContainer('plan_approved', {
       repo_owner: repository.owner.login,
       repo_name: repository.name,
-      issue_number: issue.number,
+      issue_number: issueNumber,
       title: issue.title,
       issue_url: issue.html_url,
       approver: comment.user.login,
@@ -594,7 +630,7 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     // Non-approval comment on an assigned issue — user may be answering agent's questions
     logger.info(
       {
-        issue: issue.number,
+        issue: issueNumber,
         commenter: comment.user.login,
       },
       'User comment on assigned issue - spawning question_answered container',
@@ -603,7 +639,7 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     spawnGitHubContainer('question_answered', {
       repo_owner: repository.owner.login,
       repo_name: repository.name,
-      issue_number: issue.number,
+      issue_number: issueNumber,
       title: issue.title,
       issue_url: issue.html_url,
       commenter: comment.user.login,
@@ -653,6 +689,119 @@ async function handlePRReviewWebhook(payload: GitHubPRReviewWebhookPayload) {
   // Handle PR reviews (approved, changes_requested, etc.)
   // For now, just log them
   // Can add custom logic later (e.g., spawn container to address review comments)
+}
+
+/**
+ * Sweep closed-issue groups that have been idle for 24+ hours.
+ * Checks each github-*-issue-* group folder, queries the GitHub API
+ * for issue state, and cleans up if the issue is closed and the folder
+ * hasn't been modified in the last 24 hours.
+ */
+export async function sweepClosedIssueGroups(): Promise<void> {
+  const IDLE_MS = 24 * 60 * 60 * 1000; // 24 hours
+  const issueGroupPattern = /^github-(.+)-issue-(\d+)$/;
+
+  let folders: string[];
+  try {
+    folders = fs.readdirSync(GROUPS_DIR).filter((f) => issueGroupPattern.test(f));
+  } catch {
+    return;
+  }
+
+  if (folders.length === 0) return;
+  logger.info({ count: folders.length }, 'Sweeper: checking issue groups');
+
+  let cleaned = 0;
+  for (const folder of folders) {
+    const match = folder.match(issueGroupPattern);
+    if (!match) continue;
+
+    // Parse owner/repo from the prefix (everything before -issue-N)
+    // Format: github-{owner}-{repo}-issue-{N}
+    // We need to split the prefix "github-{owner}-{repo}" back into owner and repo.
+    // The prefix is everything before the last "-issue-{N}" match.
+    const prefix = folder.replace(/-issue-\d+$/, ''); // "github-{owner}-{repo}"
+    const parts = prefix.replace(/^github-/, '').split('-');
+    // Owner is the first part, repo is the rest joined by '-'
+    if (parts.length < 2) continue;
+    const owner = parts[0];
+    const repo = parts.slice(1).join('-');
+    const issueNumber = parseInt(match[2], 10);
+
+    // Check folder mtime — skip if modified recently
+    const groupPath = path.join(GROUPS_DIR, folder);
+    try {
+      const stat = fs.statSync(groupPath);
+      if (Date.now() - stat.mtimeMs < IDLE_MS) continue;
+    } catch {
+      continue;
+    }
+
+    // Query GitHub API for issue state
+    try {
+      const issue = await fetchIssue(owner, repo, issueNumber);
+      if (issue.state !== 'closed') continue;
+    } catch (err) {
+      logger.warn({ err, folder }, 'Sweeper: failed to fetch issue state, skipping');
+      continue;
+    }
+
+    // Issue is closed and folder is idle — clean up
+    logger.info({ folder, owner, repo, issueNumber }, 'Sweeper: cleaning up closed issue group');
+
+    // Stop the container
+    try {
+      restartContainer(folder);
+    } catch {}
+
+    // Save updated repo as reference clone before deleting
+    const repoDir = path.join(groupPath, repo);
+    if (fs.existsSync(path.join(repoDir, '.git'))) {
+      const refDir = path.join(DATA_DIR, '..', 'github-work', owner);
+      const refClone = path.join(refDir, repo);
+      try {
+        fs.mkdirSync(refDir, { recursive: true });
+        // Remove old reference and replace with this one
+        if (fs.existsSync(refClone)) {
+          execSync(`rm -rf ${JSON.stringify(refClone)}`, { stdio: 'pipe' });
+        }
+        execSync(`cp -a ${JSON.stringify(repoDir)} ${JSON.stringify(refClone)}`, { stdio: 'pipe' });
+        logger.info({ refClone }, 'Sweeper: saved reference clone');
+      } catch (err) {
+        logger.warn({ err }, 'Sweeper: failed to save reference clone');
+      }
+    }
+
+    // Delete group folder
+    try {
+      execSync(`rm -rf ${JSON.stringify(groupPath)}`, { stdio: 'pipe' });
+    } catch {}
+
+    // Delete IPC directory
+    const ipcDir = path.join(DATA_DIR, 'ipc', folder);
+    try {
+      execSync(`rm -rf ${JSON.stringify(ipcDir)}`, { stdio: 'pipe' });
+    } catch {}
+
+    // Delete session directory
+    const sessionDir = path.join(DATA_DIR, '..', 'store', 'sessions', folder);
+    try {
+      execSync(`rm -rf ${JSON.stringify(sessionDir)}`, { stdio: 'pipe' });
+    } catch {}
+
+    // Delete DB registration
+    const groupKey = `github-${owner}-${repo}-issue-${issueNumber}`;
+    deleteRegisteredGroup(groupKey);
+
+    cleaned++;
+
+    // Rate-limit: small delay between API calls
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  if (cleaned > 0) {
+    logger.info({ cleaned }, 'Sweeper: finished cleaning up closed issue groups');
+  }
 }
 
 /**
