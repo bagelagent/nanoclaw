@@ -126,18 +126,41 @@ export async function mergePullRequest(
   mergeMethod: 'merge' | 'squash' | 'rebase' = 'squash',
 ): Promise<GitHubMergeResult> {
   const client = getGitHubClient();
-  const response = await client.pulls.merge({
-    owner,
-    repo,
-    pull_number: pullNumber,
-    merge_method: mergeMethod,
-  });
-  logger.info({ owner, repo, pullNumber, mergeMethod }, 'Merged pull request');
-  return {
-    sha: response.data.sha,
-    merged: response.data.merged,
-    message: response.data.message,
-  };
+
+  // GitHub returns 405 "not mergeable" briefly after PR creation while it
+  // computes mergeability. Retry a few times with backoff to handle this.
+  const maxRetries = 4;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await client.pulls.merge({
+        owner,
+        repo,
+        pull_number: pullNumber,
+        merge_method: mergeMethod,
+      });
+      logger.info({ owner, repo, pullNumber, mergeMethod }, 'Merged pull request');
+      return {
+        sha: response.data.sha,
+        merged: response.data.merged,
+        message: response.data.message,
+      };
+    } catch (err: any) {
+      const is405 = err?.status === 405;
+      if (is405 && attempt < maxRetries) {
+        const delay = (attempt + 1) * 2000; // 2s, 4s, 6s, 8s
+        logger.warn(
+          { owner, repo, pullNumber, attempt: attempt + 1, delay },
+          'PR not mergeable yet, retrying...',
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  // Unreachable, but TypeScript needs it
+  throw new Error('Merge failed after retries');
 }
 
 export async function reactToComment(
