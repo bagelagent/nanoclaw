@@ -8,6 +8,7 @@ import os from 'os';
 import path from 'path';
 
 import {
+  AGENT_MODEL,
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
@@ -24,6 +25,7 @@ const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
 const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_QUERY_DURATION = 2 * 60 * 60 * 1000; // 2 hours hard cap
 
 function getHomeDir(): string {
   const home = process.env.HOME || os.homedir();
@@ -41,6 +43,7 @@ export interface ContainerInput {
   groupFolder: string;
   chatJid: string;
   isMain: boolean;
+  model?: string;
 }
 
 export interface AgentResponse {
@@ -237,6 +240,7 @@ interface PoolEntry {
    */
   pendingResolve: ((output: ContainerOutput) => void) | null;
   pendingTimeout: NodeJS.Timeout | null;
+  hardDeadlineTimeout: NodeJS.Timeout | null;
 }
 
 class ContainerPool {
@@ -308,11 +312,19 @@ class ContainerPool {
       exitCode: null,
       pendingResolve: null,
       pendingTimeout: null,
+      hardDeadlineTimeout: null,
     };
 
     // Stream stderr for logging/diagnostics
     container.stderr.on('data', (data) => {
       const chunk = data.toString();
+
+      // Reset activity timeout on any stderr output (SDK messages flow here)
+      if (entry.pendingResolve && entry.pendingTimeout) {
+        clearTimeout(entry.pendingTimeout);
+        entry.pendingTimeout = this.createActivityTimeout(entry);
+      }
+
       const lines = chunk.trim().split('\n');
       for (const line of lines) {
         if (line) logger.debug({ container: group.folder }, line);
@@ -346,6 +358,7 @@ class ContainerPool {
       // If a query was pending, resolve with error
       if (entry.pendingResolve) {
         if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
         entry.pendingResolve({
           status: 'error',
           result: null,
@@ -353,6 +366,7 @@ class ContainerPool {
         });
         entry.pendingResolve = null;
         entry.pendingTimeout = null;
+        entry.hardDeadlineTimeout = null;
       }
 
       this.pool.delete(key);
@@ -365,6 +379,7 @@ class ContainerPool {
 
       if (entry.pendingResolve) {
         if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
         entry.pendingResolve({
           status: 'error',
           result: null,
@@ -372,6 +387,7 @@ class ContainerPool {
         });
         entry.pendingResolve = null;
         entry.pendingTimeout = null;
+        entry.hardDeadlineTimeout = null;
       }
 
       this.pool.delete(key);
@@ -406,6 +422,10 @@ class ContainerPool {
       clearTimeout(entry.pendingTimeout);
       entry.pendingTimeout = null;
     }
+    if (entry.hardDeadlineTimeout) {
+      clearTimeout(entry.hardDeadlineTimeout);
+      entry.hardDeadlineTimeout = null;
+    }
 
     try {
       const output: ContainerOutput = JSON.parse(jsonStr);
@@ -424,12 +444,38 @@ class ContainerPool {
   }
 
   /**
+   * Create an activity-based timeout that fires after CONTAINER_TIMEOUT ms
+   * of inactivity. Each stderr chunk resets this timer.
+   */
+  private createActivityTimeout(entry: PoolEntry): NodeJS.Timeout {
+    return setTimeout(() => {
+      if (entry.pendingResolve) {
+        logger.error(
+          { group: entry.group.name, containerName: entry.containerName },
+          'Query activity timeout — no container output',
+        );
+        entry.pendingResolve({
+          status: 'error',
+          result: null,
+          error: `Query timed out after ${CONTAINER_TIMEOUT}ms of inactivity`,
+        });
+        entry.pendingResolve = null;
+        entry.pendingTimeout = null;
+        if (entry.hardDeadlineTimeout) {
+          clearTimeout(entry.hardDeadlineTimeout);
+          entry.hardDeadlineTimeout = null;
+        }
+        this.shutdownEntry(entry.group.folder);
+      }
+    }, CONTAINER_TIMEOUT);
+  }
+
+  /**
    * Send a query to a persistent container and wait for the response.
    */
   sendQuery(
     entry: PoolEntry,
     input: ContainerInput,
-    timeout: number,
   ): Promise<ContainerOutput> {
     return new Promise((resolve) => {
       if (entry.exited) {
@@ -455,30 +501,37 @@ class ContainerPool {
         IDLE_TIMEOUT_MS,
       );
 
-      // Set per-query timeout
-      entry.pendingTimeout = setTimeout(() => {
+      // Activity-based timeout: resets on each stderr chunk from container
+      entry.pendingTimeout = this.createActivityTimeout(entry);
+
+      // Hard wall-clock deadline as safety cap
+      entry.hardDeadlineTimeout = setTimeout(() => {
         if (entry.pendingResolve) {
           logger.error(
             { group: entry.group.name, containerName: entry.containerName },
-            'Query timeout on persistent container',
+            'Query hard deadline reached',
           );
           entry.pendingResolve({
             status: 'error',
             result: null,
-            error: `Query timed out after ${timeout}ms`,
+            error: `Query exceeded maximum duration of ${MAX_QUERY_DURATION}ms`,
           });
           entry.pendingResolve = null;
-          entry.pendingTimeout = null;
-          // Kill the container since the agent is stuck
+          if (entry.pendingTimeout) {
+            clearTimeout(entry.pendingTimeout);
+            entry.pendingTimeout = null;
+          }
+          entry.hardDeadlineTimeout = null;
           this.shutdownEntry(entry.group.folder);
         }
-      }, timeout);
+      }, MAX_QUERY_DURATION);
 
       // Write JSON line to stdin
       // Attach a one-time error handler to prevent unhandled 'error' event crashes
       const onStdinError = (err: Error) => {
         if (entry.pendingResolve) {
           if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+          if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
           entry.pendingResolve({
             status: 'error',
             result: null,
@@ -486,6 +539,7 @@ class ContainerPool {
           });
           entry.pendingResolve = null;
           entry.pendingTimeout = null;
+          entry.hardDeadlineTimeout = null;
         }
       };
       entry.process.stdin!.once('error', onStdinError);
@@ -495,6 +549,7 @@ class ContainerPool {
         if (err && entry.pendingResolve) {
           entry.process.stdin!.removeListener('error', onStdinError);
           if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+          if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
           entry.pendingResolve({
             status: 'error',
             result: null,
@@ -502,6 +557,7 @@ class ContainerPool {
           });
           entry.pendingResolve = null;
           entry.pendingTimeout = null;
+          entry.hardDeadlineTimeout = null;
         }
       });
     });
@@ -540,6 +596,7 @@ class ContainerPool {
 
     clearTimeout(entry.idleTimer);
     if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+    if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
 
     // Remove from pool immediately so getOrSpawn() won't return
     // this entry while it's draining (prevents write-after-end crashes)
@@ -557,17 +614,26 @@ class ContainerPool {
       // ignore
     }
 
-    // Give it a few seconds, then force kill
+    // Give it a few seconds, then force kill the container directly
     setTimeout(() => {
       if (!entry.exited) {
         logger.warn(
           { group: entry.group.name, containerName: entry.containerName },
           'Container did not exit after shutdown, force killing',
         );
-        const safeName = entry.containerName.replace(/[^a-zA-Z0-9-]/g, '');
-        exec(`docker stop ${safeName}`, { timeout: 10000 }, (err) => {
-          if (err) entry.process.kill('SIGKILL');
-        });
+        exec(
+          `docker kill ${entry.containerName}`,
+          { timeout: 10000 },
+          (err) => {
+            if (err) {
+              logger.error(
+                { containerName: entry.containerName, error: err.message },
+                'docker kill failed, trying SIGKILL on client',
+              );
+              entry.process.kill('SIGKILL');
+            }
+          },
+        );
       }
     }, 5000);
   }
@@ -616,6 +682,7 @@ class ContainerPool {
 // Module-level pool instance
 const containerPool = new ContainerPool();
 
+
 export async function runContainerAgent(
   group: RegisteredGroup,
   input: ContainerInput,
@@ -640,8 +707,8 @@ export async function runContainerAgent(
     'Sending query to persistent container',
   );
 
-  const timeout = group.containerConfig?.timeout || CONTAINER_TIMEOUT;
-  const output = await containerPool.sendQuery(entry, input, timeout);
+  const fullInput = { ...input, model: AGENT_MODEL };
+  const output = await containerPool.sendQuery(entry, fullInput);
 
   const duration = Date.now() - startTime;
 
