@@ -24,6 +24,11 @@ const app = express();
 
 // Module-level reference to the queue, set during startWebhookServer()
 let queue: GroupQueue | null = null;
+
+// Allowlist of GitHub users whose events we respond to
+const GITHUB_ALLOWED_USERS = new Set(
+  (process.env.GITHUB_ALLOWED_USERS || 'dkador').split(',').map(u => u.trim().toLowerCase()).filter(Boolean)
+);
 app.use(express.json());
 
 // Dedup: prevent duplicate container spawns from near-simultaneous webhooks
@@ -207,16 +212,12 @@ Conversation history and context for this issue are stored here.
       fs.writeFileSync(path.join(groupFolder, 'CLAUDE.md'), claudeMd);
     }
 
-    // Register the group with a longer timeout for codebase exploration + planning
     const newGroup = {
       name: `GitHub: ${repoOwner}/${repoName} #${issueNumber}`,
       folder: folderName,
       trigger: '@Bagel', // Not used for GitHub groups
       added_at: new Date().toISOString(),
       jid: groupKey,
-      containerConfig: {
-        timeout: 900000, // 15 minutes — GitHub tasks involve deep codebase exploration
-      },
     };
 
     setRegisteredGroup(groupKey, newGroup);
@@ -525,6 +526,12 @@ async function handleIssueWebhook(payload: GitHubWebhookPayload) {
     return;
   }
 
+  // Only respond to allowed users
+  if (!GITHUB_ALLOWED_USERS.has(sender.login.toLowerCase())) {
+    logger.warn({ sender: sender.login, issue: issue.number }, 'Ignoring issue event from non-allowed user');
+    return;
+  }
+
   logger.info(
     {
       issue: issue.number,
@@ -571,6 +578,12 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
   const botUsername = process.env.GITHUB_BOT_USERNAME || 'bagel-bot';
   if (comment.user.login === botUsername) {
     logger.debug('Ignoring comment from bot itself');
+    return;
+  }
+
+  // Only respond to allowed users
+  if (!GITHUB_ALLOWED_USERS.has(comment.user.login.toLowerCase())) {
+    logger.warn({ commenter: comment.user.login, issue: issue.number }, 'Ignoring comment from non-allowed user');
     return;
   }
 
