@@ -67,6 +67,7 @@ import { connectDiscord, sendDiscordMessage, setDiscordTyping } from './discord.
 import { RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 import { initOpenAI, isAudioMessage, transcribeAudio } from './audio.js';
+import { initGemini, generateImageGemini, isGeminiEnabled } from './image-gen.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -1250,6 +1251,55 @@ async function processTaskIpc(
       break;
     }
 
+    case 'generate_image': {
+      const requestId = data.requestId;
+      if (!requestId || !(data as any).prompt) {
+        logger.warn({ sourceGroup }, 'generate_image missing requestId or prompt');
+        return;
+      }
+      if (!isGeminiEnabled()) {
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = { status: 'error', error: 'Image generation disabled (missing GOOGLE_API_KEY)', timestamp: new Date().toISOString() };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+        return;
+      }
+
+      try {
+        const imgData = data as any;
+        const fullPrompt = (imgData.aspectRatio && imgData.aspectRatio !== '1:1')
+          ? `Generate an image with ${imgData.aspectRatio} aspect ratio. ${imgData.prompt}`
+          : imgData.prompt;
+        const groupDir = path.join(GROUPS_DIR, sourceGroup);
+        const result = await generateImageGemini(fullPrompt, imgData.aspectRatio || '1:1', groupDir);
+
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = { status: 'success', data: { containerPath: result.containerPath, filename: result.filename }, timestamp: new Date().toISOString() };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        logger.debug({ requestId, status: 'success' }, 'generate_image reply sent');
+        setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+      } catch (err) {
+        logger.error({ err, sourceGroup }, 'generate_image failed');
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = { status: 'error', error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+      }
+      return;
+    }
+
     default:
       // Check if it's a GitHub IPC request
       if (data.type.startsWith('github_')) {
@@ -1576,6 +1626,14 @@ async function main(): Promise<void> {
     initOpenAI(openaiKey);
   } else {
     logger.warn('OPENAI_API_KEY not set - audio transcription and TTS disabled');
+  }
+
+  // Initialize Gemini for image generation
+  const googleApiKey = process.env.GOOGLE_API_KEY;
+  if (googleApiKey) {
+    initGemini(googleApiKey);
+  } else {
+    logger.warn('GOOGLE_API_KEY not set - image generation disabled');
   }
 
   // Initialize GitHub API client

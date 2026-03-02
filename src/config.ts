@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Bagel';
+export const AGENT_MODEL = process.env.AGENT_MODEL || 'claude-opus-4-6';
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 
@@ -24,7 +25,7 @@ export const MAIN_GROUP_FOLDER = 'main';
 export const CONTAINER_IMAGE =
   process.env.CONTAINER_IMAGE || 'nanoclaw-agent:latest';
 export const CONTAINER_TIMEOUT = parseInt(
-  process.env.CONTAINER_TIMEOUT || '300000',
+  process.env.CONTAINER_TIMEOUT || '600000',
   10,
 );
 export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(
@@ -54,6 +55,9 @@ export const DISCORD_ENABLED = !!DISCORD_BOT_TOKEN;
 export const WHATSAPP_ENABLED = fs.existsSync(
   path.join(STORE_DIR, 'auth', 'creds.json'),
 );
+
+// Google Gemini (image generation)
+export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 
 // Semantic memory (vector search)
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';

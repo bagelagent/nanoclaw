@@ -16,6 +16,7 @@ interface ContainerInput {
   chatJid: string;
   isMain: boolean;
   isScheduledTask?: boolean;
+  model?: string;
 }
 
 interface AgentResponse {
@@ -285,6 +286,7 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
     for await (const message of query({
       prompt,
       options: {
+        ...(input.model ? { model: input.model } : {}),
         cwd: '/workspace/group',
         resume: sessionId,
         systemPrompt: globalClaudeMd
@@ -343,6 +345,7 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
                 'WebSearch': '🌐',
                 'WebFetch': '🌐',
                 'mcp__nanoclaw__send_message': '💬',
+                'mcp__nanoclaw__generate_image': '🎨',
                 'Task': '🚀',
               };
               const emoji = toolEmoji[toolName] || '🔧';

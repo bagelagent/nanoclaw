@@ -201,6 +201,57 @@ export function createIpcMcp(ctx: IpcMcpContext) {
       ),
 
       tool(
+        'generate_image',
+        `Generate an image from a text description using AI (Gemini). Returns a file path you can send with send_image.
+
+Tips: Be specific and descriptive. Include style (photorealistic, watercolor, pixel art), composition (close-up, wide angle), and mood.`,
+        {
+          prompt: z.string().describe('Detailed description of the image to generate'),
+          aspect_ratio: z.enum(['1:1', '3:4', '4:3', '9:16', '16:9'])
+            .default('1:1')
+            .describe('1:1=square, 16:9=landscape, 9:16=portrait, 4:3/3:4=standard'),
+        },
+        async (args: { prompt: string; aspect_ratio?: string }) => {
+          const requestId = writeIpcFile(TASKS_DIR, {
+            type: 'generate_image',
+            prompt: args.prompt,
+            aspectRatio: args.aspect_ratio || '1:1',
+            groupFolder,
+            chatJid,
+            timestamp: new Date().toISOString(),
+          });
+
+          try {
+            const reply = await waitForReply(requestId, 60000);
+
+            if (reply.status === 'success') {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Image generated! Saved to: ${reply.data.containerPath}\n\nUse send_image with image_path="${reply.data.containerPath}" to send it.`
+                }]
+              };
+            }
+            return {
+              content: [{
+                type: 'text',
+                text: `Image generation failed: ${reply.error}`
+              }],
+              isError: true
+            };
+          } catch (err) {
+            return {
+              content: [{
+                type: 'text',
+                text: `Image generation error: ${err instanceof Error ? err.message : String(err)}`
+              }],
+              isError: true
+            };
+          }
+        }
+      ),
+
+      tool(
         'schedule_task',
         `Schedule a recurring or one-time task. The task will run as a full agent with access to all tools.
 
