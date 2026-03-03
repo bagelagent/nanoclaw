@@ -1,48 +1,6 @@
 {
   "queue": [
     {
-      "id": "rq-1771829371565-nca-layer-ablation",
-      "topic": "Systematic layer ablation for texture NCAs: Test VGG/SqueezeNet layers and measure perceptual quality vs FLOP reduction",
-      "source": "Research follow-up from distilled LPIPS study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-23T06:49:31.564575Z",
-      "priority": 6,
-      "tags": [
-        "nca",
-        "architecture-search",
-        "optimization",
-        "ablation-study"
-      ]
-    },
-    {
-      "id": "rq-1771851237044-hybrid-loss-schedule",
-      "topic": "Hybrid loss scheduling for NCA training: SqueezeNet during exploration, VGG16 for fine-tuning",
-      "source": "Research follow-up from empirical NCA speed benchmark study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-23T12:53:57.044157+00:00",
-      "priority": 6,
-      "tags": [
-        "nca",
-        "optimization",
-        "training-strategy",
-        "perceptual-loss"
-      ]
-    },
-    {
-      "id": "rq-1771851237046-differentiable-sliced-wasserstein",
-      "topic": "Differentiable sliced Wasserstein losses for NCA training - survey of PyTorch/JAX libraries and integration strategies",
-      "source": "Research follow-up from empirical NCA speed benchmark study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-23T12:53:57.044165+00:00",
-      "priority": 6,
-      "tags": [
-        "optimal-transport",
-        "nca",
-        "pytorch",
-        "differentiable-programming"
-      ]
-    },
-    {
       "id": "rq-1771851531076-empirical-distilled-squeezenet-nca",
       "topic": "Empirical NCA benchmark with distilled SqueezeNet: train identical NCAs with VGG, baseline SqueezeNet, PCA-distilled SqueezeNet, and MILO",
       "source": "Research follow-up from perceptual loss distillation study",
@@ -218,19 +176,6 @@
         "distillation",
         "energy-efficiency",
         "training-optimization"
-      ]
-    },
-    {
-      "id": "rq-1772162368875-adaptive-step-diffusion",
-      "topic": "Adaptive step-count models: Single model dynamically choosing 1-4 steps based on content complexity?",
-      "source": "Research follow-up from real-time diffusion study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-27T00:00:00Z",
-      "priority": 6,
-      "tags": [
-        "diffusion-models",
-        "adaptive-inference",
-        "optimization"
       ]
     },
     {
@@ -1160,34 +1105,6 @@
       ]
     },
     {
-      "id": "rq-1740621600000-diffusion-architecture-agnostic",
-      "topic": "Architecture-agnostic progressive diffusion distillation: Can we distill U-Net diffusion models into MobileNet or efficient ConvNext architectures?",
-      "source": "Research follow-up from universal distillation study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-27T15:38:12.150012Z",
-      "priority": 7,
-      "tags": [
-        "diffusion-models",
-        "distillation",
-        "cross-architecture",
-        "mobile-ml"
-      ]
-    },
-    {
-      "id": "rq-1740621600001-universal-perceptual-loss",
-      "topic": "Universal perceptual loss distillation: Single student network that mimics multiple perceptual loss teachers (VGG, LPIPS, DISTS) using multi-level optimal transport",
-      "source": "Research follow-up from universal distillation study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-27T15:38:12.150014Z",
-      "priority": 7,
-      "tags": [
-        "perceptual-loss",
-        "distillation",
-        "optimal-transport",
-        "nca"
-      ]
-    },
-    {
       "id": "rq-1740621600003-automated-distillation-pipeline",
       "topic": "Automated distillation pipeline selection: Meta-learning system that selects optimal distillation method, synthetic data strategy, and hyperparameters given teacher-student pair",
       "source": "Research follow-up from universal distillation study",
@@ -1199,62 +1116,6 @@
         "meta-learning",
         "automl",
         "pipeline-optimization"
-      ]
-    },
-    {
-      "id": "rq-1772228820007-lipschitz-video-diffusion",
-      "topic": "Lipschitz-constrained video diffusion models with provable temporal variation bounds",
-      "source": "Research follow-up from temporal consistency study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-27T21:47:00.007897+00:00",
-      "priority": 7,
-      "tags": [
-        "video-diffusion",
-        "lipschitz-continuity",
-        "formal-guarantees",
-        "temporal-consistency"
-      ]
-    },
-    {
-      "id": "rq-1772228820008-ode-latent-diffusion",
-      "topic": "Integrating Neural ODE continuous-time modeling with modern latent diffusion architectures for video",
-      "source": "Research follow-up from temporal consistency study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-27T21:47:00.007902+00:00",
-      "priority": 7,
-      "tags": [
-        "neural-ode",
-        "latent-diffusion",
-        "continuous-time",
-        "video-generation"
-      ]
-    },
-    {
-      "id": "rq-1772228820009-frame-rate-agnostic",
-      "topic": "Frame-rate-agnostic video representations through multi-scale temporal decomposition",
-      "source": "Research follow-up from temporal consistency study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-27T21:47:00.007905+00:00",
-      "priority": 6,
-      "tags": [
-        "video-representation",
-        "multi-scale",
-        "frame-rate",
-        "generalization"
-      ]
-    },
-    {
-      "id": "rq-1772251020417-multi-stage-distillation-cascade",
-      "topic": "Multi-stage distillation cascades: Does 540B \u2192 70B \u2192 7B \u2192 770M outperform direct 540B \u2192 770M? Test hypothesis with LLMs and apply to NCA perceptual networks",
-      "source": "Research follow-up from distillation emergent abilities study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-28T03:57:00.416966+00:00",
-      "priority": 7,
-      "tags": [
-        "distillation",
-        "optimization",
-        "nca",
-        "architecture"
       ]
     },
     {
@@ -1314,34 +1175,6 @@
       ]
     },
     {
-      "id": "rq-1772295483165-automated-zpd-boundary-detection",
-      "topic": "Automated ZPD boundary detection for knowledge distillation: develop methods to identify optimal teacher-student capacity gaps without grid search",
-      "source": "Research follow-up from ZPD framework study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-28T16:18:03.165562Z",
-      "priority": 7,
-      "tags": [
-        "distillation",
-        "meta-learning",
-        "automation",
-        "zpd"
-      ]
-    },
-    {
-      "id": "rq-1772295483166-layer-wise-zpd-vision",
-      "topic": "Layer-wise ZPD analysis for vision models: do different layers (early/texture, middle/parts, late/semantic) have different optimal teacher-student capacity gaps?",
-      "source": "Research follow-up from ZPD framework study",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-28T16:18:03.165566Z",
-      "priority": 7,
-      "tags": [
-        "computer-vision",
-        "distillation",
-        "ablation-study",
-        "zpd"
-      ]
-    },
-    {
       "id": "rq-1772295483167-zpd-nas",
       "topic": "ZPD-aware neural architecture search: design student architectures to maximize ZPD overlap with given teacher, optimize for distillation efficiency",
       "source": "Research follow-up from ZPD framework study",
@@ -1368,9 +1201,342 @@
         "adaptive-systems",
         "zpd"
       ]
+    },
+    {
+      "id": "rq-1740621600000-progressive-architecture-morphing",
+      "topic": "Progressive architecture morphing for diffusion models: Can we gradually transform a U-Net into a MobileNet-style architecture through iterative operator replacement (grafting), rather than distilling all at once?",
+      "source": "Research follow-up from architecture-agnostic diffusion distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T12:00:00Z",
+      "priority": 6,
+      "tags": [
+        "diffusion-models",
+        "architecture-search",
+        "grafting",
+        "mobile-ml",
+        "progressive-distillation"
+      ]
+    },
+    {
+      "id": "rq-1740621600000-quantization-aware-distillation",
+      "topic": "Quantization-aware architecture distillation for diffusion models: Simultaneously distill into a smaller architecture and quantize to INT8/INT4, targeting mobile accelerators (Apple ANE, Qualcomm Hexagon)",
+      "source": "Research follow-up from architecture-agnostic diffusion distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T12:00:00Z",
+      "priority": 6,
+      "tags": [
+        "quantization",
+        "distillation",
+        "mobile-ml",
+        "hardware-optimization",
+        "diffusion-models"
+      ]
+    },
+    {
+      "id": "rq-1772616600003-adaptive-lipschitz-scheduling",
+      "topic": "Adaptive Lipschitz scheduling across diffusion timesteps: tighter constraints during fine detail generation, relaxed during coarse denoising",
+      "source": "Research follow-up from Lipschitz video diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T15:30:00.000000+00:00",
+      "priority": 6,
+      "tags": [
+        "diffusion-models",
+        "lipschitz-continuity",
+        "scheduling",
+        "adaptive-methods"
+      ]
+    },
+    {
+      "id": "rq-1740621600000-convnext-nca-empirical",
+      "topic": "Empirical validation of ConvNeXt-NCA denoiser: implement the 79K-param update rule, benchmark FID/LPIPS on CelebA-64 and CIFAR-10 vs Diff-NCA and FourierDiff-NCA baselines",
+      "source": "Research follow-up from NCA-ConvNeXt hybrid study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T18:30:00Z",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "convnext",
+        "empirical-study",
+        "diffusion-models",
+        "benchmarking"
+      ]
+    },
+    {
+      "id": "rq-1740621600000-adaln-nca-conditioning",
+      "topic": "Adaptive Layer Normalization (AdaLN) for NCA timestep conditioning: apply DiT-style conditioning to ConvNeXt-NCA update rules for diffusion denoising",
+      "source": "Research follow-up from NCA-ConvNeXt hybrid study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T18:30:00Z",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "adaptive-normalization",
+        "diffusion-transformers",
+        "conditioning",
+        "convnext"
+      ]
+    },
+    {
+      "id": "rq-1772405699450-adaptive-ode-solvers-video",
+      "topic": "Adaptive ODE solvers for video flow matching: Pareto frontier of NFE count vs temporal quality, comparing Euler, RK45, and learned solvers in pyramid flow architectures",
+      "source": "Research follow-up from Neural ODE + latent diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T22:54:59.449307+00:00",
+      "priority": 5,
+      "tags": [
+        "ode-solvers",
+        "flow-matching",
+        "efficiency",
+        "video-generation"
+      ]
+    },
+    {
+      "id": "rq-1772428147984-adaptive-anisotropic-lipschitz",
+      "topic": "Adaptive anisotropic Lipschitz bounds: learning optimal spatial/temporal smoothness ratios per-region in video diffusion models, tighter in static areas and looser in motion regions",
+      "source": "Research follow-up from anisotropic Lipschitz video study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T05:09:07.984217+00:00",
+      "priority": 5,
+      "tags": [
+        "video-diffusion",
+        "lipschitz-continuity",
+        "adaptive-regularization",
+        "motion-aware"
+      ]
+    },
+    {
+      "id": "rq-1772428147985-decomposed-spectral-norm-video-diffusion",
+      "topic": "Empirical study: (2+1)D decomposed spectral normalization in video diffusion UNets \u2014 does separate spatial/temporal spectral norm control improve generation quality and temporal consistency?",
+      "source": "Research follow-up from anisotropic Lipschitz video study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T05:09:07.984221+00:00",
+      "priority": 5,
+      "tags": [
+        "video-diffusion",
+        "spectral-normalization",
+        "2+1D",
+        "empirical-study"
+      ]
+    },
+    {
+      "id": "rq-1772450239079-training-free-zpd-proxy-nca",
+      "topic": "Training-free ZPD proxies for NCA perceptual loss distillation: Can DisWOT-style feature similarity metrics predict which perceptual network architecture works best for a given NCA task without training?",
+      "source": "Research follow-up from automated ZPD boundary detection study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T11:17:19.079714+00:00",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "zpd",
+        "proxy-metrics",
+        "training-free",
+        "perceptual-loss"
+      ]
+    },
+    {
+      "id": "rq-1772450239080-curriculum-nca-texture",
+      "topic": "Curriculum scheduling for NCA training: applying IOA-style bounded difficulty increments to progressive texture complexity during Neural Cellular Automata training",
+      "source": "Research follow-up from automated ZPD boundary detection study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T11:17:19.079722+00:00",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "curriculum-learning",
+        "zpd",
+        "texture-synthesis",
+        "training-strategy"
+      ]
+    },
+    {
+      "id": "rq-1772450819468-per-layer-teacher-assistant",
+      "topic": "Per-layer teacher assistant selection: using different intermediate networks for different VGG layer groups in perceptual loss distillation",
+      "source": "Research follow-up from layer-wise ZPD analysis",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T11:26:59.468805+00:00",
+      "priority": 5,
+      "tags": [
+        "distillation",
+        "layer-wise",
+        "zpd",
+        "perceptual-loss",
+        "nca"
+      ]
+    },
+    {
+      "id": "rq-1772450819469-zpd-width-metric",
+      "topic": "Quantifying ZPD width per layer: developing a metric for the productive teacher-student capacity gap range at each network layer",
+      "source": "Research follow-up from layer-wise ZPD analysis",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T11:26:59.468805+00:00",
+      "priority": 5,
+      "tags": [
+        "zpd",
+        "metrics",
+        "distillation",
+        "theory"
+      ]
+    },
+    {
+      "id": "rq-1772450819470-texture-layer-ablation-gram",
+      "topic": "Per-layer Gram matrix ablation for NCA texture synthesis: which individual VGG layers contribute most to perceptual quality in texture generation?",
+      "source": "Research follow-up from layer-wise ZPD analysis",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T11:26:59.468805+00:00",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "texture-synthesis",
+        "ablation-study",
+        "gram-matrix",
+        "perceptual-loss"
+      ]
+    },
+    {
+      "id": "rq-1772472913-meanflow-video-extension",
+      "topic": "Extending MeanFlow's two-time-variable framework to video generation: can average velocity over (physical time, generative time) enable one-step video frame prediction?",
+      "source": "Research follow-up from dual-time ODE video study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T17:35:13.466733+00:00",
+      "priority": 5,
+      "tags": [
+        "meanflow",
+        "video-generation",
+        "one-step",
+        "dual-time",
+        "flow-matching"
+      ]
+    },
+    {
+      "id": "rq-1772472914-learnable-characteristics-curves",
+      "topic": "Learnable characteristics curves for joint denoising-temporal ODE: can the path shape through (t,\u03b1) space be optimized per-content for Bi-flow-style video generation?",
+      "source": "Research follow-up from dual-time ODE video study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T17:35:13.466738+00:00",
+      "priority": 5,
+      "tags": [
+        "bi-flow",
+        "video-generation",
+        "characteristics-curves",
+        "adaptive",
+        "optimization"
+      ]
+    },
+    {
+      "id": "rq-1772473240777-composable-adaptive-inference",
+      "topic": "Composable adaptive inference for diffusion: Can step selection (AdaDiff), per-step early exit (DeeDiff), and model sizing (DDSM) be stacked for multiplicative savings?",
+      "source": "Research follow-up from adaptive step diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T17:40:40.777202+00:00",
+      "priority": 5,
+      "tags": [
+        "diffusion-models",
+        "adaptive-inference",
+        "composability",
+        "efficiency"
+      ]
+    },
+    {
+      "id": "rq-1772473240778-hardware-aware-adaptive-diffusion",
+      "topic": "Hardware-aware adaptive diffusion inference: Mapping variable-width/variable-depth models to GPU SM utilization for actual wall-clock speedups",
+      "source": "Research follow-up from adaptive step diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T17:40:40.777208+00:00",
+      "priority": 4,
+      "tags": [
+        "diffusion-models",
+        "hardware-optimization",
+        "gpu",
+        "adaptive-inference"
+      ]
+    },
+    {
+      "id": "rq-1772495239-maxmin-dit-ffn-benchmark",
+      "topic": "Empirical benchmark: MaxMin vs GELU activation swap in DiT FFN blocks \u2014 impact on FID/FVD and fine-tuning recovery",
+      "source": "Research follow-up from GroupSort diffusion transformer study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T23:47:19.474473+00:00",
+      "priority": 5,
+      "tags": [
+        "groupsort",
+        "diffusion-transformer",
+        "empirical-study",
+        "activation-functions",
+        "video-generation"
+      ]
+    },
+    {
+      "id": "rq-1772495240-lipschitz-aware-distillation-video-dit",
+      "topic": "Lipschitz-aware distillation for video DiT: distilling unconstrained teacher into GroupSort-based student with temporal stability guarantees",
+      "source": "Research follow-up from GroupSort diffusion transformer study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-02T23:47:19.474473+00:00",
+      "priority": 5,
+      "tags": [
+        "knowledge-distillation",
+        "lipschitz",
+        "groupsort",
+        "video-generation",
+        "temporal-consistency"
+      ]
+    },
+    {
+      "id": "rq-1772518392-nca-continuous-time-ode",
+      "topic": "NCA as neural ODEs for continuous-time evolution: Can reformulating NCA update rules as ODEs enable true frame-rate-agnostic texture animation?",
+      "source": "Research follow-up from frame-rate-agnostic video study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-03T06:13:12.371923+00:00",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "neural-ode",
+        "continuous-time",
+        "frame-rate-agnostic",
+        "texture-animation"
+      ]
+    },
+    {
+      "id": "rq-1772518393-wavelet-nca-temporal",
+      "topic": "Wavelet temporal decomposition for NCA update rules: Separating low-frequency structure from high-frequency motion in cellular automata dynamics",
+      "source": "Research follow-up from frame-rate-agnostic video study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-03T06:13:12.371927+00:00",
+      "priority": 5,
+      "tags": [
+        "nca",
+        "wavelet",
+        "temporal-decomposition",
+        "multi-scale",
+        "texture-synthesis"
+      ]
     }
   ],
   "completed": [
+    {
+      "id": "rq-1740621600000-diffusion-architecture-agnostic",
+      "topic": "Architecture-agnostic progressive diffusion distillation: Can we distill U-Net diffusion models into MobileNet or efficient ConvNext architectures?",
+      "source": "Research follow-up from universal distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T15:38:12.150012Z",
+      "priority": 7,
+      "tags": [
+        "diffusion-models",
+        "distillation",
+        "cross-architecture",
+        "mobile-ml"
+      ],
+      "completedAt": "2026-03-01T12:00:00Z",
+      "summary": "DKDM (CVPR 2025) proves architecture-agnostic diffusion distillation is feasible, with ViT\u2192CNN direction achieving FID 6.85 on CIFAR-10. MobileDiffusion, SnapFusion, and NCA-based approaches (Diff-NCA at 336K params) show multiple viable paths to efficient diffusion on mobile/edge devices.",
+      "sources": [
+        "https://arxiv.org/abs/2409.03550",
+        "https://arxiv.org/html/2311.16567v2",
+        "https://arxiv.org/abs/2306.00980",
+        "https://arxiv.org/abs/2507.21844",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://www.liquid.ai/research/exploring-diffusion-transformer-designs-via-grafting"
+      ],
+      "researchFile": "research/rq-1740621600000-diffusion-architecture-agnostic.md"
+    },
     {
       "id": "rq-1740621600002-distillation-emergent-abilities",
       "topic": "Distillation of emergent abilities in foundation models: Do chain-of-thought reasoning and few-shot learning transfer via distillation? What is minimum model size?",
@@ -3163,15 +3329,391 @@
         "https://arxiv.org/abs/1904.03626",
         "https://arxiv.org/abs/2206.07682"
       ]
+    },
+    {
+      "id": "rq-1772228820007-lipschitz-video-diffusion",
+      "topic": "Lipschitz-constrained video diffusion models with provable temporal variation bounds",
+      "source": "Research follow-up from temporal consistency study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T21:47:00.007897+00:00",
+      "priority": 7,
+      "tags": [
+        "video-diffusion",
+        "lipschitz-continuity",
+        "formal-guarantees",
+        "temporal-consistency"
+      ],
+      "completedAt": "2026-03-01T15:30:00.000000+00:00",
+      "summary": "Building blocks for Lipschitz-constrained video diffusion now exist \u2014 E-TSDM mitigates singularities at t\u21920, Skip-DiT provides spectral norm control, CAT-LVDM proves temporal Lipschitz continuity via corruption-aware training, and flow matching offers formal Wasserstein convergence \u2014 but no unified end-to-end architecture with provable temporal bounds has been assembled yet.",
+      "sources": [
+        "https://arxiv.org/html/2306.11251v2",
+        "https://arxiv.org/abs/2411.17616",
+        "https://arxiv.org/html/2505.21545v2",
+        "https://arxiv.org/abs/2504.16016",
+        "https://arxiv.org/html/2504.09789v1",
+        "https://arxiv.org/abs/2509.02337",
+        "https://jmlr.org/papers/volume25/22-1347/22-1347.pdf",
+        "https://arxiv.org/html/2601.18513v1"
+      ],
+      "researchFile": "research/rq-1772228820007-lipschitz-video-diffusion.md"
+    },
+    {
+      "id": "rq-1772228820008-ode-latent-diffusion",
+      "topic": "Integrating Neural ODE continuous-time modeling with modern latent diffusion architectures for video",
+      "source": "Research follow-up from temporal consistency study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T21:47:00.007902+00:00",
+      "priority": 7,
+      "tags": [
+        "neural-ode",
+        "latent-diffusion",
+        "continuous-time",
+        "video-generation"
+      ],
+      "completedAt": "2026-03-01T22:54:59.449271+00:00",
+      "summary": "Neural ODE and latent diffusion have converged through flow matching, which formulates generative modeling as learning ODE vector fields. Modern systems like Pyramidal Flow Matching (ICLR 2025) and STARFlow-V demonstrate this unification in practice, while Neural-RDM provides the theoretical foundation connecting deep residual networks to the probability flow ODE.",
+      "sources": [
+        "https://arxiv.org/abs/2406.13215",
+        "https://arxiv.org/abs/2410.05954",
+        "https://arxiv.org/abs/2511.20462",
+        "https://rectifiedflow.github.io/",
+        "https://research.google/pubs/vid-ode-continuous-time-video-generation-with-neural-ordinary-differential-equation/",
+        "https://link.springer.com/article/10.1007/s10462-025-11331-6"
+      ]
+    },
+    {
+      "id": "rq-1740621600001-universal-perceptual-loss",
+      "topic": "Universal perceptual loss distillation: Single student network that mimics multiple perceptual loss teachers (VGG, LPIPS, DISTS) using multi-level optimal transport",
+      "source": "Research follow-up from universal distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T15:38:12.150014Z",
+      "priority": 7,
+      "tags": [
+        "perceptual-loss",
+        "distillation",
+        "optimal-transport",
+        "nca"
+      ],
+      "completedAt": "2026-03-02T05:01:49.722806+00:00",
+      "summary": "Comprehensive analysis of distilling multiple perceptual loss teachers (VGG, LPIPS, DISTS) into a single lightweight student network using multi-level optimal transport. Found that MILO (2025) already demonstrates the viability of ensemble-based perceptual distillation at the score level, while MultiLevelOT provides the OT machinery for feature-level alignment; proposed a concrete UniPL architecture and training curriculum.",
+      "sources": [
+        "https://arxiv.org/abs/2509.01411",
+        "https://arxiv.org/abs/2412.14528",
+        "https://arxiv.org/abs/2302.04032",
+        "https://arxiv.org/abs/2004.07728",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://github.com/Buka-Xing/DeepWSD",
+        "https://arxiv.org/abs/2404.09571",
+        "https://hal.science/hal-03265180v1/document"
+      ]
+    },
+    {
+      "id": "rq-1772616600001-anisotropic-lipschitz-video",
+      "topic": "Anisotropic Lipschitz constraints for video: different bounds along spatial vs temporal dimensions in diffusion architectures",
+      "source": "Research follow-up from Lipschitz video diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T15:30:00.000000+00:00",
+      "priority": 7,
+      "tags": [
+        "video-diffusion",
+        "lipschitz-continuity",
+        "anisotropic-regularization",
+        "architecture-design"
+      ],
+      "completedAt": "2026-03-02T05:09:07.984170+00:00",
+      "summary": "Anisotropic Lipschitz constraints for video diffusion \u2014 applying different smoothness bounds along spatial vs temporal axes \u2014 is an emerging but not yet formalized research direction. Building blocks exist: Lipschitz singularity analysis (ICLR 2024), corruption-aware temporal Lipschitz enforcement (CAT-LVDM 2025), spectral-structured video VAEs (SSVAE 2025), (2+1)D decomposed spectral normalization, and temporal regularization (FluxFlow 2025).",
+      "sources": [
+        "https://arxiv.org/abs/2306.11251",
+        "https://arxiv.org/abs/2505.21545",
+        "https://arxiv.org/abs/2512.05394",
+        "https://arxiv.org/abs/2503.15417",
+        "https://arxiv.org/abs/1802.05957",
+        "https://arxiv.org/abs/1804.04368",
+        "https://arxiv.org/abs/2601.18513"
+      ]
+    },
+    {
+      "id": "rq-1772295483165-automated-zpd-boundary-detection",
+      "topic": "Automated ZPD boundary detection for knowledge distillation: develop methods to identify optimal teacher-student capacity gaps without grid search",
+      "source": "Research follow-up from ZPD framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:18:03.165562Z",
+      "priority": 7,
+      "tags": [
+        "distillation",
+        "meta-learning",
+        "automation",
+        "zpd"
+      ],
+      "completedAt": "2026-03-02T11:17:19.079661+00:00",
+      "summary": "Three paradigms are emerging for automated ZPD boundary detection in knowledge distillation: performance-based thresholding (IOA's \u03c4_ZPD=0.15), solvability classification (AgentFrontier's binary persona system), and proxy-based estimation (KD-Zero's evolutionary search, DisWOT's training-free metrics, HPM-KD's meta-learned configuration). While no unified framework exists yet, RL-based dynamic approaches (MTKD-RL, RCD-KD) and prompt-based gap bridging (DFPT-KD) are rapidly closing the gap toward fully automated teacher-student capacity optimization.",
+      "sources": [
+        "https://arxiv.org/abs/1902.03393",
+        "https://openreview.net/forum?id=OlMKa5YZ8e",
+        "https://arxiv.org/abs/2303.15678",
+        "https://arxiv.org/abs/2410.11325",
+        "https://arxiv.org/abs/2602.12172",
+        "https://arxiv.org/abs/2510.24695",
+        "https://arxiv.org/abs/2512.09886",
+        "https://arxiv.org/abs/2506.18244",
+        "https://arxiv.org/abs/2502.18510"
+      ],
+      "researchFile": "research/rq-1772295483165-automated-zpd-boundary-detection.md"
+    },
+    {
+      "id": "rq-1740621600000-nca-convnext-hybrid",
+      "topic": "NCA-ConvNeXt hybrid denoiser: Could ConvNeXt inverted bottleneck blocks serve as NCA update rules, combining NCA's local parallel updates with ConvNeXt's modern design?",
+      "source": "Research follow-up from architecture-agnostic diffusion distillation study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T12:00:00Z",
+      "priority": 7,
+      "tags": [
+        "nca",
+        "convnext",
+        "hybrid-architecture",
+        "diffusion-models",
+        "texture-synthesis"
+      ],
+      "completedAt": "2026-03-01T18:30:00Z",
+      "summary": "ConvNeXt's inverted bottleneck block maps almost one-to-one to NCA update rules (depthwise perception + channel expansion + residual update), offering 7x7 learned perception, GELU smoothness, LayerNorm stability, and GRN against feature collapse \u2014 yielding a ~79K param update rule that could reduce diffusion NCA step count by ~3x while improving training dynamics. No published work combines these architectures yet, representing a clear novel contribution opportunity.",
+      "sources": [
+        "https://arxiv.org/abs/2201.03545",
+        "https://arxiv.org/abs/2301.00808",
+        "https://distill.pub/2020/growing-ca/",
+        "https://www.nature.com/articles/s44335-025-00026-4",
+        "https://arxiv.org/abs/2401.06291",
+        "https://arxiv.org/abs/2303.16900",
+        "https://arxiv.org/abs/2506.22899"
+      ],
+      "researchFile": "research/rq-1740621600000-nca-convnext-hybrid.md"
+    },
+    {
+      "id": "rq-1772251020417-multi-stage-distillation-cascade",
+      "topic": "Multi-stage distillation cascades: Does 540B \u2192 70B \u2192 7B \u2192 770M outperform direct 540B \u2192 770M? Test hypothesis with LLMs and apply to NCA perceptual networks",
+      "source": "Research follow-up from distillation emergent abilities study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T03:57:00.416966+00:00",
+      "priority": 7,
+      "tags": [
+        "distillation",
+        "optimization",
+        "nca",
+        "architecture"
+      ],
+      "completedAt": "2026-03-01T00:00:00Z",
+      "summary": "Multi-stage distillation cascades consistently outperform direct distillation when capacity gaps are large, with 2-3 intermediate stages being optimal. Mistral Ministral 3 validates this at scale (24B\u21923B), achieving 85% AIME with 5-10x fewer training tokens.",
+      "sources": [
+        "https://arxiv.org/abs/1902.03393",
+        "https://arxiv.org/abs/2601.15657",
+        "https://arxiv.org/html/2601.08584",
+        "https://arxiv.org/abs/2009.08825"
+      ]
+    },
+    {
+      "id": "rq-1772295483166-layer-wise-zpd-vision",
+      "topic": "Layer-wise ZPD analysis for vision models: do different layers (early/texture, middle/parts, late/semantic) have different optimal teacher-student capacity gaps?",
+      "source": "Research follow-up from ZPD framework study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-28T16:18:03.165566Z",
+      "priority": 7,
+      "tags": [
+        "computer-vision",
+        "distillation",
+        "ablation-study",
+        "zpd"
+      ],
+      "completedAt": "2026-03-02T11:26:59.468769+00:00",
+      "summary": "Different vision model layers have different optimal teacher-student capacity gaps: early texture layers tolerate large gaps, middle layers need conservative ratios, late semantic layers can be eliminated for texture tasks. Non-uniform layer-wise distillation strategies outperform uniform approaches by 1-3%.",
+      "sources": [
+        "https://arxiv.org/abs/2409.20237",
+        "https://arxiv.org/abs/2205.10003",
+        "https://arxiv.org/abs/2412.16719",
+        "https://arxiv.org/abs/2602.03051",
+        "https://arxiv.org/abs/2407.04871"
+      ]
+    },
+    {
+      "id": "rq-1772405699449-dual-time-ode-video",
+      "topic": "Dual-time Neural ODE for video generation: unifying generative time (noise\u2192data) and physical time (video temporal evolution) in a single ODE framework for arbitrary frame rate generation",
+      "source": "Research follow-up from Neural ODE + latent diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T22:54:59.449307+00:00",
+      "priority": 6,
+      "tags": [
+        "neural-ode",
+        "video-generation",
+        "continuous-time",
+        "frame-interpolation"
+      ],
+      "completedAt": "2026-03-02T17:35:13.466691+00:00",
+      "summary": "Investigated dual-time Neural ODE frameworks that jointly model generative time (noise\u2192data) and physical time (frame\u2192frame) for video generation. The most direct realization is Generative Video Bi-flow (ICCV 2025) which operates over a 2D (t,\u03b1) space via PDE characteristics curves, achieving competitive quality in half the ODE solver steps of standard diffusion.",
+      "sources": [
+        "https://arxiv.org/abs/2503.06364",
+        "https://arxiv.org/abs/2505.13447",
+        "https://arxiv.org/abs/2512.11438",
+        "https://arxiv.org/abs/2010.08188",
+        "https://arxiv.org/abs/2410.05954",
+        "https://arxiv.org/abs/2511.08633"
+      ]
+    },
+    {
+      "id": "rq-1772162368875-adaptive-step-diffusion",
+      "topic": "Adaptive step-count models: Single model dynamically choosing 1-4 steps based on content complexity?",
+      "source": "Research follow-up from real-time diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T00:00:00Z",
+      "priority": 6,
+      "tags": [
+        "diffusion-models",
+        "adaptive-inference",
+        "optimization"
+      ],
+      "completedAt": "2026-03-02T17:40:40.777157+00:00",
+      "summary": "Comprehensive survey of 10+ methods for adaptive-step diffusion inference (2024-2026), from RL-trained step predictors to training-free multi-armed bandits, achieving 30-75% compute savings. Counter-intuitive finding from PostDiff (ICCV 2025): reducing per-step cost often beats reducing step count.",
+      "sources": [
+        "https://arxiv.org/html/2311.14768v2",
+        "https://arxiv.org/abs/2309.17074",
+        "https://arxiv.org/html/2408.05927v1",
+        "https://arxiv.org/html/2412.01243",
+        "https://arxiv.org/pdf/2602.11105",
+        "https://openaccess.thecvf.com/content/CVPR2025/papers/Ding_RaSS_Improving_Denoising_Diffusion_Samplers_with_Reinforced_Active_Sampling_Scheduler_CVPR_2025_paper.pdf",
+        "https://arxiv.org/abs/2503.07699",
+        "https://arxiv.org/abs/2408.02054",
+        "https://arxiv.org/abs/2310.03337",
+        "https://arxiv.org/abs/2508.06160"
+      ]
+    },
+    {
+      "id": "rq-1772616600002-groupsort-diffusion-transformer",
+      "topic": "GroupSort and MaxMin activations in diffusion transformers: expressivity-robustness tradeoff for 1-Lipschitz video generation",
+      "source": "Research follow-up from Lipschitz video diffusion study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-01T15:30:00.000000+00:00",
+      "priority": 6,
+      "tags": [
+        "activation-functions",
+        "lipschitz-continuity",
+        "diffusion-transformers",
+        "universal-approximation"
+      ],
+      "completedAt": "2026-03-02T23:47:19.474473+00:00",
+      "summary": "GroupSort/MaxMin activations are gradient-norm-preserving nonlinearities enabling universal 1-Lipschitz function approximation \u2014 critical for expressivity under Lipschitz constraints where ReLU fails. While these activations have scaled to billion-parameter classifiers (LipNeXt, Jan 2026), their integration into diffusion transformers for video generation remains open; current Lipschitz transformers show significant accuracy gaps, but architectural innovations like Skip-DiT's spectral constraints, LipsFormer's CenterNorm attention, and spectral soft cap methods suggest practical hybrid approaches combining targeted GroupSort insertion with relaxed Lipschitz bounds.",
+      "sources": [
+        "https://arxiv.org/abs/1811.05381",
+        "https://arxiv.org/abs/2507.13338",
+        "https://arxiv.org/abs/2411.17616",
+        "https://arxiv.org/abs/2304.09856",
+        "https://arxiv.org/abs/2306.11251",
+        "https://arxiv.org/abs/2601.18513",
+        "https://arxiv.org/abs/2602.15503"
+      ]
+    },
+    {
+      "id": "rq-1771829371565-nca-layer-ablation",
+      "topic": "Systematic layer ablation for texture NCAs: Test VGG/SqueezeNet layers and measure perceptual quality vs FLOP reduction",
+      "source": "Research follow-up from distilled LPIPS study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T06:49:31.564575Z",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "architecture-search",
+        "optimization",
+        "ablation-study"
+      ],
+      "completedAt": "2026-02-27T00:00:00Z",
+      "summary": "Comprehensive analysis of VGG/SqueezeNet layer selection for NCA texture synthesis. Layer choice matters as much as architecture choice - conv3/conv4 carry most texture information, while SqueezeNet achieves comparable LPIPS scores at 10x fewer FLOPs.",
+      "sources": [
+        "https://arxiv.org/html/2302.04032v3",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://github.com/richzhang/PerceptualSimilarity",
+        "https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_The_Unreasonable_Effectiveness_CVPR_2018_paper.pdf"
+      ]
+    },
+    {
+      "id": "rq-1771851237044-hybrid-loss-schedule",
+      "topic": "Hybrid loss scheduling for NCA training: SqueezeNet during exploration, VGG16 for fine-tuning",
+      "source": "Research follow-up from empirical NCA speed benchmark study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T12:53:57.044157+00:00",
+      "priority": 6,
+      "tags": [
+        "nca",
+        "optimization",
+        "training-strategy",
+        "perceptual-loss"
+      ],
+      "completedAt": "2026-03-02T23:58:22.443031+00:00",
+      "summary": "Hybrid loss scheduling for NCA training \u2014 using cheap SqueezeNet loss during exploration and switching to expensive VGG16 for fine-tuning \u2014 is theoretically sound, supported by ESRGAN precedent and LPIPS cross-architecture similarity, but has not been formally studied for NCAs. Proposed warm-transfer schedule (Design B) could achieve ~58% FLOP savings.",
+      "sources": [
+        "https://openaccess.thecvf.com/content_ECCVW_2018/papers/11133/Wang_ESRGAN_Enhanced_Super-Resolution_Generative_Adversarial_Networks_ECCVW_2018_paper.pdf",
+        "https://arxiv.org/html/2302.04032v3",
+        "https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_The_Unreasonable_Effectiveness_CVPR_2018_paper.pdf",
+        "https://distill.pub/selforg/2021/textures/",
+        "https://github.com/xinntao/Real-ESRGAN/blob/master/docs/Training.md",
+        "https://arxiv.org/abs/2106.04072"
+      ]
+    },
+    {
+      "id": "rq-1771851237046-differentiable-sliced-wasserstein",
+      "topic": "Differentiable sliced Wasserstein losses for NCA training - survey of PyTorch/JAX libraries and integration strategies",
+      "source": "Research follow-up from empirical NCA speed benchmark study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-23T12:53:57.044165+00:00",
+      "priority": 6,
+      "tags": [
+        "optimal-transport",
+        "nca",
+        "pytorch",
+        "differentiable-programming"
+      ],
+      "completedAt": "2026-03-03T06:05:59.167226+00:00",
+      "summary": "Comprehensive survey of differentiable Sliced Wasserstein Distance for NCA texture training: covers the core algorithm (project-sort-compare), all major PyTorch/JAX libraries (POT, GeomLoss, OTT-JAX), 8+ SWD variants (2024-2026), and detailed NCA integration strategies with code examples.",
+      "sources": [
+        "https://arxiv.org/abs/2006.07229",
+        "https://www.nature.com/articles/s41598-025-23997-7",
+        "https://arxiv.org/abs/2111.13545",
+        "https://arxiv.org/abs/2506.22899",
+        "https://arxiv.org/abs/2307.11714",
+        "https://pythonot.github.io/",
+        "https://ott-jax.readthedocs.io/",
+        "https://github.com/tchambon/A-Sliced-Wasserstein-Loss-for-Neural-Texture-Synthesis"
+      ]
+    },
+    {
+      "id": "rq-1772228820009-frame-rate-agnostic",
+      "topic": "Frame-rate-agnostic video representations through multi-scale temporal decomposition",
+      "source": "Research follow-up from temporal consistency study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-27T21:47:00.007905+00:00",
+      "priority": 6,
+      "tags": [
+        "video-representation",
+        "multi-scale",
+        "frame-rate",
+        "generalization"
+      ],
+      "completedAt": "2026-03-03T06:13:12.371879+00:00",
+      "summary": "Frame-rate-agnostic video representations use multi-scale temporal decomposition\u2014from SlowFast's dual pathways to VideoINR's continuous implicit representations and TempoMaster's hierarchical frame-rate prediction\u2014to enable video AI models that process, generate, and understand video at arbitrary temporal resolutions. Key techniques include continuous positional encoding, wavelet-based frequency separation, Mixture-of-LoRA frame-rate adapters, and variable-rate tokenization.",
+      "sources": [
+        "https://arxiv.org/abs/1812.03982",
+        "https://arxiv.org/abs/2104.11227",
+        "https://arxiv.org/abs/2206.04647",
+        "https://arxiv.org/abs/2511.12578",
+        "https://noisenca.github.io/",
+        "https://arxiv.org/abs/2506.01061",
+        "https://arxiv.org/html/2505.12053v2",
+        "https://arxiv.org/html/2503.13956v1"
+      ]
     }
   ],
   "metadata": {
-    "lastUpdated": "2026-02-28T16:18:03.165529Z",
-    "totalResearched": 62,
+    "lastUpdated": "2026-03-03T06:13:12.371930+00:00",
+    "totalResearched": 78,
     "version": "1.0",
-    "totalCompleted": 60,
-    "totalPending": 83,
-    "totalQueued": 83,
-    "totalInQueue": 91
+    "totalCompleted": 78,
+    "totalPending": 105,
+    "totalQueued": 105,
+    "totalInQueue": 105
   }
 }
