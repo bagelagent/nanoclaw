@@ -12,17 +12,27 @@ import path from 'path';
 import { tmpdir } from 'os';
 
 import { DISCORD_BOT_TOKEN } from './config.js';
-import { storeChatMetadata, storeGenericMessage, getAllRegisteredGroups } from './db.js';
+import {
+  storeChatMetadata,
+  storeGenericMessage,
+  getAllRegisteredGroups,
+} from './db.js';
 import { logger } from './logger.js';
 import { initOpenAI } from './audio.js';
 
 const DISCORD_API_TIMEOUT = 15000;
 
-function withTimeout<T>(promise: Promise<T>, ms = DISCORD_API_TIMEOUT): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms = DISCORD_API_TIMEOUT,
+): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Discord API call timed out after ${ms}ms`)), ms),
+      setTimeout(
+        () => reject(new Error(`Discord API call timed out after ${ms}ms`)),
+        ms,
+      ),
     ),
   ]);
 }
@@ -46,21 +56,35 @@ function toJid(msg: Message): string {
 /**
  * Check if an attachment is an audio file
  */
-function isAudioAttachment(contentType: string | null, name: string | null): boolean {
+function isAudioAttachment(
+  contentType: string | null,
+  name: string | null,
+): boolean {
   if (contentType?.startsWith('audio/')) return true;
-  if (name?.endsWith('.ogg') || name?.endsWith('.mp3') || name?.endsWith('.wav')) return true;
+  if (
+    name?.endsWith('.ogg') ||
+    name?.endsWith('.mp3') ||
+    name?.endsWith('.wav')
+  )
+    return true;
   return false;
 }
 
 /**
  * Transcribe an audio attachment from Discord
  */
-async function transcribeDiscordAudio(url: string, filename: string): Promise<string | null> {
+async function transcribeDiscordAudio(
+  url: string,
+  filename: string,
+): Promise<string | null> {
   try {
     // Download the audio file
     const response = await fetch(url);
     if (!response.ok) {
-      logger.error({ url, status: response.status }, 'Failed to download Discord audio');
+      logger.error(
+        { url, status: response.status },
+        'Failed to download Discord audio',
+      );
       return null;
     }
 
@@ -81,7 +105,9 @@ async function transcribeDiscordAudio(url: string, filename: string): Promise<st
       const { default: OpenAI } = await import('openai');
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
-        logger.warn('OpenAI API key not set, skipping Discord audio transcription');
+        logger.warn(
+          'OpenAI API key not set, skipping Discord audio transcription',
+        );
         return null;
       }
 
@@ -93,7 +119,10 @@ async function transcribeDiscordAudio(url: string, filename: string): Promise<st
         model: 'whisper-1',
       });
 
-      logger.info({ text: transcription.text, filename }, 'Discord audio transcribed');
+      logger.info(
+        { text: transcription.text, filename },
+        'Discord audio transcribed',
+      );
       return transcription.text;
     } finally {
       // Clean up temp file
@@ -150,7 +179,9 @@ async function buildContent(msg: Message): Promise<string> {
 /**
  * Connect to Discord and start listening for messages.
  */
-export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void> {
+export async function connectDiscord(
+  callbacks: DiscordCallbacks,
+): Promise<void> {
   client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -195,7 +226,11 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
 
       // Always store chat metadata for discovery
       const channelName = (msg.channel as TextChannel).name || chatJid;
-      storeChatMetadata(chatJid, timestamp, `#${channelName} (${msg.guild.name})`);
+      storeChatMetadata(
+        chatJid,
+        timestamp,
+        `#${channelName} (${msg.guild.name})`,
+      );
 
       // Process all messages in guild channels without needing @mention
       // Each channel will be treated as its own group with separate memory
@@ -218,7 +253,11 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
 
     // DMs: always store metadata and process
     if (!msg.guild) {
-      storeChatMetadata(chatJid, timestamp, `DM: ${msg.author.displayName || msg.author.username}`);
+      storeChatMetadata(
+        chatJid,
+        timestamp,
+        `DM: ${msg.author.displayName || msg.author.username}`,
+      );
     }
 
     // Store full message content for registered groups
@@ -226,7 +265,9 @@ export async function connectDiscord(callbacks: DiscordCallbacks): Promise<void>
       // Strip the bot mention from content for cleaner processing
       let content = msg.content;
       if (client.user) {
-        content = content.replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '').trim();
+        content = content
+          .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
+          .trim();
       }
 
       // Append attachment URLs (images, files, etc.)
@@ -262,7 +303,10 @@ const typingIntervals = new Map<string, NodeJS.Timeout>();
  * Show or hide the "Bot is typing..." indicator for a Discord channel/DM.
  * sendTyping() lasts ~10s, so we repeat every 9s while active.
  */
-export async function setDiscordTyping(jid: string, isTyping: boolean): Promise<void> {
+export async function setDiscordTyping(
+  jid: string,
+  isTyping: boolean,
+): Promise<void> {
   if (!isTyping) {
     const interval = typingIntervals.get(jid);
     if (interval) {
@@ -342,7 +386,9 @@ export async function sendDiscordMessage(
       } else {
         // Split long messages
         for (let i = 0; i < text.length; i += 2000) {
-          await withTimeout((channel as TextChannel).send(text.slice(i, i + 2000)));
+          await withTimeout(
+            (channel as TextChannel).send(text.slice(i, i + 2000)),
+          );
         }
       }
       logger.info({ jid, length: text.length }, 'Discord message sent');
@@ -362,7 +408,10 @@ export async function sendDiscordVoiceMessage(
   audioBuffer: Buffer,
 ): Promise<void> {
   if (!client?.isReady()) {
-    logger.error({ jid }, 'Discord client not ready, cannot send voice message');
+    logger.error(
+      { jid },
+      'Discord client not ready, cannot send voice message',
+    );
     return;
   }
 
@@ -385,7 +434,10 @@ export async function sendDiscordVoiceMessage(
         name: 'voice-message.ogg',
       });
       await withTimeout((channel as TextChannel).send({ files: [attachment] }));
-      logger.info({ jid, size: audioBuffer.length }, 'Discord voice message sent');
+      logger.info(
+        { jid, size: audioBuffer.length },
+        'Discord voice message sent',
+      );
     } else {
       logger.error({ jid }, 'Channel not found or not a text channel');
     }
@@ -434,7 +486,10 @@ export async function sendDiscordImage(
       }
 
       await withTimeout((channel as TextChannel).send(messageOptions));
-      logger.info({ jid, size: imageBuffer.length, filename }, 'Discord image sent');
+      logger.info(
+        { jid, size: imageBuffer.length, filename },
+        'Discord image sent',
+      );
     } else {
       logger.error({ jid }, 'Channel not found or not a text channel');
     }

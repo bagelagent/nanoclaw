@@ -166,7 +166,10 @@ export async function downloadImage(url: string): Promise<Buffer | null> {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      logger.error({ url, status: response.status }, 'Failed to download image');
+      logger.error(
+        { url, status: response.status },
+        'Failed to download image',
+      );
       return null;
     }
     const arrayBuffer = await response.arrayBuffer();

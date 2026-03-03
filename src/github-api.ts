@@ -138,7 +138,10 @@ export async function mergePullRequest(
         pull_number: pullNumber,
         merge_method: mergeMethod,
       });
-      logger.info({ owner, repo, pullNumber, mergeMethod }, 'Merged pull request');
+      logger.info(
+        { owner, repo, pullNumber, mergeMethod },
+        'Merged pull request',
+      );
       return {
         sha: response.data.sha,
         merged: response.data.merged,
@@ -167,7 +170,15 @@ export async function reactToComment(
   owner: string,
   repo: string,
   commentId: number,
-  reaction: '+1' | '-1' | 'laugh' | 'confused' | 'heart' | 'hooray' | 'rocket' | 'eyes',
+  reaction:
+    | '+1'
+    | '-1'
+    | 'laugh'
+    | 'confused'
+    | 'heart'
+    | 'hooray'
+    | 'rocket'
+    | 'eyes',
 ): Promise<number> {
   const client = getGitHubClient();
   const response = await client.reactions.createForIssueComment({
@@ -193,7 +204,10 @@ export async function deleteReaction(
     comment_id: commentId,
     reaction_id: reactionId,
   });
-  logger.info({ owner, repo, commentId, reactionId }, 'Deleted reaction from comment');
+  logger.info(
+    { owner, repo, commentId, reactionId },
+    'Deleted reaction from comment',
+  );
 }
 
 export async function getIssueComments(

@@ -78,13 +78,7 @@ export function openEmbeddingsDb(): Database.Database {
 
 // ─── File Scanning ───────────────────────────────────────────────────────────
 
-const EXCLUDE_DIRS = new Set([
-  'logs',
-  'node_modules',
-  '.git',
-  'dist',
-  'data',
-]);
+const EXCLUDE_DIRS = new Set(['logs', 'node_modules', '.git', 'dist', 'data']);
 
 function scanMarkdownFiles(dir: string, basePath = ''): string[] {
   const results: string[] = [];
@@ -128,11 +122,7 @@ function detectType(
 
 // ─── Chunking ────────────────────────────────────────────────────────────────
 
-function chunkText(
-  text: string,
-  maxSize: number,
-  overlap: number,
-): string[] {
+function chunkText(text: string, maxSize: number, overlap: number): string[] {
   if (text.length <= maxSize) return [text];
 
   const paragraphs = text.split(/\n\n+/);
@@ -210,9 +200,7 @@ async function indexGroup(
   const upsertState = database.prepare(
     'INSERT OR REPLACE INTO index_state (source, mtime_ms, chunk_count) VALUES (?, ?, ?)',
   );
-  const deleteChunks = database.prepare(
-    'DELETE FROM chunks WHERE source = ?',
-  );
+  const deleteChunks = database.prepare('DELETE FROM chunks WHERE source = ?');
   const deleteFts = database.prepare(
     'DELETE FROM chunks_fts WHERE id IN (SELECT id FROM chunks WHERE source = ?)',
   );
@@ -239,9 +227,7 @@ async function indexGroup(
     }
 
     const source = `${groupFolder}/${relPath}`;
-    const existing = getState.get(source) as
-      | { mtime_ms: number }
-      | undefined;
+    const existing = getState.get(source) as { mtime_ms: number } | undefined;
 
     if (!existing || existing.mtime_ms !== Math.floor(stat.mtimeMs)) {
       filesToIndex.push({
@@ -352,9 +338,7 @@ async function indexGroup(
   chunksIndexed = allChunks.length;
 
   // Clean stale entries (files that no longer exist)
-  const validSources = new Set(
-    mdFiles.map((f) => `${groupFolder}/${f}`),
-  );
+  const validSources = new Set(mdFiles.map((f) => `${groupFolder}/${f}`));
   const allIndexed = database
     .prepare('SELECT source FROM index_state WHERE source LIKE ?')
     .all(`${groupFolder}/%`) as Array<{ source: string }>;
@@ -529,9 +513,7 @@ export async function searchMemory(
 
 // ─── Indexer Loop ────────────────────────────────────────────────────────────
 
-export function startMemoryIndexer(
-  getGroupFolders: () => string[],
-): void {
+export function startMemoryIndexer(getGroupFolders: () => string[]): void {
   if (indexerRunning) {
     logger.warn('Memory indexer already running, skipping duplicate start');
     return;
@@ -563,8 +545,5 @@ export function startMemoryIndexer(
   // Run immediately, then on interval
   runIndex();
   setInterval(runIndex, MEMORY_INDEX_INTERVAL);
-  logger.info(
-    { intervalMs: MEMORY_INDEX_INTERVAL },
-    'Memory indexer started',
-  );
+  logger.info({ intervalMs: MEMORY_INDEX_INTERVAL }, 'Memory indexer started');
 }

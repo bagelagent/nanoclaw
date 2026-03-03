@@ -27,7 +27,10 @@ let queue: GroupQueue | null = null;
 
 // Allowlist of GitHub users whose events we respond to
 const GITHUB_ALLOWED_USERS = new Set(
-  (process.env.GITHUB_ALLOWED_USERS || 'dkador').split(',').map(u => u.trim().toLowerCase()).filter(Boolean)
+  (process.env.GITHUB_ALLOWED_USERS || 'dkador')
+    .split(',')
+    .map((u) => u.trim().toLowerCase())
+    .filter(Boolean),
 );
 app.use(express.json());
 
@@ -160,7 +163,11 @@ function verifyGitHubSignature(
  * Get or create a GitHub group for a specific issue.
  * Each issue gets its own group folder and container for isolation.
  */
-function getOrCreateGitHubGroup(repoOwner: string, repoName: string, issueNumber: number): RegisteredGroup {
+function getOrCreateGitHubGroup(
+  repoOwner: string,
+  repoName: string,
+  issueNumber: number,
+): RegisteredGroup {
   const groupKey = `github-${repoOwner}-${repoName}-issue-${issueNumber}`;
   const folderName = `github-${repoOwner}-${repoName}-issue-${issueNumber}`;
 
@@ -174,25 +181,52 @@ function getOrCreateGitHubGroup(repoOwner: string, repoName: string, issueNumber
     // Create group directory if it doesn't exist
     if (!fs.existsSync(groupFolder)) {
       fs.mkdirSync(groupFolder, { recursive: true });
-      logger.info({ folder: folderName }, 'Created new GitHub issue group folder');
+      logger.info(
+        { folder: folderName },
+        'Created new GitHub issue group folder',
+      );
 
       // Pre-populate repo from reference clone if available
-      const refClone = path.join(DATA_DIR, '..', 'github-work', repoOwner, repoName);
+      const refClone = path.join(
+        DATA_DIR,
+        '..',
+        'github-work',
+        repoOwner,
+        repoName,
+      );
       const repoDir = path.join(groupFolder, repoName);
       if (fs.existsSync(path.join(refClone, '.git'))) {
         try {
-          execSync(`cp -a ${JSON.stringify(refClone)} ${JSON.stringify(repoDir)}`, { stdio: 'pipe' });
+          execSync(
+            `cp -a ${JSON.stringify(refClone)} ${JSON.stringify(repoDir)}`,
+            { stdio: 'pipe' },
+          );
           // Reset to default branch, clean, and pull
-          execSync('git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@") 2>/dev/null || git checkout main', {
-            cwd: repoDir, stdio: 'pipe',
+          execSync(
+            'git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@") 2>/dev/null || git checkout main',
+            {
+              cwd: repoDir,
+              stdio: 'pipe',
+            },
+          );
+          execSync('git clean -fd && git checkout .', {
+            cwd: repoDir,
+            stdio: 'pipe',
           });
-          execSync('git clean -fd && git checkout .', { cwd: repoDir, stdio: 'pipe' });
           execSync('git pull --ff-only', { cwd: repoDir, stdio: 'pipe' });
-          logger.info({ folder: folderName, refClone }, 'Pre-populated repo from reference clone');
+          logger.info(
+            { folder: folderName, refClone },
+            'Pre-populated repo from reference clone',
+          );
         } catch (err) {
-          logger.warn({ err, folder: folderName }, 'Reference clone pre-population failed, agent will clone fresh');
+          logger.warn(
+            { err, folder: folderName },
+            'Reference clone pre-population failed, agent will clone fresh',
+          );
           // Clean up partial copy
-          try { execSync(`rm -rf ${JSON.stringify(repoDir)}`, { stdio: 'pipe' }); } catch {}
+          try {
+            execSync(`rm -rf ${JSON.stringify(repoDir)}`, { stdio: 'pipe' });
+          } catch {}
         }
       }
 
@@ -221,12 +255,15 @@ Conversation history and context for this issue are stored here.
     };
 
     setRegisteredGroup(groupKey, newGroup);
-    logger.info({ groupKey, folder: folderName }, 'Registered new GitHub issue group');
+    logger.info(
+      { groupKey, folder: folderName },
+      'Registered new GitHub issue group',
+    );
 
     group = newGroup;
   }
 
-  return group!
+  return group!;
 }
 
 interface EmojiSwap {
@@ -242,13 +279,20 @@ interface EmojiSwap {
  * multiple issues for the same repo run one at a time instead of
  * clobbering each other's pendingResolve callbacks.
  */
-function spawnGitHubContainer(eventType: string, data: any, emojiSwap?: EmojiSwap) {
+function spawnGitHubContainer(
+  eventType: string,
+  data: any,
+  emojiSwap?: EmojiSwap,
+) {
   // Dedup check: skip if we recently spawned for the same event+issue
   const dedupKey = `${eventType}-${data.repo_owner}/${data.repo_name}-${data.issue_number}`;
   const now = Date.now();
   const lastSeen = recentEvents.get(dedupKey);
   if (lastSeen && now - lastSeen < DEDUP_WINDOW_MS) {
-    logger.info({ dedupKey }, 'Duplicate GitHub event within dedup window, skipping');
+    logger.info(
+      { dedupKey },
+      'Duplicate GitHub event within dedup window, skipping',
+    );
     return;
   }
   recentEvents.set(dedupKey, now);
@@ -260,7 +304,11 @@ function spawnGitHubContainer(eventType: string, data: any, emojiSwap?: EmojiSwa
 
   // Get or create GitHub group for this specific issue
   const issueNumber = data.issue_number as number;
-  const group = getOrCreateGitHubGroup(data.repo_owner, data.repo_name, issueNumber);
+  const group = getOrCreateGitHubGroup(
+    data.repo_owner,
+    data.repo_name,
+    issueNumber,
+  );
 
   // Build prompt based on event type
   let prompt = '';
@@ -298,18 +346,37 @@ function spawnGitHubContainer(eventType: string, data: any, emojiSwap?: EmojiSwa
         },
       );
     } catch (err) {
-      logger.error({ err, eventType, issue: data.issue_number || data.pr_number }, 'GitHub container failed');
+      logger.error(
+        { err, eventType, issue: data.issue_number || data.pr_number },
+        'GitHub container failed',
+      );
     } finally {
       if (emojiSwap) {
         try {
-          await deleteReaction(emojiSwap.owner, emojiSwap.repo, emojiSwap.commentId, emojiSwap.eyesReactionId);
+          await deleteReaction(
+            emojiSwap.owner,
+            emojiSwap.repo,
+            emojiSwap.commentId,
+            emojiSwap.eyesReactionId,
+          );
         } catch (err) {
-          logger.warn({ err, commentId: emojiSwap.commentId }, 'Failed to remove eyes reaction');
+          logger.warn(
+            { err, commentId: emojiSwap.commentId },
+            'Failed to remove eyes reaction',
+          );
         }
         try {
-          await reactToComment(emojiSwap.owner, emojiSwap.repo, emojiSwap.commentId, 'hooray');
+          await reactToComment(
+            emojiSwap.owner,
+            emojiSwap.repo,
+            emojiSwap.commentId,
+            'hooray',
+          );
         } catch (err) {
-          logger.warn({ err, commentId: emojiSwap.commentId }, 'Failed to add hooray reaction');
+          logger.warn(
+            { err, commentId: emojiSwap.commentId },
+            'Failed to add hooray reaction',
+          );
         }
       }
     }
@@ -319,11 +386,22 @@ function spawnGitHubContainer(eventType: string, data: any, emojiSwap?: EmojiSwa
     queue.enqueueTask(groupKey, taskId, taskFn);
   } else {
     // Fallback: no queue available (shouldn't happen in normal operation)
-    logger.warn({ eventType }, 'No GroupQueue available, running GitHub container directly');
+    logger.warn(
+      { eventType },
+      'No GroupQueue available, running GitHub container directly',
+    );
     taskFn();
   }
 
-  logger.info({ eventType, issue: data.issue_number || data.pr_number, chatJid, groupFolder: group.folder }, 'Enqueued GitHub container task');
+  logger.info(
+    {
+      eventType,
+      issue: data.issue_number || data.pr_number,
+      chatJid,
+      groupFolder: group.folder,
+    },
+    'Enqueued GitHub container task',
+  );
 }
 
 /**
@@ -528,7 +606,10 @@ async function handleIssueWebhook(payload: GitHubWebhookPayload) {
 
   // Only respond to allowed users
   if (!GITHUB_ALLOWED_USERS.has(sender.login.toLowerCase())) {
-    logger.warn({ sender: sender.login, issue: issue.number }, 'Ignoring issue event from non-allowed user');
+    logger.warn(
+      { sender: sender.login, issue: issue.number },
+      'Ignoring issue event from non-allowed user',
+    );
     return;
   }
 
@@ -583,7 +664,10 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
 
   // Only respond to allowed users
   if (!GITHUB_ALLOWED_USERS.has(comment.user.login.toLowerCase())) {
-    logger.warn({ commenter: comment.user.login, issue: issue.number }, 'Ignoring comment from non-allowed user');
+    logger.warn(
+      { commenter: comment.user.login, issue: issue.number },
+      'Ignoring comment from non-allowed user',
+    );
     return;
   }
 
@@ -600,26 +684,52 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     const match = issue.body.match(/(?:fixes|closes|resolves)\s+#(\d+)/i);
     if (match) {
       issueNumber = parseInt(match[1], 10);
-      logger.info({ prNumber: issue.number, issueNumber }, 'PR comment routed to linked issue group');
+      logger.info(
+        { prNumber: issue.number, issueNumber },
+        'PR comment routed to linked issue group',
+      );
     }
   }
 
   // Check for approval keywords in the comment
-  const approvalKeywords = ['approved', 'lgtm', 'go ahead', 'looks good', 'ship it', '🚀'];
+  const approvalKeywords = [
+    'approved',
+    'lgtm',
+    'go ahead',
+    'looks good',
+    'ship it',
+    '🚀',
+  ];
   const commentLower = comment.body.toLowerCase();
-  const isApproval = approvalKeywords.some((keyword) => commentLower.includes(keyword));
+  const isApproval = approvalKeywords.some((keyword) =>
+    commentLower.includes(keyword),
+  );
 
   // React with eyes to acknowledge the comment, capture reaction ID for swap
   let eyesReactionId: number | undefined;
   try {
-    eyesReactionId = await reactToComment(repository.owner.login, repository.name, comment.id, 'eyes');
+    eyesReactionId = await reactToComment(
+      repository.owner.login,
+      repository.name,
+      comment.id,
+      'eyes',
+    );
   } catch (err) {
-    logger.warn({ err, commentId: comment.id }, 'Failed to add eyes reaction to comment');
+    logger.warn(
+      { err, commentId: comment.id },
+      'Failed to add eyes reaction to comment',
+    );
   }
 
-  const emojiSwap: EmojiSwap | undefined = eyesReactionId !== undefined
-    ? { owner: repository.owner.login, repo: repository.name, commentId: comment.id, eyesReactionId }
-    : undefined;
+  const emojiSwap: EmojiSwap | undefined =
+    eyesReactionId !== undefined
+      ? {
+          owner: repository.owner.login,
+          repo: repository.name,
+          commentId: comment.id,
+          eyesReactionId,
+        }
+      : undefined;
 
   if (isApproval) {
     logger.info(
@@ -631,14 +741,18 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     );
 
     // Spawn a container to handle the approved implementation
-    spawnGitHubContainer('plan_approved', {
-      repo_owner: repository.owner.login,
-      repo_name: repository.name,
-      issue_number: issueNumber,
-      title: issue.title,
-      issue_url: issue.html_url,
-      approver: comment.user.login,
-    }, emojiSwap);
+    spawnGitHubContainer(
+      'plan_approved',
+      {
+        repo_owner: repository.owner.login,
+        repo_name: repository.name,
+        issue_number: issueNumber,
+        title: issue.title,
+        issue_url: issue.html_url,
+        approver: comment.user.login,
+      },
+      emojiSwap,
+    );
   } else {
     // Non-approval comment on an assigned issue — user may be answering agent's questions
     logger.info(
@@ -649,15 +763,19 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
       'User comment on assigned issue - spawning question_answered container',
     );
 
-    spawnGitHubContainer('question_answered', {
-      repo_owner: repository.owner.login,
-      repo_name: repository.name,
-      issue_number: issueNumber,
-      title: issue.title,
-      issue_url: issue.html_url,
-      commenter: comment.user.login,
-      comment_body: comment.body,
-    }, emojiSwap);
+    spawnGitHubContainer(
+      'question_answered',
+      {
+        repo_owner: repository.owner.login,
+        repo_name: repository.name,
+        issue_number: issueNumber,
+        title: issue.title,
+        issue_url: issue.html_url,
+        commenter: comment.user.login,
+        comment_body: comment.body,
+      },
+      emojiSwap,
+    );
   }
 }
 
@@ -716,7 +834,9 @@ export async function sweepClosedIssueGroups(): Promise<void> {
 
   let folders: string[];
   try {
-    folders = fs.readdirSync(GROUPS_DIR).filter((f) => issueGroupPattern.test(f));
+    folders = fs
+      .readdirSync(GROUPS_DIR)
+      .filter((f) => issueGroupPattern.test(f));
   } catch {
     return;
   }
@@ -755,12 +875,18 @@ export async function sweepClosedIssueGroups(): Promise<void> {
       const issue = await fetchIssue(owner, repo, issueNumber);
       if (issue.state !== 'closed') continue;
     } catch (err) {
-      logger.warn({ err, folder }, 'Sweeper: failed to fetch issue state, skipping');
+      logger.warn(
+        { err, folder },
+        'Sweeper: failed to fetch issue state, skipping',
+      );
       continue;
     }
 
     // Issue is closed and folder is idle — clean up
-    logger.info({ folder, owner, repo, issueNumber }, 'Sweeper: cleaning up closed issue group');
+    logger.info(
+      { folder, owner, repo, issueNumber },
+      'Sweeper: cleaning up closed issue group',
+    );
 
     // Stop the container
     try {
@@ -778,7 +904,10 @@ export async function sweepClosedIssueGroups(): Promise<void> {
         if (fs.existsSync(refClone)) {
           execSync(`rm -rf ${JSON.stringify(refClone)}`, { stdio: 'pipe' });
         }
-        execSync(`cp -a ${JSON.stringify(repoDir)} ${JSON.stringify(refClone)}`, { stdio: 'pipe' });
+        execSync(
+          `cp -a ${JSON.stringify(repoDir)} ${JSON.stringify(refClone)}`,
+          { stdio: 'pipe' },
+        );
         logger.info({ refClone }, 'Sweeper: saved reference clone');
       } catch (err) {
         logger.warn({ err }, 'Sweeper: failed to save reference clone');
@@ -813,21 +942,29 @@ export async function sweepClosedIssueGroups(): Promise<void> {
   }
 
   if (cleaned > 0) {
-    logger.info({ cleaned }, 'Sweeper: finished cleaning up closed issue groups');
+    logger.info(
+      { cleaned },
+      'Sweeper: finished cleaning up closed issue groups',
+    );
   }
 }
 
 /**
  * Start the webhook server
  */
-export function startWebhookServer(port: number = 3000, groupQueue?: GroupQueue) {
+export function startWebhookServer(
+  port: number = 3000,
+  groupQueue?: GroupQueue,
+) {
   if (groupQueue) {
     queue = groupQueue;
   }
   const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    logger.warn('GITHUB_WEBHOOK_SECRET not set - webhook signature validation disabled');
+    logger.warn(
+      'GITHUB_WEBHOOK_SECRET not set - webhook signature validation disabled',
+    );
   }
 
   // Health check endpoint
@@ -842,7 +979,10 @@ export function startWebhookServer(port: number = 3000, groupQueue?: GroupQueue)
     const payload = JSON.stringify(req.body);
 
     // Verify signature if secret is configured
-    if (webhookSecret && !verifyGitHubSignature(payload, signature, webhookSecret)) {
+    if (
+      webhookSecret &&
+      !verifyGitHubSignature(payload, signature, webhookSecret)
+    ) {
       logger.warn({ event, signature }, 'Invalid webhook signature');
       res.status(401).json({ error: 'Invalid signature' });
       return;
@@ -859,7 +999,9 @@ export function startWebhookServer(port: number = 3000, groupQueue?: GroupQueue)
       }
     } else if (event === 'issue_comment') {
       try {
-        await handleIssueCommentWebhook(req.body as GitHubCommentWebhookPayload);
+        await handleIssueCommentWebhook(
+          req.body as GitHubCommentWebhookPayload,
+        );
         res.json({ status: 'ok' });
       } catch (err) {
         logger.error({ err, event }, 'Error handling webhook');

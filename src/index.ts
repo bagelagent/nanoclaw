@@ -12,7 +12,10 @@ import { CronExpressionParser } from 'cron-parser';
 
 import { handleGitHubIpc } from './github-handler.js';
 import { initGitHubClient } from './github-api.js';
-import { startWebhookServer, sweepClosedIssueGroups } from './webhook-server.js';
+import {
+  startWebhookServer,
+  sweepClosedIssueGroups,
+} from './webhook-server.js';
 
 import {
   ASSISTANT_NAME,
@@ -71,14 +74,26 @@ import {
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
-import { closeEmbeddingsDb, searchMemory, startMemoryIndexer } from './memory-indexer.js';
+import {
+  closeEmbeddingsDb,
+  searchMemory,
+  startMemoryIndexer,
+} from './memory-indexer.js';
 import { findChannel, formatMessages, formatOutbound } from './router.js';
 import { startSchedulerLoop } from './task-scheduler.js';
-import { connectDiscord, sendDiscordMessage, setDiscordTyping } from './discord.js';
+import {
+  connectDiscord,
+  sendDiscordMessage,
+  setDiscordTyping,
+} from './discord.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 import { initOpenAI, isAudioMessage, transcribeAudio } from './audio.js';
-import { initGemini, generateImageGemini, isGeminiEnabled } from './image-gen.js';
+import {
+  initGemini,
+  generateImageGemini,
+  isGeminiEnabled,
+} from './image-gen.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -147,10 +162,7 @@ function loadState(): void {
 
 function saveState(): void {
   setRouterState('last_timestamp', lastTimestamp);
-  setRouterState(
-    'last_agent_timestamp',
-    JSON.stringify(lastAgentTimestamp),
-  );
+  setRouterState('last_agent_timestamp', JSON.stringify(lastAgentTimestamp));
 }
 
 function registerGroup(jid: string, group: RegisteredGroup): void {
@@ -279,11 +291,16 @@ async function downloadAttachments(
           `[Attached image: ${filename}] (saved to ${containerPath} — use the Read tool to view it)`,
         );
       } else {
-        logger.warn({ url, status: response.status }, 'Failed to download attachment');
+        logger.warn(
+          { url, status: response.status },
+          'Failed to download attachment',
+        );
       }
     } catch (err) {
       logger.warn({ url, err }, 'Failed to download attachment');
-      try { fs.unlinkSync(tmpPath); } catch {}
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {}
     }
   }
 
@@ -298,7 +315,11 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   let group = registeredGroups[chatJid];
 
   // Auto-register Discord channels on first message
-  if (!group && chatJid.startsWith('discord:') && !chatJid.startsWith('discord:dm:')) {
+  if (
+    !group &&
+    chatJid.startsWith('discord:') &&
+    !chatJid.startsWith('discord:dm:')
+  ) {
     const chatInfo = getChatMetadata(chatJid);
     if (chatInfo) {
       // Extract channel name from chat info (format: "#channel-name (Server Name)")
@@ -597,7 +618,10 @@ async function sendVoiceMessage(
       // Discord: send as audio attachment
       const { sendDiscordVoiceMessage } = await import('./discord.js');
       await sendDiscordVoiceMessage(jid, audioBuffer);
-      logger.info({ jid, voice, length: audioBuffer.length }, 'Discord voice message sent');
+      logger.info(
+        { jid, voice, length: audioBuffer.length },
+        'Discord voice message sent',
+      );
     } else {
       // WhatsApp: send as PTT (push-to-talk) audio message
       await sock.sendMessage(jid, {
@@ -605,10 +629,16 @@ async function sendVoiceMessage(
         mimetype: 'audio/ogg; codecs=opus',
         ptt: true,
       });
-      logger.info({ jid, voice, length: audioBuffer.length }, 'WhatsApp voice message sent');
+      logger.info(
+        { jid, voice, length: audioBuffer.length },
+        'WhatsApp voice message sent',
+      );
     }
   } catch (err) {
-    logger.error({ jid, err }, 'Failed to send voice message, sending text instead');
+    logger.error(
+      { jid, err },
+      'Failed to send voice message, sending text instead',
+    );
     await sendMessage(jid, text);
   }
 }
@@ -637,7 +667,13 @@ function cleanupStaleIpcFiles(): void {
   // Clean per-group IPC subdirectories
   try {
     const groupFolders = fs.readdirSync(ipcBaseDir).filter((f) => {
-      try { return fs.statSync(path.join(ipcBaseDir, f)).isDirectory() && f !== 'errors'; } catch { return false; }
+      try {
+        return (
+          fs.statSync(path.join(ipcBaseDir, f)).isDirectory() && f !== 'errors'
+        );
+      } catch {
+        return false;
+      }
     });
 
     for (const group of groupFolders) {
@@ -732,7 +768,11 @@ function startIpcWatcher(): void {
                     'Unauthorized IPC message attempt blocked',
                   );
                 }
-              } else if (data.type === 'voice_message' && data.chatJid && data.text) {
+              } else if (
+                data.type === 'voice_message' &&
+                data.chatJid &&
+                data.text
+              ) {
                 // Handle voice message
                 const targetGroup = registeredGroups[data.chatJid];
                 if (
@@ -769,19 +809,41 @@ function startIpcWatcher(): void {
                     // Translate container paths to host paths
                     let hostPath = data.imagePath;
                     if (hostPath.startsWith('/workspace/project/')) {
-                      hostPath = path.join(process.cwd(), hostPath.slice('/workspace/project/'.length));
+                      hostPath = path.join(
+                        process.cwd(),
+                        hostPath.slice('/workspace/project/'.length),
+                      );
                     } else if (hostPath.startsWith('/workspace/group/')) {
-                      hostPath = path.join(GROUPS_DIR, sourceGroup, hostPath.slice('/workspace/group/'.length));
+                      hostPath = path.join(
+                        GROUPS_DIR,
+                        sourceGroup,
+                        hostPath.slice('/workspace/group/'.length),
+                      );
                     } else if (hostPath.startsWith('/workspace/extra/')) {
                       // Additional mounts — resolve via group's containerConfig
-                      const srcGroup = registeredGroups[Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup) || ''];
+                      const srcGroup =
+                        registeredGroups[
+                          Object.keys(registeredGroups).find(
+                            (jid) =>
+                              registeredGroups[jid].folder === sourceGroup,
+                          ) || ''
+                        ];
                       if (srcGroup?.containerConfig?.additionalMounts) {
                         const rest = hostPath.slice('/workspace/extra/'.length);
                         const mountName = rest.split('/')[0];
                         const subPath = rest.slice(mountName.length + 1);
-                        const mount = srcGroup.containerConfig.additionalMounts.find((m: any) => m.containerPath === mountName);
+                        const mount =
+                          srcGroup.containerConfig.additionalMounts.find(
+                            (m: any) => m.containerPath === mountName,
+                          );
                         if (mount) {
-                          hostPath = path.join(mount.hostPath.replace(/^~/, process.env.HOME || ''), subPath);
+                          hostPath = path.join(
+                            mount.hostPath.replace(
+                              /^~/,
+                              process.env.HOME || '',
+                            ),
+                            subPath,
+                          );
                         }
                       }
                     }
@@ -858,12 +920,20 @@ function startIpcWatcher(): void {
               if (data.chatJid && data.status) {
                 // Send progress update
                 await sendMessage(data.chatJid, data.status);
-                logger.debug({ chatJid: data.chatJid, status: data.status }, 'Progress update sent');
+                logger.debug(
+                  { chatJid: data.chatJid, status: data.status },
+                  'Progress update sent',
+                );
               }
               fs.unlinkSync(filePath);
             } catch (err) {
-              logger.error({ file, sourceGroup, err }, 'Error processing progress update');
-              try { fs.unlinkSync(filePath); } catch {}
+              logger.error(
+                { file, sourceGroup, err },
+                'Error processing progress update',
+              );
+              try {
+                fs.unlinkSync(filePath);
+              } catch {}
             }
           }
         }
@@ -915,7 +985,7 @@ async function sendIpcReply(
   requestId: string,
   status: 'success' | 'error',
   message?: string,
-  error?: string
+  error?: string,
 ): Promise<void> {
   const repliesDir = path.join(DATA_DIR, 'ipc', groupFolder, 'replies');
   fs.mkdirSync(repliesDir, { recursive: true });
@@ -932,7 +1002,9 @@ async function sendIpcReply(
 
   // Auto-delete after 60s to prevent unbounded growth
   setTimeout(() => {
-    try { fs.unlinkSync(replyPath); } catch {}
+    try {
+      fs.unlinkSync(replyPath);
+    } catch {}
   }, 60000);
 }
 
@@ -973,13 +1045,17 @@ async function processTaskIpc(
         const buildOutput = execSync('./container/build.sh', {
           cwd: process.cwd(),
           encoding: 'utf-8',
-          timeout: 600000
+          timeout: 600000,
         });
         logger.info({ output: buildOutput }, 'Container build test succeeded');
 
         // Send success message back to agent
         const successMsg = `Container build test SUCCEEDED:\n\n${buildOutput}`;
-        const successJid = data.chatJid || Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup);
+        const successJid =
+          data.chatJid ||
+          Object.keys(registeredGroups).find(
+            (jid) => registeredGroups[jid].folder === sourceGroup,
+          );
         if (successJid) {
           await sendMessage(successJid, successMsg);
         }
@@ -997,7 +1073,11 @@ async function processTaskIpc(
         }
 
         // Find the chatJid for the source group
-        const chatJid = data.chatJid || Object.keys(registeredGroups).find(jid => registeredGroups[jid].folder === sourceGroup);
+        const chatJid =
+          data.chatJid ||
+          Object.keys(registeredGroups).find(
+            (jid) => registeredGroups[jid].folder === sourceGroup,
+          );
         if (chatJid) {
           await sendMessage(chatJid, errorMsg);
         }
@@ -1007,7 +1087,10 @@ async function processTaskIpc(
     case 'restart_container': {
       // Only main group can restart containers
       if (!isMain) {
-        logger.warn({ sourceGroup }, 'Non-main group attempted to restart container');
+        logger.warn(
+          { sourceGroup },
+          'Non-main group attempted to restart container',
+        );
         return;
       }
 
@@ -1025,26 +1108,52 @@ async function processTaskIpc(
 
           if (restarted) {
             if (chatJid) {
-              await sendMessage(chatJid, `${ASSISTANT_NAME}: Container restarted successfully`);
+              await sendMessage(
+                chatJid,
+                `${ASSISTANT_NAME}: Container restarted successfully`,
+              );
             }
             if (requestId) {
-              await sendIpcReply(sourceGroup, requestId, 'success', 'Container restarted');
+              await sendIpcReply(
+                sourceGroup,
+                requestId,
+                'success',
+                'Container restarted',
+              );
             }
           } else {
             if (chatJid) {
-              await sendMessage(chatJid, `${ASSISTANT_NAME}: Container not found or already stopped`);
+              await sendMessage(
+                chatJid,
+                `${ASSISTANT_NAME}: Container not found or already stopped`,
+              );
             }
             if (requestId) {
-              await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Container not found or already stopped');
+              await sendIpcReply(
+                sourceGroup,
+                requestId,
+                'error',
+                undefined,
+                'Container not found or already stopped',
+              );
             }
           }
         } catch (err: any) {
           logger.error({ err }, 'Container restart failed');
           if (chatJid) {
-            await sendMessage(chatJid, `${ASSISTANT_NAME}: Container restart failed: ${err.message}`);
+            await sendMessage(
+              chatJid,
+              `${ASSISTANT_NAME}: Container restart failed: ${err.message}`,
+            );
           }
           if (requestId) {
-            await sendIpcReply(sourceGroup, requestId, 'error', undefined, err.message);
+            await sendIpcReply(
+              sourceGroup,
+              requestId,
+              'error',
+              undefined,
+              err.message,
+            );
           }
         }
       }
@@ -1258,14 +1367,20 @@ async function processTaskIpc(
       const requestId = data.requestId as string | undefined;
       const chatJid = data.chatJid as string | undefined;
 
-      logger.info({ targets, commitMsg, requestId }, 'Deploy requested via IPC');
+      logger.info(
+        { targets, commitMsg, requestId },
+        'Deploy requested via IPC',
+      );
 
       // 1. Git commit all changes (audit trail)
       try {
         execSync('git add -A', { cwd: process.cwd(), stdio: 'pipe' });
         // Check if there's anything to commit
         try {
-          execSync('git diff --cached --quiet', { cwd: process.cwd(), stdio: 'pipe' });
+          execSync('git diff --cached --quiet', {
+            cwd: process.cwd(),
+            stdio: 'pipe',
+          });
           logger.info('No changes to commit, proceeding with build');
         } catch {
           // Non-zero exit means there are staged changes
@@ -1278,10 +1393,19 @@ async function processTaskIpc(
       } catch (err: any) {
         logger.error({ err }, 'Git commit failed, aborting deploy');
         if (chatJid) {
-          await sendMessage(chatJid, `${ASSISTANT_NAME}: Deploy failed during git commit:\n\n\`\`\`\n${err.stderr?.toString() || err.message}\n\`\`\``);
+          await sendMessage(
+            chatJid,
+            `${ASSISTANT_NAME}: Deploy failed during git commit:\n\n\`\`\`\n${err.stderr?.toString() || err.message}\n\`\`\``,
+          );
         }
         if (requestId) {
-          await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Git commit failed');
+          await sendIpcReply(
+            sourceGroup,
+            requestId,
+            'error',
+            undefined,
+            'Git commit failed',
+          );
         }
         break;
       }
@@ -1290,15 +1414,28 @@ async function processTaskIpc(
       if (targets.includes('host')) {
         try {
           logger.info('Building host...');
-          execSync('npm run build', { cwd: process.cwd(), stdio: 'pipe', timeout: 60000 });
+          execSync('npm run build', {
+            cwd: process.cwd(),
+            stdio: 'pipe',
+            timeout: 60000,
+          });
           logger.info('Host build succeeded');
         } catch (err: any) {
           logger.error({ err }, 'Host build failed, aborting deploy');
           if (chatJid) {
-            await sendMessage(chatJid, `${ASSISTANT_NAME}: Host build failed:\n\n\`\`\`\n${err.stderr?.toString().slice(0, 1000) || err.message}\n\`\`\``);
+            await sendMessage(
+              chatJid,
+              `${ASSISTANT_NAME}: Host build failed:\n\n\`\`\`\n${err.stderr?.toString().slice(0, 1000) || err.message}\n\`\`\``,
+            );
           }
           if (requestId) {
-            await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Host build failed');
+            await sendIpcReply(
+              sourceGroup,
+              requestId,
+              'error',
+              undefined,
+              'Host build failed',
+            );
           }
           break;
         }
@@ -1312,16 +1449,25 @@ async function processTaskIpc(
             cwd: process.cwd(),
             stdio: 'pipe',
             timeout: 600000,
-            encoding: 'utf-8'
+            encoding: 'utf-8',
           });
           logger.info({ output: buildOutput }, 'Container build succeeded');
         } catch (err: any) {
           logger.error({ err }, 'Container build failed, aborting deploy');
           if (chatJid) {
-            await sendMessage(chatJid, `${ASSISTANT_NAME}: Container build failed:\n\n\`\`\`\n${err.stderr?.toString().slice(0, 1000) || err.message}\n\`\`\``);
+            await sendMessage(
+              chatJid,
+              `${ASSISTANT_NAME}: Container build failed:\n\n\`\`\`\n${err.stderr?.toString().slice(0, 1000) || err.message}\n\`\`\``,
+            );
           }
           if (requestId) {
-            await sendIpcReply(sourceGroup, requestId, 'error', undefined, 'Container build failed');
+            await sendIpcReply(
+              sourceGroup,
+              requestId,
+              'error',
+              undefined,
+              'Container build failed',
+            );
           }
           break;
         }
@@ -1329,10 +1475,18 @@ async function processTaskIpc(
 
       // 4. Send success reply and notification
       if (chatJid) {
-        await sendMessage(chatJid, `${ASSISTANT_NAME}: Deploy completed successfully!\n\nTargets: ${targets.join(', ') || 'none (commit only)'}`);
+        await sendMessage(
+          chatJid,
+          `${ASSISTANT_NAME}: Deploy completed successfully!\n\nTargets: ${targets.join(', ') || 'none (commit only)'}`,
+        );
       }
       if (requestId) {
-        await sendIpcReply(sourceGroup, requestId, 'success', `Deploy completed. Targets: ${targets.join(', ')}`);
+        await sendIpcReply(
+          sourceGroup,
+          requestId,
+          'success',
+          `Deploy completed. Targets: ${targets.join(', ')}`,
+        );
       }
 
       // 5. Graceful shutdown after delay — systemd will restart with new code
@@ -1349,48 +1503,86 @@ async function processTaskIpc(
     case 'generate_image': {
       const requestId = data.requestId;
       if (!requestId || !(data as any).prompt) {
-        logger.warn({ sourceGroup }, 'generate_image missing requestId or prompt');
+        logger.warn(
+          { sourceGroup },
+          'generate_image missing requestId or prompt',
+        );
         return;
       }
       if (!isGeminiEnabled()) {
         const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
         fs.mkdirSync(repliesDir, { recursive: true });
         const replyPath = path.join(repliesDir, `${requestId}.json`);
-        const replyPayload = { status: 'error', error: 'Image generation disabled (missing GOOGLE_API_KEY)', timestamp: new Date().toISOString() };
+        const replyPayload = {
+          status: 'error',
+          error: 'Image generation disabled (missing GOOGLE_API_KEY)',
+          timestamp: new Date().toISOString(),
+        };
         const tempPath = `${replyPath}.tmp`;
         fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
         fs.renameSync(tempPath, replyPath);
-        setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
         return;
       }
 
       try {
         const imgData = data as any;
-        const fullPrompt = (imgData.aspectRatio && imgData.aspectRatio !== '1:1')
-          ? `Generate an image with ${imgData.aspectRatio} aspect ratio. ${imgData.prompt}`
-          : imgData.prompt;
+        const fullPrompt =
+          imgData.aspectRatio && imgData.aspectRatio !== '1:1'
+            ? `Generate an image with ${imgData.aspectRatio} aspect ratio. ${imgData.prompt}`
+            : imgData.prompt;
         const groupDir = path.join(GROUPS_DIR, sourceGroup);
-        const result = await generateImageGemini(fullPrompt, imgData.aspectRatio || '1:1', groupDir);
+        const result = await generateImageGemini(
+          fullPrompt,
+          imgData.aspectRatio || '1:1',
+          groupDir,
+        );
 
         const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
         fs.mkdirSync(repliesDir, { recursive: true });
         const replyPath = path.join(repliesDir, `${requestId}.json`);
-        const replyPayload = { status: 'success', data: { containerPath: result.containerPath, filename: result.filename }, timestamp: new Date().toISOString() };
+        const replyPayload = {
+          status: 'success',
+          data: {
+            containerPath: result.containerPath,
+            filename: result.filename,
+          },
+          timestamp: new Date().toISOString(),
+        };
         const tempPath = `${replyPath}.tmp`;
         fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
         fs.renameSync(tempPath, replyPath);
-        logger.debug({ requestId, status: 'success' }, 'generate_image reply sent');
-        setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+        logger.debug(
+          { requestId, status: 'success' },
+          'generate_image reply sent',
+        );
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
       } catch (err) {
         logger.error({ err, sourceGroup }, 'generate_image failed');
         const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
         fs.mkdirSync(repliesDir, { recursive: true });
         const replyPath = path.join(repliesDir, `${requestId}.json`);
-        const replyPayload = { status: 'error', error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() };
+        const replyPayload = {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+          timestamp: new Date().toISOString(),
+        };
         const tempPath = `${replyPath}.tmp`;
         fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
         fs.renameSync(tempPath, replyPath);
-        setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
       }
       return;
     }
@@ -1401,7 +1593,10 @@ async function processTaskIpc(
         // Allow GitHub operations from main OR GitHub groups
         const isGitHubGroup = sourceGroup.startsWith('github-');
         if (!isMain && !isGitHubGroup) {
-          logger.warn({ sourceGroup, type: data.type }, 'Non-GitHub group attempted GitHub operation');
+          logger.warn(
+            { sourceGroup, type: data.type },
+            'Non-GitHub group attempted GitHub operation',
+          );
           return;
         }
 
@@ -1412,27 +1607,57 @@ async function processTaskIpc(
           // (sendIpcReply writes { status, message, error } which doesn't match
           // what the container MCP tools expect — they read reply.data)
           if (data.requestId) {
-            const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+            const repliesDir = path.join(
+              DATA_DIR,
+              'ipc',
+              sourceGroup,
+              'replies',
+            );
             fs.mkdirSync(repliesDir, { recursive: true });
             const replyPath = path.join(repliesDir, `${data.requestId}.json`);
-            const replyPayload = { status: reply.status, data: reply.data, error: reply.error, timestamp: new Date().toISOString() };
+            const replyPayload = {
+              status: reply.status,
+              data: reply.data,
+              error: reply.error,
+              timestamp: new Date().toISOString(),
+            };
             const tempPath = `${replyPath}.tmp`;
             fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
             fs.renameSync(tempPath, replyPath);
-            logger.debug({ requestId: data.requestId, status: reply.status }, 'GitHub IPC reply sent');
-            setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+            logger.debug(
+              { requestId: data.requestId, status: reply.status },
+              'GitHub IPC reply sent',
+            );
+            setTimeout(() => {
+              try {
+                fs.unlinkSync(replyPath);
+              } catch {}
+            }, 60000);
           }
         } catch (err) {
           logger.error({ err, type: data.type }, 'GitHub IPC handler error');
           if (data.requestId) {
-            const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+            const repliesDir = path.join(
+              DATA_DIR,
+              'ipc',
+              sourceGroup,
+              'replies',
+            );
             fs.mkdirSync(repliesDir, { recursive: true });
             const replyPath = path.join(repliesDir, `${data.requestId}.json`);
-            const replyPayload = { status: 'error', error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() };
+            const replyPayload = {
+              status: 'error',
+              error: err instanceof Error ? err.message : String(err),
+              timestamp: new Date().toISOString(),
+            };
             const tempPath = `${replyPath}.tmp`;
             fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
             fs.renameSync(tempPath, replyPath);
-            setTimeout(() => { try { fs.unlinkSync(replyPath); } catch {} }, 60000);
+            setTimeout(() => {
+              try {
+                fs.unlinkSync(replyPath);
+              } catch {}
+            }, 60000);
           }
         }
       } else {
@@ -1728,7 +1953,9 @@ async function main(): Promise<void> {
   if (openaiKey) {
     initOpenAI(openaiKey);
   } else {
-    logger.warn('OPENAI_API_KEY not set - audio transcription and TTS disabled');
+    logger.warn(
+      'OPENAI_API_KEY not set - audio transcription and TTS disabled',
+    );
   }
 
   // Initialize Gemini for image generation
@@ -1750,11 +1977,14 @@ async function main(): Promise<void> {
     startWebhookServer(webhookPort, queue);
 
     // Sweep closed-issue groups every hour
-    setInterval(() => {
-      sweepClosedIssueGroups().catch((err) =>
-        logger.error({ err }, 'Issue group sweeper failed'),
-      );
-    }, 60 * 60 * 1000);
+    setInterval(
+      () => {
+        sweepClosedIssueGroups().catch((err) =>
+          logger.error({ err }, 'Issue group sweeper failed'),
+        );
+      },
+      60 * 60 * 1000,
+    );
   } else {
     logger.warn('GITHUB_TOKEN not set - GitHub integration disabled');
   }

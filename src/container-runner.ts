@@ -197,7 +197,11 @@ function buildVolumeMounts(
   const envFile = path.join(projectRoot, '.env');
   if (fs.existsSync(envFile)) {
     const envContent = fs.readFileSync(envFile, 'utf-8');
-    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY'];
+    const allowedVars = [
+      'CLAUDE_CODE_OAUTH_TOKEN',
+      'ANTHROPIC_API_KEY',
+      'OPENAI_API_KEY',
+    ];
     const filteredLines = envContent.split('\n').filter((line) => {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) return false;
@@ -344,10 +348,7 @@ class ContainerPool {
   /**
    * Get or spawn a persistent container for a group.
    */
-  getOrSpawn(
-    group: RegisteredGroup,
-    isMain: boolean,
-  ): PoolEntry {
+  getOrSpawn(group: RegisteredGroup, isMain: boolean): PoolEntry {
     const key = group.folder;
     const existing = this.pool.get(key);
     if (existing && !existing.exited) {
@@ -470,7 +471,10 @@ class ContainerPool {
     container.on('error', (err) => {
       entry.exited = true;
       clearTimeout(entry.idleTimer);
-      logger.error({ group: group.name, containerName, error: err }, 'Container spawn error');
+      logger.error(
+        { group: group.name, containerName, error: err },
+        'Container spawn error',
+      );
 
       if (entry.pendingResolve) {
         if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
@@ -568,10 +572,7 @@ class ContainerPool {
   /**
    * Send a query to a persistent container and wait for the response.
    */
-  sendQuery(
-    entry: PoolEntry,
-    input: ContainerInput,
-  ): Promise<ContainerOutput> {
+  sendQuery(entry: PoolEntry, input: ContainerInput): Promise<ContainerOutput> {
     return new Promise((resolve) => {
       if (entry.exited) {
         resolve({
@@ -626,7 +627,8 @@ class ContainerPool {
       const onStdinError = (err: Error) => {
         if (entry.pendingResolve) {
           if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-          if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
+          if (entry.hardDeadlineTimeout)
+            clearTimeout(entry.hardDeadlineTimeout);
           entry.pendingResolve({
             status: 'error',
             result: null,
@@ -646,7 +648,8 @@ class ContainerPool {
         if (err && entry.pendingResolve) {
           entry.process.stdin!.removeListener('error', onStdinError);
           if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-          if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
+          if (entry.hardDeadlineTimeout)
+            clearTimeout(entry.hardDeadlineTimeout);
           entry.pendingResolve({
             status: 'error',
             result: null,
@@ -718,19 +721,15 @@ class ContainerPool {
           { group: entry.group.name, containerName: entry.containerName },
           'Container did not exit after shutdown, force killing',
         );
-        exec(
-          stopContainer(entry.containerName),
-          { timeout: 10000 },
-          (err) => {
-            if (err) {
-              logger.error(
-                { containerName: entry.containerName, error: err.message },
-                'Container stop failed, trying SIGKILL on client',
-              );
-              entry.process.kill('SIGKILL');
-            }
-          },
-        );
+        exec(stopContainer(entry.containerName), { timeout: 10000 }, (err) => {
+          if (err) {
+            logger.error(
+              { containerName: entry.containerName, error: err.message },
+              'Container stop failed, trying SIGKILL on client',
+            );
+            entry.process.kill('SIGKILL');
+          }
+        });
       }
     }, 5000);
   }
@@ -749,7 +748,9 @@ class ContainerPool {
    * Get the ChildProcess and container name for a group (if active).
    * Used by GroupQueue for shutdown tracking.
    */
-  getEntry(groupFolder: string): { process: ChildProcess; containerName: string } | null {
+  getEntry(
+    groupFolder: string,
+  ): { process: ChildProcess; containerName: string } | null {
     const entry = this.pool.get(groupFolder);
     if (entry && !entry.exited) {
       return { process: entry.process, containerName: entry.containerName };
@@ -778,7 +779,6 @@ class ContainerPool {
 
 // Module-level pool instance
 const containerPool = new ContainerPool();
-
 
 export async function runContainerAgent(
   group: RegisteredGroup,

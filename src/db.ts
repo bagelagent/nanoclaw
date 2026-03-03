@@ -289,7 +289,9 @@ export interface ChatInfo {
  * Get chat metadata (name) for a specific JID.
  */
 export function getChatMetadata(chatJid: string): string | null {
-  const row = db.prepare('SELECT name FROM chats WHERE jid = ?').get(chatJid) as { name: string } | undefined;
+  const row = db
+    .prepare('SELECT name FROM chats WHERE jid = ?')
+    .get(chatJid) as { name: string } | undefined;
   return row?.name || null;
 }
 
@@ -345,7 +347,16 @@ export function storeGenericMessage(
 ): void {
   db.prepare(
     `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_audio) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, chatJid, sender, senderName, content, timestamp, isFromMe ? 1 : 0, isAudio ? 1 : 0);
+  ).run(
+    id,
+    chatJid,
+    sender,
+    senderName,
+    content,
+    timestamp,
+    isFromMe ? 1 : 0,
+    isAudio ? 1 : 0,
+  );
 }
 
 /**
@@ -408,7 +419,7 @@ export function storeWhatsAppMessage(
 ): void {
   if (!msg.key) return;
 
-  const isAudio = !!(msg.message?.audioMessage);
+  const isAudio = !!msg.message?.audioMessage;
 
   const content =
     transcribedText ||
@@ -423,7 +434,16 @@ export function storeWhatsAppMessage(
   const senderName = pushName || sender.split('@')[0];
   const msgId = msg.key.id || '';
 
-  storeGenericMessage(msgId, chatJid, sender, senderName, content, timestamp, isFromMe, isAudio);
+  storeGenericMessage(
+    msgId,
+    chatJid,
+    sender,
+    senderName,
+    content,
+    timestamp,
+    isFromMe,
+    isAudio,
+  );
 }
 
 export function getNewMessages(
@@ -834,14 +854,21 @@ export interface GitHubAssignment {
   notes: string | null;
 }
 
-export function createGitHubAssignment(assignment: Omit<GitHubAssignment, 'id' | 'status' | 'work_branch' | 'pr_url' | 'last_updated' | 'notes'>): string {
+export function createGitHubAssignment(
+  assignment: Omit<
+    GitHubAssignment,
+    'id' | 'status' | 'work_branch' | 'pr_url' | 'last_updated' | 'notes'
+  >,
+): string {
   const id = `gh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO github_assignments (
       id, issue_url, repo_owner, repo_name, issue_number,
       title, description, labels, assigned_by, assigned_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `,
+  ).run(
     id,
     assignment.issue_url,
     assignment.repo_owner,
@@ -851,34 +878,65 @@ export function createGitHubAssignment(assignment: Omit<GitHubAssignment, 'id' |
     assignment.description,
     assignment.labels,
     assignment.assigned_by,
-    assignment.assigned_at
+    assignment.assigned_at,
   );
   return id;
 }
 
 export function getGitHubAssignment(id: string): GitHubAssignment | undefined {
-  return db.prepare('SELECT * FROM github_assignments WHERE id = ?').get(id) as GitHubAssignment | undefined;
+  return db.prepare('SELECT * FROM github_assignments WHERE id = ?').get(id) as
+    | GitHubAssignment
+    | undefined;
 }
 
-export function getGitHubAssignmentByIssue(owner: string, repo: string, issueNumber: number): GitHubAssignment | undefined {
-  return db.prepare(`
+export function getGitHubAssignmentByIssue(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): GitHubAssignment | undefined {
+  return db
+    .prepare(
+      `
     SELECT * FROM github_assignments
     WHERE repo_owner = ? AND repo_name = ? AND issue_number = ?
-  `).get(owner, repo, issueNumber) as GitHubAssignment | undefined;
+  `,
+    )
+    .get(owner, repo, issueNumber) as GitHubAssignment | undefined;
 }
 
 export function getAllGitHubAssignments(status?: string): GitHubAssignment[] {
   if (status) {
-    return db.prepare(`
+    return db
+      .prepare(
+        `
       SELECT * FROM github_assignments WHERE status = ? ORDER BY assigned_at DESC
-    `).all(status) as GitHubAssignment[];
+    `,
+      )
+      .all(status) as GitHubAssignment[];
   }
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT * FROM github_assignments ORDER BY assigned_at DESC
-  `).all() as GitHubAssignment[];
+  `,
+    )
+    .all() as GitHubAssignment[];
 }
 
-export function updateGitHubAssignment(id: string, updates: Partial<Omit<GitHubAssignment, 'id' | 'issue_url' | 'repo_owner' | 'repo_name' | 'issue_number' | 'assigned_at'>>): void {
+export function updateGitHubAssignment(
+  id: string,
+  updates: Partial<
+    Omit<
+      GitHubAssignment,
+      | 'id'
+      | 'issue_url'
+      | 'repo_owner'
+      | 'repo_name'
+      | 'issue_number'
+      | 'assigned_at'
+    >
+  >,
+): void {
   const fields: string[] = [];
   const values: unknown[] = [];
 
@@ -918,5 +976,7 @@ export function updateGitHubAssignment(id: string, updates: Partial<Omit<GitHubA
   values.push(new Date().toISOString());
 
   values.push(id);
-  db.prepare(`UPDATE github_assignments SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  db.prepare(
+    `UPDATE github_assignments SET ${fields.join(', ')} WHERE id = ?`,
+  ).run(...values);
 }

@@ -24,7 +24,8 @@ export async function generateImageGemini(
   aspectRatio: string,
   groupDir: string,
 ): Promise<{ hostPath: string; containerPath: string; filename: string }> {
-  if (!genai) throw new Error('Gemini not initialized (missing GOOGLE_API_KEY)');
+  if (!genai)
+    throw new Error('Gemini not initialized (missing GOOGLE_API_KEY)');
 
   const response = await genai.models.generateContent({
     model: IMAGE_MODEL,
@@ -41,7 +42,8 @@ export async function generateImageGemini(
   for (const part of parts) {
     if (part.inlineData?.data) {
       const mimeType = part.inlineData.mimeType || 'image/png';
-      const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
+      const ext =
+        mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
       const filename = `gemini-${Date.now()}.${ext}`;
 
       const tmpDir = path.join(groupDir, 'tmp');
@@ -53,8 +55,15 @@ export async function generateImageGemini(
       fs.writeFileSync(tempPath, Buffer.from(part.inlineData.data, 'base64'));
       fs.renameSync(tempPath, hostPath);
 
-      logger.info({ prompt: prompt.slice(0, 100), filename }, 'Gemini image generated');
-      return { hostPath, containerPath: `/workspace/group/tmp/${filename}`, filename };
+      logger.info(
+        { prompt: prompt.slice(0, 100), filename },
+        'Gemini image generated',
+      );
+      return {
+        hostPath,
+        containerPath: `/workspace/group/tmp/${filename}`,
+        filename,
+      };
     }
   }
 

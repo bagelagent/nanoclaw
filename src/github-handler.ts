@@ -69,8 +69,14 @@ function configureRepoAuth(repoPath: string, token: string): void {
     { cwd: repoPath, stdio: 'pipe' },
   );
   // Set git identity so commits are attributed to bagelagent
-  execSync(`git config user.name 'bagelagent'`, { cwd: repoPath, stdio: 'pipe' });
-  execSync(`git config user.email 'bagel.agent@yahoo.com'`, { cwd: repoPath, stdio: 'pipe' });
+  execSync(`git config user.name 'bagelagent'`, {
+    cwd: repoPath,
+    stdio: 'pipe',
+  });
+  execSync(`git config user.email 'bagel.agent@yahoo.com'`, {
+    cwd: repoPath,
+    stdio: 'pipe',
+  });
 }
 
 /**
@@ -118,10 +124,13 @@ export async function cloneRepository(
 
     // Set the clean remote URL (without token) so it's not leaked in logs/config
     // Auth for future operations uses the credential helper below
-    execSync(`git remote set-url origin "https://github.com/${owner}/${repo}.git"`, {
-      cwd: repoPath,
-      stdio: 'pipe',
-    });
+    execSync(
+      `git remote set-url origin "https://github.com/${owner}/${repo}.git"`,
+      {
+        cwd: repoPath,
+        stdio: 'pipe',
+      },
+    );
 
     // Configure token-based credential helper for this repo
     if (token) {
@@ -162,10 +171,13 @@ export async function createWorkBranch(
 
     // Determine base branch if not specified
     if (!baseBranch) {
-      const defaultBranch = execSync('git symbolic-ref refs/remotes/origin/HEAD', {
-        cwd: repoPath,
-        encoding: 'utf-8',
-      })
+      const defaultBranch = execSync(
+        'git symbolic-ref refs/remotes/origin/HEAD',
+        {
+          cwd: repoPath,
+          encoding: 'utf-8',
+        },
+      )
         .trim()
         .replace('refs/remotes/origin/', '');
       baseBranch = defaultBranch;
@@ -176,7 +188,10 @@ export async function createWorkBranch(
     execSync('git pull', { cwd: repoPath, stdio: 'pipe' });
 
     // Create and checkout new branch
-    execSync(`git checkout -b "${branchName}"`, { cwd: repoPath, stdio: 'pipe' });
+    execSync(`git checkout -b "${branchName}"`, {
+      cwd: repoPath,
+      stdio: 'pipe',
+    });
 
     logger.info({ repoPath, branchName, baseBranch }, 'Created work branch');
   } catch (err) {
@@ -251,7 +266,10 @@ export async function updateBranch(
   repoPath: string,
   baseBranch?: string,
   sourceGroup?: string,
-): Promise<{ status: 'updated' | 'up_to_date' | 'conflict'; conflicted_files?: string[] }> {
+): Promise<{
+  status: 'updated' | 'up_to_date' | 'conflict';
+  conflicted_files?: string[];
+}> {
   repoPath = containerToHostPath(repoPath, sourceGroup);
 
   const token = process.env.GITHUB_TOKEN;
@@ -262,7 +280,9 @@ export async function updateBranch(
   try {
     execSync('git fetch origin', { cwd: repoPath, stdio: 'pipe' });
   } catch (err) {
-    throw new Error(`Failed to fetch: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(
+      `Failed to fetch: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
   // Determine base branch if not specified
@@ -311,7 +331,10 @@ export async function updateBranch(
         .map((line) => line.slice(3).trim());
 
       if (conflictedFiles.length > 0) {
-        logger.info({ repoPath, baseBranch, conflictedFiles }, 'Merge conflicts detected');
+        logger.info(
+          { repoPath, baseBranch, conflictedFiles },
+          'Merge conflicts detected',
+        );
         return { status: 'conflict', conflicted_files: conflictedFiles };
       }
     } catch {
@@ -324,7 +347,9 @@ export async function updateBranch(
     } catch {
       // merge --abort might fail if there's no merge in progress
     }
-    throw new Error(`Merge failed: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(
+      `Merge failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
@@ -353,7 +378,10 @@ export async function handleGitHubIpc(
       }
 
       case 'github_clone_repo': {
-        const { owner, repo } = data as unknown as { owner: string; repo: string };
+        const { owner, repo } = data as unknown as {
+          owner: string;
+          repo: string;
+        };
 
         const result = await cloneRepository(owner, repo);
 
@@ -370,7 +398,12 @@ export async function handleGitHubIpc(
           base_branch?: string;
         };
 
-        await createWorkBranch(repo_path, branch_name, base_branch, sourceGroup);
+        await createWorkBranch(
+          repo_path,
+          branch_name,
+          base_branch,
+          sourceGroup,
+        );
 
         return {
           status: 'success',
@@ -385,7 +418,12 @@ export async function handleGitHubIpc(
           commit_message: string;
         };
 
-        await commitAndPush(repo_path, branch_name, commit_message, sourceGroup);
+        await commitAndPush(
+          repo_path,
+          branch_name,
+          commit_message,
+          sourceGroup,
+        );
 
         return {
           status: 'success',
@@ -405,7 +443,14 @@ export async function handleGitHubIpc(
         // Get default branch if not specified
         const targetBranch = base || (await getDefaultBranch(owner, repo));
 
-        const pr = await createPullRequest(owner, repo, title, body, head, targetBranch);
+        const pr = await createPullRequest(
+          owner,
+          repo,
+          title,
+          body,
+          head,
+          targetBranch,
+        );
 
         return {
           status: 'success',
@@ -436,7 +481,12 @@ export async function handleGitHubIpc(
           merge_method?: 'merge' | 'squash' | 'rebase';
         };
 
-        const mergeResult = await mergePullRequest(owner, repo, pull_number, merge_method);
+        const mergeResult = await mergePullRequest(
+          owner,
+          repo,
+          pull_number,
+          merge_method,
+        );
 
         return {
           status: 'success',
@@ -450,7 +500,11 @@ export async function handleGitHubIpc(
           base_branch?: string;
         };
 
-        const updateResult = await updateBranch(repo_path, base_branch, sourceGroup);
+        const updateResult = await updateBranch(
+          repo_path,
+          base_branch,
+          sourceGroup,
+        );
 
         return {
           status: 'success',
