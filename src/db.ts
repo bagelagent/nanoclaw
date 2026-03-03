@@ -4,8 +4,15 @@ import path from 'path';
 
 import { proto } from '@whiskeysockets/baileys';
 
-import { DATA_DIR, STORE_DIR } from './config.js';
-import { NewMessage, RegisteredGroup, ScheduledTask, TaskRunLog } from './types.js';
+import { ASSISTANT_NAME, DATA_DIR, STORE_DIR } from './config.js';
+import { isValidGroupFolder } from './group-folder.js';
+import { logger } from './logger.js';
+import {
+  NewMessage,
+  RegisteredGroup,
+  ScheduledTask,
+  TaskRunLog,
+} from './types.js';
 
 let db: Database.Database;
 
@@ -15,16 +22,14 @@ export function closeDatabase(): void {
   }
 }
 
-export function initDatabase(): void {
-  const dbPath = path.join(STORE_DIR, 'messages.db');
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-
-  db = new Database(dbPath);
-  db.exec(`
+function createSchema(database: Database.Database): void {
+  database.exec(`
     CREATE TABLE IF NOT EXISTS chats (
       jid TEXT PRIMARY KEY,
       name TEXT,
-      last_message_time TEXT
+      last_message_time TEXT,
+      channel TEXT,
+      is_group INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS messages (
       id TEXT,
@@ -34,6 +39,8 @@ export function initDatabase(): void {
       content TEXT,
       timestamp TEXT,
       is_from_me INTEGER,
+      is_bot_message INTEGER DEFAULT 0,
+      is_audio INTEGER DEFAULT 0,
       PRIMARY KEY (id, chat_jid),
       FOREIGN KEY (chat_jid) REFERENCES chats(jid)
     );
@@ -66,42 +73,7 @@ export function initDatabase(): void {
       FOREIGN KEY (task_id) REFERENCES scheduled_tasks(id)
     );
     CREATE INDEX IF NOT EXISTS idx_task_run_logs ON task_run_logs(task_id, run_at);
-  `);
 
-  // Add sender_name column if it doesn't exist (migration for existing DBs)
-  try {
-    db.exec(`ALTER TABLE messages ADD COLUMN sender_name TEXT`);
-  } catch {
-    /* column already exists */
-  }
-
-  // Add context_mode column if it doesn't exist (migration for existing DBs)
-  try {
-    db.exec(
-      `ALTER TABLE scheduled_tasks ADD COLUMN context_mode TEXT DEFAULT 'isolated'`,
-    );
-  } catch {
-    /* column already exists */
-  }
-
-  // Add requires_trigger column if it doesn't exist (migration for existing DBs)
-  try {
-    db.exec(
-      `ALTER TABLE registered_groups ADD COLUMN requires_trigger INTEGER DEFAULT 1`,
-    );
-  } catch {
-    /* column already exists */
-  }
-
-  // Add is_audio column for audio message tracking (migration for existing DBs)
-  try {
-    db.exec(`ALTER TABLE messages ADD COLUMN is_audio INTEGER DEFAULT 0`);
-  } catch {
-    /* column already exists */
-  }
-
-  // State tables (replacing JSON files)
-  db.exec(`
     CREATE TABLE IF NOT EXISTS router_state (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -119,10 +91,7 @@ export function initDatabase(): void {
       container_config TEXT,
       requires_trigger INTEGER DEFAULT 1
     );
-  `);
 
-  // GitHub integration tables
-  db.exec(`
     CREATE TABLE IF NOT EXISTS github_assignments (
       id TEXT PRIMARY KEY,
       issue_url TEXT NOT NULL,
@@ -155,8 +124,103 @@ export function initDatabase(): void {
     );
   `);
 
+  // --- Migrations for existing DBs ---
+
+  // Add sender_name column (ours)
+  try {
+    database.exec(`ALTER TABLE messages ADD COLUMN sender_name TEXT`);
+  } catch {
+    /* column already exists */
+  }
+
+  // Add context_mode column (both)
+  try {
+    database.exec(
+      `ALTER TABLE scheduled_tasks ADD COLUMN context_mode TEXT DEFAULT 'isolated'`,
+    );
+  } catch {
+    /* column already exists */
+  }
+
+  // Add is_bot_message column (upstream)
+  try {
+    database.exec(
+      `ALTER TABLE messages ADD COLUMN is_bot_message INTEGER DEFAULT 0`,
+    );
+    // Backfill: mark existing bot messages that used the content prefix pattern
+    database
+      .prepare(`UPDATE messages SET is_bot_message = 1 WHERE content LIKE ?`)
+      .run(`${ASSISTANT_NAME}:%`);
+  } catch {
+    /* column already exists */
+  }
+
+  // Add requires_trigger column (ours)
+  try {
+    database.exec(
+      `ALTER TABLE registered_groups ADD COLUMN requires_trigger INTEGER DEFAULT 1`,
+    );
+  } catch {
+    /* column already exists */
+  }
+
+  // Add is_main column (upstream)
+  try {
+    database.exec(
+      `ALTER TABLE registered_groups ADD COLUMN is_main INTEGER DEFAULT 0`,
+    );
+    // Backfill: existing rows with folder = 'main' are the main group
+    database.exec(
+      `UPDATE registered_groups SET is_main = 1 WHERE folder = 'main'`,
+    );
+  } catch {
+    /* column already exists */
+  }
+
+  // Add is_audio column for audio message tracking (ours)
+  try {
+    database.exec(`ALTER TABLE messages ADD COLUMN is_audio INTEGER DEFAULT 0`);
+  } catch {
+    /* column already exists */
+  }
+
+  // Add channel and is_group columns (upstream)
+  try {
+    database.exec(`ALTER TABLE chats ADD COLUMN channel TEXT`);
+    database.exec(`ALTER TABLE chats ADD COLUMN is_group INTEGER DEFAULT 0`);
+    // Backfill from JID patterns
+    database.exec(
+      `UPDATE chats SET channel = 'whatsapp', is_group = 1 WHERE jid LIKE '%@g.us'`,
+    );
+    database.exec(
+      `UPDATE chats SET channel = 'whatsapp', is_group = 0 WHERE jid LIKE '%@s.whatsapp.net'`,
+    );
+    database.exec(
+      `UPDATE chats SET channel = 'discord', is_group = 1 WHERE jid LIKE 'dc:%'`,
+    );
+    database.exec(
+      `UPDATE chats SET channel = 'telegram', is_group = 1 WHERE jid LIKE 'tg:%'`,
+    );
+  } catch {
+    /* columns already exist */
+  }
+}
+
+export function initDatabase(): void {
+  const dbPath = path.join(STORE_DIR, 'messages.db');
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+
+  db = new Database(dbPath);
+  createSchema(db);
+
   // Migrate from JSON files if they exist
   migrateJsonState();
+}
+
+/** @internal - for tests only. Creates a fresh in-memory database. */
+export function _initTestDatabase(): void {
+  db = new Database(':memory:');
+  createSchema(db);
 }
 
 /**
@@ -167,26 +231,35 @@ export function storeChatMetadata(
   chatJid: string,
   timestamp: string,
   name?: string,
+  channel?: string,
+  isGroup?: boolean,
 ): void {
+  const ch = channel ?? null;
+  const group = isGroup === undefined ? null : isGroup ? 1 : 0;
+
   if (name) {
     // Update with name, preserving existing timestamp if newer
     db.prepare(
       `
-      INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)
+      INSERT INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(jid) DO UPDATE SET
         name = excluded.name,
-        last_message_time = MAX(last_message_time, excluded.last_message_time)
+        last_message_time = MAX(last_message_time, excluded.last_message_time),
+        channel = COALESCE(excluded.channel, channel),
+        is_group = COALESCE(excluded.is_group, is_group)
     `,
-    ).run(chatJid, name, timestamp);
+    ).run(chatJid, name, timestamp, ch, group);
   } else {
     // Update timestamp only, preserve existing name if any
     db.prepare(
       `
-      INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)
+      INSERT INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(jid) DO UPDATE SET
-        last_message_time = MAX(last_message_time, excluded.last_message_time)
+        last_message_time = MAX(last_message_time, excluded.last_message_time),
+        channel = COALESCE(excluded.channel, channel),
+        is_group = COALESCE(excluded.is_group, is_group)
     `,
-    ).run(chatJid, chatJid, timestamp);
+    ).run(chatJid, chatJid, timestamp, ch, group);
   }
 }
 
@@ -208,6 +281,8 @@ export interface ChatInfo {
   jid: string;
   name: string;
   last_message_time: string;
+  channel: string;
+  is_group: number;
 }
 
 /**
@@ -225,7 +300,7 @@ export function getAllChats(): ChatInfo[] {
   return db
     .prepare(
       `
-    SELECT jid, name, last_message_time
+    SELECT jid, name, last_message_time, channel, is_group
     FROM chats
     ORDER BY last_message_time DESC
   `,
@@ -274,10 +349,57 @@ export function storeGenericMessage(
 }
 
 /**
- * Store a message with full content.
+ * Store a message from a NewMessage object (upstream interface).
  * Only call this for registered groups where message history is needed.
  */
-export function storeMessage(
+export function storeMessage(msg: NewMessage): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    msg.id,
+    msg.chat_jid,
+    msg.sender,
+    msg.sender_name,
+    msg.content,
+    msg.timestamp,
+    msg.is_from_me ? 1 : 0,
+    msg.is_bot_message ? 1 : 0,
+  );
+}
+
+/**
+ * Store a message directly.
+ */
+export function storeMessageDirect(msg: {
+  id: string;
+  chat_jid: string;
+  sender: string;
+  sender_name: string;
+  content: string;
+  timestamp: string;
+  is_from_me: boolean;
+  is_bot_message?: boolean;
+}): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    msg.id,
+    msg.chat_jid,
+    msg.sender,
+    msg.sender_name,
+    msg.content,
+    msg.timestamp,
+    msg.is_from_me ? 1 : 0,
+    msg.is_bot_message ? 1 : 0,
+  );
+}
+
+/**
+ * Store a WhatsApp proto message with full content.
+ * Extracts fields from the Baileys proto format.
+ * Only call this for registered groups where message history is needed.
+ */
+export function storeWhatsAppMessage(
   msg: proto.IWebMessageInfo,
   chatJid: string,
   isFromMe: boolean,
@@ -312,11 +434,14 @@ export function getNewMessages(
   if (jids.length === 0) return { messages: [], newTimestamp: lastTimestamp };
 
   const placeholders = jids.map(() => '?').join(',');
-  // Filter out bot's own messages by checking content prefix (not is_from_me, since user shares the account)
+  // Filter bot messages using both the is_bot_message flag AND the content
+  // prefix as a backstop for messages written before the migration ran.
   const sql = `
     SELECT id, chat_jid, sender, sender_name, content, timestamp
     FROM messages
-    WHERE timestamp > ? AND chat_jid IN (${placeholders}) AND content NOT LIKE ?
+    WHERE timestamp > ? AND chat_jid IN (${placeholders})
+      AND is_bot_message = 0 AND content NOT LIKE ?
+      AND content != '' AND content IS NOT NULL
     ORDER BY timestamp
   `;
 
@@ -337,11 +462,14 @@ export function getMessagesSince(
   sinceTimestamp: string,
   botPrefix: string,
 ): NewMessage[] {
-  // Filter out bot's own messages by checking content prefix
+  // Filter bot messages using both the is_bot_message flag AND the content
+  // prefix as a backstop for messages written before the migration ran.
   const sql = `
     SELECT id, chat_jid, sender, sender_name, content, timestamp
     FROM messages
-    WHERE chat_jid = ? AND timestamp > ? AND content NOT LIKE ?
+    WHERE chat_jid = ? AND timestamp > ?
+      AND is_bot_message = 0 AND content NOT LIKE ?
+      AND content != '' AND content IS NOT NULL
     ORDER BY timestamp
   `;
   return db
@@ -539,9 +667,17 @@ export function getRegisteredGroup(
         added_at: string;
         container_config: string | null;
         requires_trigger: number | null;
+        is_main: number | null;
       }
     | undefined;
   if (!row) return undefined;
+  if (!isValidGroupFolder(row.folder)) {
+    logger.warn(
+      { jid: row.jid, folder: row.folder },
+      'Skipping registered group with invalid folder',
+    );
+    return undefined;
+  }
   return {
     jid: row.jid,
     name: row.name,
@@ -551,17 +687,19 @@ export function getRegisteredGroup(
     containerConfig: row.container_config
       ? JSON.parse(row.container_config)
       : undefined,
-    requiresTrigger: row.requires_trigger === null ? undefined : row.requires_trigger === 1,
+    requiresTrigger:
+      row.requires_trigger === null ? undefined : row.requires_trigger === 1,
+    isMain: row.is_main === 1 ? true : undefined,
   };
 }
 
-export function setRegisteredGroup(
-  jid: string,
-  group: RegisteredGroup,
-): void {
+export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
+  if (!isValidGroupFolder(group.folder)) {
+    throw new Error(`Invalid group folder "${group.folder}" for JID ${jid}`);
+  }
   db.prepare(
-    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     jid,
     group.name,
@@ -570,6 +708,7 @@ export function setRegisteredGroup(
     group.added_at,
     group.containerConfig ? JSON.stringify(group.containerConfig) : null,
     group.requiresTrigger === undefined ? 1 : group.requiresTrigger ? 1 : 0,
+    group.isMain ? 1 : 0,
   );
 }
 
@@ -578,9 +717,7 @@ export function deleteRegisteredGroup(jid: string): void {
 }
 
 export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
-  const rows = db
-    .prepare('SELECT * FROM registered_groups')
-    .all() as Array<{
+  const rows = db.prepare('SELECT * FROM registered_groups').all() as Array<{
     jid: string;
     name: string;
     folder: string;
@@ -588,9 +725,17 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     added_at: string;
     container_config: string | null;
     requires_trigger: number | null;
+    is_main: number | null;
   }>;
   const result: Record<string, RegisteredGroup> = {};
   for (const row of rows) {
+    if (!isValidGroupFolder(row.folder)) {
+      logger.warn(
+        { jid: row.jid, folder: row.folder },
+        'Skipping registered group with invalid folder',
+      );
+      continue;
+    }
     result[row.jid] = {
       name: row.name,
       folder: row.folder,
@@ -599,7 +744,9 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
       containerConfig: row.container_config
         ? JSON.parse(row.container_config)
         : undefined,
-      requiresTrigger: row.requires_trigger === null ? undefined : row.requires_trigger === 1,
+      requiresTrigger:
+        row.requires_trigger === null ? undefined : row.requires_trigger === 1,
+      isMain: row.is_main === 1 ? true : undefined,
     };
   }
   return result;
@@ -655,7 +802,14 @@ function migrateJsonState(): void {
   > | null;
   if (groups) {
     for (const [jid, group] of Object.entries(groups)) {
-      setRegisteredGroup(jid, group);
+      try {
+        setRegisteredGroup(jid, group);
+      } catch (err) {
+        logger.warn(
+          { jid, folder: group.folder, err },
+          'Skipping migrated registered group with invalid folder',
+        );
+      }
     }
   }
 }

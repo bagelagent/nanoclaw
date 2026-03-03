@@ -1,12 +1,18 @@
 /**
  * NanoClaw Agent Runner
  * Runs inside a container, receives config via stdin, outputs result to stdout
+ *
+ * Protocol:
+ *   Stdin: Line-delimited JSON — one ContainerInput per line.
+ *          Container stays alive between queries (persistent container).
+ *          Shutdown: {"type":"shutdown"} or EOF.
+ *   Stdout: Each result is wrapped in OUTPUT_START_MARKER / OUTPUT_END_MARKER pairs.
  */
 
 import fs from 'fs';
 import path from 'path';
 import { createInterface } from 'readline';
-import { query, HookCallback, PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
+import { query, HookCallback, PreCompactHookInput, PreToolUseHookInput } from '@anthropic-ai/claude-agent-sdk';
 import { createIpcMcp } from './ipc-mcp.js';
 
 interface ContainerInput {
@@ -17,6 +23,7 @@ interface ContainerInput {
   isMain: boolean;
   isScheduledTask?: boolean;
   model?: string;
+  assistantName?: string;
 }
 
 interface AgentResponse {
@@ -85,7 +92,6 @@ function log(message: string): void {
 }
 
 function getSessionSummary(sessionId: string, transcriptPath: string): string | null {
-  // sessions-index.json is in the same directory as the transcript
   const projectDir = path.dirname(transcriptPath);
   const indexPath = path.join(projectDir, 'sessions-index.json');
 
@@ -110,7 +116,7 @@ function getSessionSummary(sessionId: string, transcriptPath: string): string | 
 /**
  * Archive the full transcript to conversations/ before compaction.
  */
-function createPreCompactHook(): HookCallback {
+function createPreCompactHook(assistantName?: string): HookCallback {
   return async (input: any, _toolUseId: any, _context: any) => {
     const preCompact = input as PreCompactHookInput;
     const transcriptPath = preCompact.transcript_path;
@@ -140,7 +146,7 @@ function createPreCompactHook(): HookCallback {
       const filename = `${date}-${name}.md`;
       const filePath = path.join(conversationsDir, filename);
 
-      const markdown = formatTranscriptMarkdown(messages, summary);
+      const markdown = formatTranscriptMarkdown(messages, summary, assistantName);
       fs.writeFileSync(filePath, markdown);
 
       log(`Archived conversation to ${filePath}`);
@@ -149,6 +155,30 @@ function createPreCompactHook(): HookCallback {
     }
 
     return {};
+  };
+}
+
+// Secrets to strip from Bash tool subprocess environments.
+// These are needed by claude-code for API auth but should never
+// be visible to commands the agent runs.
+const SECRET_ENV_VARS = ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN'];
+
+function createSanitizeBashHook(): HookCallback {
+  return async (input, _toolUseId, _context) => {
+    const preInput = input as PreToolUseHookInput;
+    const command = (preInput.tool_input as { command?: string })?.command;
+    if (!command) return {};
+
+    const unsetPrefix = `unset ${SECRET_ENV_VARS.join(' ')} 2>/dev/null; `;
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        updatedInput: {
+          ...(preInput.tool_input as Record<string, unknown>),
+          command: unsetPrefix + command,
+        },
+      },
+    };
   };
 }
 
@@ -196,7 +226,7 @@ function parseTranscript(content: string): ParsedMessage[] {
   return messages;
 }
 
-function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | null): string {
+function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | null, assistantName?: string): string {
   const now = new Date();
   const formatDateTime = (d: Date) => d.toLocaleString('en-US', {
     month: 'short',
@@ -215,7 +245,7 @@ function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | nu
   lines.push('');
 
   for (const msg of messages) {
-    const sender = msg.role === 'user' ? 'User' : 'Bagel';
+    const sender = msg.role === 'user' ? 'User' : (assistantName || 'Bagel');
     const content = msg.content.length > 2000
       ? msg.content.slice(0, 2000) + '...'
       : msg.content;
@@ -237,7 +267,6 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
     isMain: input.isMain
   });
 
-  let result: AgentResponse | null = null;
   let newSessionId: string | undefined;
 
   // Add context for scheduled tasks
@@ -251,6 +280,22 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
   let globalClaudeMd: string | undefined;
   if (!input.isMain && fs.existsSync(globalClaudeMdPath)) {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
+  }
+
+  // Discover additional directories mounted at /workspace/extra/*
+  // These are passed to the SDK so their CLAUDE.md files are loaded automatically
+  const extraDirs: string[] = [];
+  const extraBase = '/workspace/extra';
+  if (fs.existsSync(extraBase)) {
+    for (const entry of fs.readdirSync(extraBase)) {
+      const fullPath = path.join(extraBase, entry);
+      if (fs.statSync(fullPath).isDirectory()) {
+        extraDirs.push(fullPath);
+      }
+    }
+  }
+  if (extraDirs.length > 0) {
+    log(`Additional directories: ${extraDirs.join(', ')}`);
   }
 
   let lastProgressTime = 0;
@@ -288,6 +333,7 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
       options: {
         ...(input.model ? { model: input.model } : {}),
         cwd: '/workspace/group',
+        additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
         resume: sessionId,
         systemPrompt: globalClaudeMd
           ? { type: 'preset' as const, preset: 'claude_code' as const, append: globalClaudeMd }
@@ -296,16 +342,21 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
           'Bash',
           'Read', 'Write', 'Edit', 'Glob', 'Grep',
           'WebSearch', 'WebFetch',
+          'Task', 'TaskOutput', 'TaskStop',
+          'TeamCreate', 'TeamDelete', 'SendMessage',
+          'TodoWrite', 'ToolSearch', 'Skill',
+          'NotebookEdit',
           'mcp__nanoclaw__*'
         ],
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
-        settingSources: ['project'],
+        settingSources: ['project', 'user'],
         mcpServers: {
           nanoclaw: ipcMcp
         },
         hooks: {
-          PreCompact: [{ hooks: [createPreCompactHook()] }]
+          PreCompact: [{ hooks: [createPreCompactHook(input.assistantName)] }],
+          PreToolUse: [{ matcher: 'Bash', hooks: [createSanitizeBashHook()] }],
         },
         outputFormat: {
           type: 'json_schema',
@@ -324,12 +375,10 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
       }
 
       // Emit progress for tool use
-      // Tool usage appears as type="assistant" messages with tool_use content
       if (message.type === 'assistant') {
         const msg = message as any;
         const content = msg.message?.content;
         if (Array.isArray(content)) {
-          // Check if content array contains tool_use blocks
           for (const block of content) {
             if (block.type === 'tool_use' && block.name) {
               const toolName = block.name;
@@ -350,31 +399,27 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
               };
               const emoji = toolEmoji[toolName] || '🔧';
 
-              // Extract meaningful description from tool input
               let description = '';
               if (toolInput.description) {
-                // Bash, some other tools have explicit description field
                 description = toolInput.description;
               } else if (toolInput.file_path) {
-                // Read, Write, Edit have file_path
                 const fileName = toolInput.file_path.split('/').pop() || toolInput.file_path;
                 description = fileName;
               } else if (toolInput.pattern) {
-                // Glob, Grep have pattern
                 description = toolInput.pattern;
               } else if (toolInput.query) {
-                // WebSearch has query
                 description = toolInput.query.slice(0, 50);
               } else if (toolInput.url) {
-                // WebFetch has url
-                const urlObj = new URL(toolInput.url);
-                description = urlObj.hostname;
+                try {
+                  const urlObj = new URL(toolInput.url);
+                  description = urlObj.hostname;
+                } catch {
+                  description = toolInput.url.slice(0, 50);
+                }
               } else if (toolInput.command) {
-                // Bash without description - show truncated command
                 description = toolInput.command.slice(0, 50);
               }
 
-              // Truncate if too long
               if (description.length > 60) {
                 description = description.slice(0, 57) + '...';
               }
@@ -384,7 +429,6 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
                 : `${emoji} ${toolName}...`;
 
               emitProgress(progressMessage);
-              // Only emit for first tool in message
               break;
             }
           }

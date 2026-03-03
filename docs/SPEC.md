@@ -1,84 +1,238 @@
 # NanoClaw Specification
 
-A personal Claude assistant accessible via WhatsApp, with persistent memory per conversation, scheduled tasks, and email integration.
+A personal Claude assistant with multi-channel support, persistent memory per conversation, scheduled tasks, and container-isolated agent execution.
 
 ---
 
 ## Table of Contents
 
 1. [Architecture](#architecture)
-2. [Folder Structure](#folder-structure)
-3. [Configuration](#configuration)
-4. [Memory System](#memory-system)
-5. [Session Management](#session-management)
-6. [Message Flow](#message-flow)
-7. [Commands](#commands)
-8. [Scheduled Tasks](#scheduled-tasks)
-9. [MCP Servers](#mcp-servers)
-10. [Deployment](#deployment)
-11. [Security Considerations](#security-considerations)
+2. [Architecture: Channel System](#architecture-channel-system)
+3. [Folder Structure](#folder-structure)
+4. [Configuration](#configuration)
+5. [Memory System](#memory-system)
+6. [Session Management](#session-management)
+7. [Message Flow](#message-flow)
+8. [Commands](#commands)
+9. [Scheduled Tasks](#scheduled-tasks)
+10. [MCP Servers](#mcp-servers)
+11. [Deployment](#deployment)
+12. [Security Considerations](#security-considerations)
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        HOST (macOS)                                  │
-│                   (Main Node.js Process)                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌──────────────┐                     ┌────────────────────┐        │
-│  │  WhatsApp    │────────────────────▶│   SQLite Database  │        │
-│  │  (baileys)   │◀────────────────────│   (messages.db)    │        │
-│  └──────────────┘   store/send        └─────────┬──────────┘        │
-│                                                  │                   │
-│         ┌────────────────────────────────────────┘                   │
-│         │                                                            │
-│         ▼                                                            │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌───────────────┐  │
-│  │  Message Loop    │    │  Scheduler Loop  │    │  IPC Watcher  │  │
-│  │  (polls SQLite)  │    │  (checks tasks)  │    │  (file-based) │  │
-│  └────────┬─────────┘    └────────┬─────────┘    └───────────────┘  │
-│           │                       │                                  │
-│           └───────────┬───────────┘                                  │
-│                       │ spawns container                             │
-│                       ▼                                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                  APPLE CONTAINER (Linux VM)                          │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    AGENT RUNNER                               │   │
-│  │                                                                │   │
-│  │  Working directory: /workspace/group (mounted from host)       │   │
-│  │  Volume mounts:                                                │   │
-│  │    • groups/{name}/ → /workspace/group                         │   │
-│  │    • groups/global/ → /workspace/global/ (non-main only)        │   │
-│  │    • data/sessions/{group}/.claude/ → /home/node/.claude/      │   │
-│  │    • Additional dirs → /workspace/extra/*                      │   │
-│  │                                                                │   │
-│  │  Tools (all groups):                                           │   │
-│  │    • Bash (safe - sandboxed in container!)                     │   │
-│  │    • Read, Write, Edit, Glob, Grep (file operations)           │   │
-│  │    • WebSearch, WebFetch (internet access)                     │   │
-│  │    • agent-browser (browser automation)                        │   │
-│  │    • mcp__nanoclaw__* (scheduler tools via IPC)                │   │
-│  │                                                                │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                        HOST (macOS / Linux)                           │
+│                     (Main Node.js Process)                            │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌──────────────────┐                  ┌────────────────────┐        │
+│  │ Channels         │─────────────────▶│   SQLite Database  │        │
+│  │ (self-register   │◀────────────────│   (messages.db)    │        │
+│  │  at startup)     │  store/send      └─────────┬──────────┘        │
+│  └──────────────────┘                            │                   │
+│                                                   │                   │
+│         ┌─────────────────────────────────────────┘                   │
+│         │                                                             │
+│         ▼                                                             │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌───────────────┐   │
+│  │  Message Loop    │    │  Scheduler Loop  │    │  IPC Watcher  │   │
+│  │  (polls SQLite)  │    │  (checks tasks)  │    │  (file-based) │   │
+│  └────────┬─────────┘    └────────┬─────────┘    └───────────────┘   │
+│           │                       │                                   │
+│           └───────────┬───────────┘                                   │
+│                       │ spawns container                              │
+│                       ▼                                               │
+├──────────────────────────────────────────────────────────────────────┤
+│                     CONTAINER (Linux VM)                               │
+├──────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────────┐    │
+│  │                    AGENT RUNNER                               │    │
+│  │                                                                │    │
+│  │  Working directory: /workspace/group (mounted from host)       │    │
+│  │  Volume mounts:                                                │    │
+│  │    • groups/{name}/ → /workspace/group                         │    │
+│  │    • groups/global/ → /workspace/global/ (non-main only)       │    │
+│  │    • data/sessions/{group}/.claude/ → /home/node/.claude/      │    │
+│  │    • Additional dirs → /workspace/extra/*                      │    │
+│  │                                                                │    │
+│  │  Tools (all groups):                                           │    │
+│  │    • Bash (safe - sandboxed in container!)                     │    │
+│  │    • Read, Write, Edit, Glob, Grep (file operations)           │    │
+│  │    • WebSearch, WebFetch (internet access)                     │    │
+│  │    • agent-browser (browser automation)                        │    │
+│  │    • mcp__nanoclaw__* (scheduler tools via IPC)                │    │
+│  │                                                                │    │
+│  └──────────────────────────────────────────────────────────────┘    │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Technology Stack
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| WhatsApp Connection | Node.js (@whiskeysockets/baileys) | Connect to WhatsApp, send/receive messages |
+| Channel System | Channel registry (`src/channels/registry.ts`) | Channels self-register at startup |
 | Message Storage | SQLite (better-sqlite3) | Store messages for polling |
-| Container Runtime | Apple Container | Isolated Linux VMs for agent execution |
+| Container Runtime | Containers (Linux VMs) | Isolated environments for agent execution |
 | Agent | @anthropic-ai/claude-agent-sdk (0.2.29) | Run Claude with tools and MCP servers |
 | Browser Automation | agent-browser + Chromium | Web interaction and screenshots |
 | Runtime | Node.js 20+ | Host process for routing and scheduling |
+
+---
+
+## Architecture: Channel System
+
+The core ships with no channels built in — each channel (WhatsApp, Telegram, Slack, Discord, Gmail) is installed as a [Claude Code skill](https://code.claude.com/docs/en/skills) that adds the channel code to your fork. Channels self-register at startup; installed channels with missing credentials emit a WARN log and are skipped.
+
+### System Diagram
+
+```mermaid
+graph LR
+    subgraph Channels["Channels"]
+        WA[WhatsApp]
+        TG[Telegram]
+        SL[Slack]
+        DC[Discord]
+        New["Other Channel (Signal, Gmail...)"]
+    end
+
+    subgraph Orchestrator["Orchestrator — index.ts"]
+        ML[Message Loop]
+        GQ[Group Queue]
+        RT[Router]
+        TS[Task Scheduler]
+        DB[(SQLite)]
+    end
+
+    subgraph Execution["Container Execution"]
+        CR[Container Runner]
+        LC["Linux Container"]
+        IPC[IPC Watcher]
+    end
+
+    %% Flow
+    WA & TG & SL & DC & New -->|onMessage| ML
+    ML --> GQ
+    GQ -->|concurrency| CR
+    CR --> LC
+    LC -->|filesystem IPC| IPC
+    IPC -->|tasks & messages| RT
+    RT -->|Channel.sendMessage| Channels
+    TS -->|due tasks| CR
+
+    %% DB Connections
+    DB <--> ML
+    DB <--> TS
+
+    %% Styling for the dynamic channel
+    style New stroke-dasharray: 5 5,stroke-width:2px
+```
+
+### Channel Registry
+
+The channel system is built on a factory registry in `src/channels/registry.ts`:
+
+```typescript
+export type ChannelFactory = (opts: ChannelOpts) => Channel | null;
+
+const registry = new Map<string, ChannelFactory>();
+
+export function registerChannel(name: string, factory: ChannelFactory): void {
+  registry.set(name, factory);
+}
+
+export function getChannelFactory(name: string): ChannelFactory | undefined {
+  return registry.get(name);
+}
+
+export function getRegisteredChannelNames(): string[] {
+  return [...registry.keys()];
+}
+```
+
+Each factory receives `ChannelOpts` (callbacks for `onMessage`, `onChatMetadata`, and `registeredGroups`) and returns either a `Channel` instance or `null` if that channel's credentials are not configured.
+
+### Channel Interface
+
+Every channel implements this interface (defined in `src/types.ts`):
+
+```typescript
+interface Channel {
+  name: string;
+  connect(): Promise<void>;
+  sendMessage(jid: string, text: string): Promise<void>;
+  isConnected(): boolean;
+  ownsJid(jid: string): boolean;
+  disconnect(): Promise<void>;
+  setTyping?(jid: string, isTyping: boolean): Promise<void>;
+  syncGroups?(force: boolean): Promise<void>;
+}
+```
+
+### Self-Registration Pattern
+
+Channels self-register using a barrel-import pattern:
+
+1. Each channel skill adds a file to `src/channels/` (e.g. `whatsapp.ts`, `telegram.ts`) that calls `registerChannel()` at module load time:
+
+   ```typescript
+   // src/channels/whatsapp.ts
+   import { registerChannel, ChannelOpts } from './registry.js';
+
+   export class WhatsAppChannel implements Channel { /* ... */ }
+
+   registerChannel('whatsapp', (opts: ChannelOpts) => {
+     // Return null if credentials are missing
+     if (!existsSync(authPath)) return null;
+     return new WhatsAppChannel(opts);
+   });
+   ```
+
+2. The barrel file `src/channels/index.ts` imports all channel modules, triggering registration:
+
+   ```typescript
+   import './whatsapp.js';
+   import './telegram.js';
+   // ... each skill adds its import here
+   ```
+
+3. At startup, the orchestrator (`src/index.ts`) loops through registered channels and connects whichever ones return a valid instance:
+
+   ```typescript
+   for (const name of getRegisteredChannelNames()) {
+     const factory = getChannelFactory(name);
+     const channel = factory?.(channelOpts);
+     if (channel) {
+       await channel.connect();
+       channels.push(channel);
+     }
+   }
+   ```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/channels/registry.ts` | Channel factory registry |
+| `src/channels/index.ts` | Barrel imports that trigger channel self-registration |
+| `src/types.ts` | `Channel` interface, `ChannelOpts`, message types |
+| `src/index.ts` | Orchestrator — instantiates channels, runs message loop |
+| `src/router.ts` | Finds the owning channel for a JID, formats messages |
+
+### Adding a New Channel
+
+To add a new channel, contribute a skill to `.claude/skills/add-<name>/` that:
+
+1. Adds a `src/channels/<name>.ts` file implementing the `Channel` interface
+2. Calls `registerChannel(name, factory)` at module load
+3. Returns `null` from the factory if credentials are missing
+4. Adds an import line to `src/channels/index.ts`
+
+See existing skills (`/add-whatsapp`, `/add-telegram`, `/add-slack`, `/add-discord`, `/add-gmail`) for the pattern.
 
 ---
 
@@ -98,14 +252,21 @@ nanoclaw/
 ├── .gitignore
 │
 ├── src/
-│   ├── index.ts                   # Main application (WhatsApp + routing)
+│   ├── index.ts                   # Orchestrator: state, message loop, agent invocation
+│   ├── channels/
+│   │   ├── registry.ts            # Channel factory registry
+│   │   └── index.ts               # Barrel imports for channel self-registration
+│   ├── ipc.ts                     # IPC watcher and task processing
+│   ├── router.ts                  # Message formatting and outbound routing
 │   ├── config.ts                  # Configuration constants
-│   ├── types.ts                   # TypeScript interfaces
-│   ├── utils.ts                   # Generic utility functions
-│   ├── db.ts                      # Database initialization and queries
+│   ├── types.ts                   # TypeScript interfaces (includes Channel)
+│   ├── logger.ts                  # Pino logger setup
+│   ├── db.ts                      # SQLite database initialization and queries
+│   ├── group-queue.ts             # Per-group queue with global concurrency limit
+│   ├── mount-security.ts          # Mount allowlist validation for containers
 │   ├── whatsapp-auth.ts           # Standalone WhatsApp authentication
 │   ├── task-scheduler.ts          # Runs scheduled tasks when due
-│   └── container-runner.ts        # Spawns agents in Apple Containers
+│   └── container-runner.ts        # Spawns agents in containers
 │
 ├── container/
 │   ├── Dockerfile                 # Container image (runs as 'node' user, includes Claude Code CLI)
@@ -114,8 +275,8 @@ nanoclaw/
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   └── src/
-│   │       ├── index.ts           # Entry point (reads JSON, runs agent)
-│   │       └── ipc-mcp.ts         # MCP server for host communication
+│   │       ├── index.ts           # Entry point (query loop, IPC polling, session resume)
+│   │       └── ipc-mcp-stdio.ts   # Stdio-based MCP server for host communication
 │   └── skills/
 │       └── agent-browser.md       # Browser automation skill
 │
@@ -123,31 +284,32 @@ nanoclaw/
 │
 ├── .claude/
 │   └── skills/
-│       ├── setup/
-│       │   └── SKILL.md           # /setup skill
-│       ├── customize/
-│       │   └── SKILL.md           # /customize skill
-│       └── debug/
-│           └── SKILL.md           # /debug skill (container debugging)
+│       ├── setup/SKILL.md              # /setup - First-time installation
+│       ├── customize/SKILL.md          # /customize - Add capabilities
+│       ├── debug/SKILL.md              # /debug - Container debugging
+│       ├── add-telegram/SKILL.md       # /add-telegram - Telegram channel
+│       ├── add-gmail/SKILL.md          # /add-gmail - Gmail integration
+│       ├── add-voice-transcription/    # /add-voice-transcription - Whisper
+│       ├── x-integration/SKILL.md      # /x-integration - X/Twitter
+│       ├── convert-to-apple-container/  # /convert-to-apple-container - Apple Container runtime
+│       └── add-parallel/SKILL.md       # /add-parallel - Parallel agents
 │
 ├── groups/
 │   ├── CLAUDE.md                  # Global memory (all groups read this)
-│   ├── main/                      # Self-chat (main control channel)
+│   ├── {channel}_main/             # Main control channel (e.g., whatsapp_main/)
 │   │   ├── CLAUDE.md              # Main channel memory
 │   │   └── logs/                  # Task execution logs
-│   └── {Group Name}/              # Per-group folders (created on registration)
+│   └── {channel}_{group-name}/    # Per-group folders (created on registration)
 │       ├── CLAUDE.md              # Group-specific memory
 │       ├── logs/                  # Task logs for this group
 │       └── *.md                   # Files created by the agent
 │
 ├── store/                         # Local data (gitignored)
 │   ├── auth/                      # WhatsApp authentication state
-│   └── messages.db                # SQLite database (messages, scheduled_tasks, task_run_logs)
+│   └── messages.db                # SQLite database (messages, chats, scheduled_tasks, task_run_logs, registered_groups, sessions, router_state)
 │
 ├── data/                          # Application state (gitignored)
-│   ├── sessions.json              # Active session IDs per group
-│   ├── registered_groups.json     # Group JID → folder mapping
-│   ├── router_state.json          # Last processed timestamp + last agent timestamps
+│   ├── sessions/                  # Per-group session data (.claude/ dirs with JSONL transcripts)
 │   ├── env/env                    # Copy of .env for container mounting
 │   └── ipc/                       # Container IPC (messages/, tasks/)
 │
@@ -169,7 +331,7 @@ Configuration constants are in `src/config.ts`:
 ```typescript
 import path from 'path';
 
-export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Bagel';
+export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Andy';
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 
@@ -181,42 +343,44 @@ export const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
 
 // Container configuration
 export const CONTAINER_IMAGE = process.env.CONTAINER_IMAGE || 'nanoclaw-agent:latest';
-export const CONTAINER_TIMEOUT = parseInt(process.env.CONTAINER_TIMEOUT || '300000', 10);
+export const CONTAINER_TIMEOUT = parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10); // 30min default
 export const IPC_POLL_INTERVAL = 1000;
+export const IDLE_TIMEOUT = parseInt(process.env.IDLE_TIMEOUT || '1800000', 10); // 30min — keep container alive after last result
+export const MAX_CONCURRENT_CONTAINERS = Math.max(1, parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5);
 
 export const TRIGGER_PATTERN = new RegExp(`^@${ASSISTANT_NAME}\\b`, 'i');
 ```
 
-**Note:** Paths must be absolute for Apple Container volume mounts to work correctly.
+**Note:** Paths must be absolute for container volume mounts to work correctly.
 
 ### Container Configuration
 
-Groups can have additional directories mounted via `containerConfig` in `data/registered_groups.json`:
+Groups can have additional directories mounted via `containerConfig` in the SQLite `registered_groups` table (stored as JSON in the `container_config` column). Example registration:
 
-```json
-{
-  "1234567890@g.us": {
-    "name": "Dev Team",
-    "folder": "dev-team",
-    "trigger": "@Bagel",
-    "added_at": "2026-01-31T12:00:00Z",
-    "containerConfig": {
-      "additionalMounts": [
-        {
-          "hostPath": "~/projects/webapp",
-          "containerPath": "webapp",
-          "readonly": false
-        }
-      ],
-      "timeout": 600000
-    }
-  }
-}
+```typescript
+registerGroup("1234567890@g.us", {
+  name: "Dev Team",
+  folder: "whatsapp_dev-team",
+  trigger: "@Andy",
+  added_at: new Date().toISOString(),
+  containerConfig: {
+    additionalMounts: [
+      {
+        hostPath: "~/projects/webapp",
+        containerPath: "webapp",
+        readonly: false,
+      },
+    ],
+    timeout: 600000,
+  },
+});
 ```
+
+Folder names follow the convention `{channel}_{group-name}` (e.g., `whatsapp_family-chat`, `telegram_dev-team`). The main group has `isMain: true` set during registration.
 
 Additional mounts appear at `/workspace/extra/{containerPath}` inside the container.
 
-**Apple Container mount syntax note:** Read-write mounts use `-v host:container`, but readonly mounts require `--mount "type=bind,source=...,target=...,readonly"` (the `:ro` suffix doesn't work).
+**Mount syntax note:** Read-write mounts use `-v host:container`, but readonly mounts require `--mount "type=bind,source=...,target=...,readonly"` (the `:ro` suffix may not work on all runtimes).
 
 ### Claude Authentication
 
@@ -233,7 +397,7 @@ The token can be extracted from `~/.claude/.credentials.json` if you're logged i
 ANTHROPIC_API_KEY=sk-ant-api03-...
 ```
 
-Only the authentication variables (`CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY`) are extracted from `.env` and mounted into the container at `/workspace/env-dir/env`, then sourced by the entrypoint script. This ensures other environment variables in `.env` are not exposed to the agent. This workaround is needed because Apple Container loses `-e` environment variables when using `-i` (interactive mode with piped stdin).
+Only the authentication variables (`CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY`) are extracted from `.env` and written to `data/env/env`, then mounted into the container at `/workspace/env-dir/env` and sourced by the entrypoint script. This ensures other environment variables in `.env` are not exposed to the agent. This workaround is needed because some container runtimes lose `-e` environment variables when using `-i` (interactive mode with piped stdin).
 
 ### Changing the Assistant Name
 
@@ -295,17 +459,10 @@ Sessions enable conversation continuity - Claude remembers what you talked about
 
 ### How Sessions Work
 
-1. Each group has a session ID stored in `data/sessions.json`
+1. Each group has a session ID stored in SQLite (`sessions` table, keyed by `group_folder`)
 2. Session ID is passed to Claude Agent SDK's `resume` option
 3. Claude continues the conversation with full context
-
-**data/sessions.json:**
-```json
-{
-  "main": "session-abc123",
-  "Family Chat": "session-def456"
-}
-```
+4. Session transcripts are stored as JSONL files in `data/sessions/{group}/.claude/`
 
 ---
 
@@ -314,10 +471,10 @@ Sessions enable conversation continuity - Claude remembers what you talked about
 ### Incoming Message Flow
 
 ```
-1. User sends WhatsApp message
+1. User sends a message via any connected channel
    │
    ▼
-2. Baileys receives message via WhatsApp Web protocol
+2. Channel receives message (e.g. Baileys for WhatsApp, Bot API for Telegram)
    │
    ▼
 3. Message stored in SQLite (store/messages.db)
@@ -327,8 +484,8 @@ Sessions enable conversation continuity - Claude remembers what you talked about
    │
    ▼
 5. Router checks:
-   ├── Is chat_jid in registered_groups.json? → No: ignore
-   └── Does message start with @Assistant? → No: ignore
+   ├── Is chat_jid in registered groups (SQLite)? → No: ignore
+   └── Does message match trigger pattern? → No: store but don't process
    │
    ▼
 6. Router catches up conversation:
@@ -349,7 +506,7 @@ Sessions enable conversation continuity - Claude remembers what you talked about
    └── Uses tools as needed (search, email, etc.)
    │
    ▼
-9. Router prefixes response with assistant name and sends via WhatsApp
+9. Router prefixes response with assistant name and sends via the owning channel
    │
    ▼
 10. Router updates last agent timestamp and saves session ID
@@ -357,10 +514,10 @@ Sessions enable conversation continuity - Claude remembers what you talked about
 
 ### Trigger Word Matching
 
-Messages must start with the trigger pattern (default: `@Bagel`):
-- `@Bagel what's the weather?` → ✅ Triggers Claude
+Messages must start with the trigger pattern (default: `@Andy`):
+- `@Andy what's the weather?` → ✅ Triggers Claude
 - `@andy help me` → ✅ Triggers (case insensitive)
-- `Hey @Bagel` → ❌ Ignored (trigger not at start)
+- `Hey @Andy` → ❌ Ignored (trigger not at start)
 - `What's up?` → ❌ Ignored (no trigger)
 
 ### Conversation Catch-Up
@@ -370,7 +527,7 @@ When a triggered message arrives, the agent receives all messages since its last
 ```
 [Jan 31 2:32 PM] John: hey everyone, should we do pizza tonight?
 [Jan 31 2:33 PM] Sarah: sounds good to me
-[Jan 31 2:35 PM] John: @Bagel what toppings do you recommend?
+[Jan 31 2:35 PM] John: @Andy what toppings do you recommend?
 ```
 
 This allows the agent to understand the conversation context even if it wasn't mentioned in every message.
@@ -383,16 +540,16 @@ This allows the agent to understand the conversation context even if it wasn't m
 
 | Command | Example | Effect |
 |---------|---------|--------|
-| `@Assistant [message]` | `@Bagel what's the weather?` | Talk to Claude |
+| `@Assistant [message]` | `@Andy what's the weather?` | Talk to Claude |
 
 ### Commands Available in Main Channel Only
 
 | Command | Example | Effect |
 |---------|---------|--------|
-| `@Assistant add group "Name"` | `@Bagel add group "Family Chat"` | Register a new group |
-| `@Assistant remove group "Name"` | `@Bagel remove group "Work Team"` | Unregister a group |
-| `@Assistant list groups` | `@Bagel list groups` | Show registered groups |
-| `@Assistant remember [fact]` | `@Bagel remember I prefer dark mode` | Add to global memory |
+| `@Assistant add group "Name"` | `@Andy add group "Family Chat"` | Register a new group |
+| `@Assistant remove group "Name"` | `@Andy remove group "Work Team"` | Unregister a group |
+| `@Assistant list groups` | `@Andy list groups` | Show registered groups |
+| `@Assistant remember [fact]` | `@Andy remember I prefer dark mode` | Add to global memory |
 
 ---
 
@@ -418,7 +575,7 @@ NanoClaw has a built-in scheduler that runs tasks as full agents in their group'
 ### Creating a Task
 
 ```
-User: @Bagel remind me every Monday at 9am to review the weekly metrics
+User: @Andy remind me every Monday at 9am to review the weekly metrics
 
 Claude: [calls mcp__nanoclaw__schedule_task]
         {
@@ -433,7 +590,7 @@ Claude: Done! I'll remind you every Monday at 9am.
 ### One-Time Tasks
 
 ```
-User: @Bagel at 5pm today, send me a summary of today's emails
+User: @Andy at 5pm today, send me a summary of today's emails
 
 Claude: [calls mcp__nanoclaw__schedule_task]
         {
@@ -446,14 +603,14 @@ Claude: [calls mcp__nanoclaw__schedule_task]
 ### Managing Tasks
 
 From any group:
-- `@Bagel list my scheduled tasks` - View tasks for this group
-- `@Bagel pause task [id]` - Pause a task
-- `@Bagel resume task [id]` - Resume a paused task
-- `@Bagel cancel task [id]` - Delete a task
+- `@Andy list my scheduled tasks` - View tasks for this group
+- `@Andy pause task [id]` - Pause a task
+- `@Andy resume task [id]` - Resume a paused task
+- `@Andy cancel task [id]` - Delete a task
 
 From main channel:
-- `@Bagel list all tasks` - View tasks from all groups
-- `@Bagel schedule task for "Family Chat": [prompt]` - Schedule for another group
+- `@Andy list all tasks` - View tasks from all groups
+- `@Andy schedule task for "Family Chat": [prompt]` - Schedule for another group
 
 ---
 
@@ -473,7 +630,7 @@ The `nanoclaw` MCP server is created dynamically per agent call with the current
 | `pause_task` | Pause a task |
 | `resume_task` | Resume a paused task |
 | `cancel_task` | Delete a task |
-| `send_message` | Send a WhatsApp message to the group |
+| `send_message` | Send a message to the group via its channel |
 
 ---
 
@@ -484,13 +641,16 @@ NanoClaw runs as a single macOS launchd service.
 ### Startup Sequence
 
 When NanoClaw starts, it:
-1. **Ensures Apple Container system is running** - Automatically starts it if needed (survives reboots)
-2. Initializes the SQLite database
-3. Loads state (registered groups, sessions, router state)
-4. Connects to WhatsApp
-5. Starts the message polling loop
-6. Starts the scheduler loop
-7. Starts the IPC watcher for container messages
+1. **Ensures container runtime is running** - Automatically starts it if needed; kills orphaned NanoClaw containers from previous runs
+2. Initializes the SQLite database (migrates from JSON files if they exist)
+3. Loads state from SQLite (registered groups, sessions, router state)
+4. **Connects channels** — loops through registered channels, instantiates those with credentials, calls `connect()` on each
+5. Once at least one channel is connected:
+   - Starts the scheduler loop
+   - Starts the IPC watcher for container messages
+   - Sets up the per-group queue with `processGroupMessages`
+   - Recovers any unprocessed messages from before shutdown
+   - Starts the message polling loop
 
 ### Service: com.nanoclaw
 
@@ -520,7 +680,7 @@ When NanoClaw starts, it:
         <key>HOME</key>
         <string>{{HOME}}</string>
         <key>ASSISTANT_NAME</key>
-        <string>Bagel</string>
+        <string>Andy</string>
     </dict>
     <key>StandardOutPath</key>
     <string>{{PROJECT_ROOT}}/logs/nanoclaw.log</string>
@@ -555,7 +715,7 @@ tail -f logs/nanoclaw.log
 
 ### Container Isolation
 
-All agents run inside Apple Container (lightweight Linux VMs), providing:
+All agents run inside containers (lightweight Linux VMs), providing:
 - **Filesystem isolation**: Agents can only access mounted directories
 - **Safe Bash access**: Commands run inside the container, not on your Mac
 - **Network isolation**: Can be configured per-container if needed
@@ -603,12 +763,12 @@ chmod 700 groups/
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | No response to messages | Service not running | Check `launchctl list | grep nanoclaw` |
-| "Claude Code process exited with code 1" | Apple Container failed to start | Check logs; NanoClaw auto-starts container system but may fail |
+| "Claude Code process exited with code 1" | Container runtime failed to start | Check logs; NanoClaw auto-starts container runtime but may fail |
 | "Claude Code process exited with code 1" | Session mount path wrong | Ensure mount is to `/home/node/.claude/` not `/root/.claude/` |
-| Session not continuing | Session ID not saved | Check `data/sessions.json` |
+| Session not continuing | Session ID not saved | Check SQLite: `sqlite3 store/messages.db "SELECT * FROM sessions"` |
 | Session not continuing | Mount path mismatch | Container user is `node` with HOME=/home/node; sessions must be at `/home/node/.claude/` |
 | "QR code expired" | WhatsApp session expired | Delete store/auth/ and restart |
-| "No groups registered" | Haven't added groups | Use `@Bagel add group "Name"` in main |
+| "No groups registered" | Haven't added groups | Use `@Andy add group "Name"` in main |
 
 ### Log Location
 
