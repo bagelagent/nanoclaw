@@ -808,6 +808,11 @@ export async function runContainerAgent(
   const fullInput = { ...input, model: AGENT_MODEL };
   const output = await containerPool.sendQuery(entry, fullInput);
 
+  // Notify caller of output (used for streaming results to channels)
+  if (onOutput && output.status === 'success' && output.result) {
+    await onOutput(output);
+  }
+
   const duration = Date.now() - startTime;
 
   // Write log file
