@@ -11,7 +11,7 @@ import makeWASocket, {
 import { CronExpressionParser } from 'cron-parser';
 
 import { handleGitHubIpc } from './github-handler.js';
-import { initGitHubClient, commentOnIssue } from './github-api.js';
+import { initGitHubClient } from './github-api.js';
 import {
   startWebhookServer,
   sweepClosedIssueGroups,
@@ -453,22 +453,30 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       // Only send userMessage to the user when outputType is 'message'.
       const structured =
         typeof result.result === 'object' && result.result !== null
-          ? (result.result as { outputType?: string; userMessage?: string; internalLog?: string })
+          ? (result.result as {
+              outputType?: string;
+              userMessage?: string;
+              internalLog?: string;
+            })
           : null;
 
       let text: string;
       if (structured?.outputType) {
         if (structured.outputType === 'log') {
-          logger.info({ group: group.name, log: structured.internalLog }, 'Agent internal log');
+          logger.info(
+            { group: group.name, log: structured.internalLog },
+            'Agent internal log',
+          );
           resetIdleTimer();
           return;
         }
         text = structured.userMessage || '';
       } else {
         // Legacy plain-string result
-        text = typeof result.result === 'string'
-          ? result.result
-          : JSON.stringify(result.result);
+        text =
+          typeof result.result === 'string'
+            ? result.result
+            : JSON.stringify(result.result);
       }
 
       // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
@@ -776,31 +784,17 @@ function startIpcWatcher(): void {
                   isGitHubSelf ||
                   (targetGroup && targetGroup.folder === sourceGroup)
                 ) {
-                  // GitHub groups: post as a comment on the issue
+                  // GitHub groups: skip send_message IPC — the agent has
+                // github_comment for posting to issues. Converting send_message
+                // to comments caused double-commenting.
                   if (isGitHubSelf) {
-                    const folderMatch = sourceGroup.match(
-                      /^github-(.+?)-(.+?)-issue-(\d+)$/,
+                    logger.debug(
+                      {
+                        chatJid: data.chatJid,
+                        sourceGroup,
+                      },
+                      'Skipping IPC send_message for GitHub group (use github_comment instead)',
                     );
-                    if (folderMatch) {
-                      const [, owner, repo, issueNum] = folderMatch;
-                      try {
-                        await commentOnIssue(
-                          owner,
-                          repo,
-                          parseInt(issueNum, 10),
-                          data.text,
-                        );
-                        logger.info(
-                          { chatJid: data.chatJid, sourceGroup, issue: issueNum },
-                          'IPC message posted as GitHub comment',
-                        );
-                      } catch (err) {
-                        logger.error(
-                          { chatJid: data.chatJid, sourceGroup, err },
-                          'Failed to post GitHub comment from IPC',
-                        );
-                      }
-                    }
                   } else {
                     // For Discord, don't prefix with assistant name
                     const message = data.chatJid.startsWith('discord:')

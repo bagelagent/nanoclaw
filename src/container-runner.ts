@@ -646,83 +646,81 @@ class ContainerPool {
     input: ContainerInput,
     resolve: (output: ContainerOutput) => void,
   ): void {
-      // Reset per-query stderr buffer for logging
-      entry.stderr = '';
-      entry.stderrTruncated = false;
+    // Reset per-query stderr buffer for logging
+    entry.stderr = '';
+    entry.stderrTruncated = false;
 
-      entry.pendingResolve = resolve;
-      entry.lastUsed = Date.now();
+    entry.pendingResolve = resolve;
+    entry.lastUsed = Date.now();
 
-      // Reset idle timer
-      clearTimeout(entry.idleTimer);
-      entry.idleTimer = setTimeout(
-        () => this.shutdownEntry(entry.group.folder),
-        IDLE_TIMEOUT_MS,
-      );
+    // Reset idle timer
+    clearTimeout(entry.idleTimer);
+    entry.idleTimer = setTimeout(
+      () => this.shutdownEntry(entry.group.folder),
+      IDLE_TIMEOUT_MS,
+    );
 
-      // Activity-based timeout: resets on each stderr chunk from container
-      entry.pendingTimeout = this.createActivityTimeout(entry);
+    // Activity-based timeout: resets on each stderr chunk from container
+    entry.pendingTimeout = this.createActivityTimeout(entry);
 
-      // Hard wall-clock deadline as safety cap
-      entry.hardDeadlineTimeout = setTimeout(() => {
-        if (entry.pendingResolve) {
-          logger.error(
-            { group: entry.group.name, containerName: entry.containerName },
-            'Query hard deadline reached',
-          );
-          entry.pendingResolve({
-            status: 'error',
-            result: null,
-            error: `Query exceeded maximum duration of ${MAX_QUERY_DURATION}ms`,
-          });
-          entry.pendingResolve = null;
-          if (entry.pendingTimeout) {
-            clearTimeout(entry.pendingTimeout);
-            entry.pendingTimeout = null;
-          }
-          entry.hardDeadlineTimeout = null;
-          this.shutdownEntry(entry.group.folder);
-        }
-      }, MAX_QUERY_DURATION);
-
-      // Write JSON line to stdin
-      // Attach a one-time error handler to prevent unhandled 'error' event crashes
-      const onStdinError = (err: Error) => {
-        if (entry.pendingResolve) {
-          if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-          if (entry.hardDeadlineTimeout)
-            clearTimeout(entry.hardDeadlineTimeout);
-          entry.pendingResolve({
-            status: 'error',
-            result: null,
-            error: `Container stdin error: ${err.message}`,
-          });
-          entry.pendingResolve = null;
+    // Hard wall-clock deadline as safety cap
+    entry.hardDeadlineTimeout = setTimeout(() => {
+      if (entry.pendingResolve) {
+        logger.error(
+          { group: entry.group.name, containerName: entry.containerName },
+          'Query hard deadline reached',
+        );
+        entry.pendingResolve({
+          status: 'error',
+          result: null,
+          error: `Query exceeded maximum duration of ${MAX_QUERY_DURATION}ms`,
+        });
+        entry.pendingResolve = null;
+        if (entry.pendingTimeout) {
+          clearTimeout(entry.pendingTimeout);
           entry.pendingTimeout = null;
-          entry.hardDeadlineTimeout = null;
         }
-      };
-      entry.process.stdin!.once('error', onStdinError);
+        entry.hardDeadlineTimeout = null;
+        this.shutdownEntry(entry.group.folder);
+      }
+    }, MAX_QUERY_DURATION);
 
-      // Pass secrets via stdin (never written to disk or mounted as files)
-      const fullInput = { ...input, secrets: readSecrets() };
-      const line = JSON.stringify(fullInput) + '\n';
-      entry.process.stdin!.write(line, (err) => {
-        if (err && entry.pendingResolve) {
-          entry.process.stdin!.removeListener('error', onStdinError);
-          if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-          if (entry.hardDeadlineTimeout)
-            clearTimeout(entry.hardDeadlineTimeout);
-          entry.pendingResolve({
-            status: 'error',
-            result: null,
-            error: `Failed to write to container stdin: ${err.message}`,
-          });
-          entry.pendingResolve = null;
-          entry.pendingTimeout = null;
-          entry.hardDeadlineTimeout = null;
-        }
-      });
+    // Write JSON line to stdin
+    // Attach a one-time error handler to prevent unhandled 'error' event crashes
+    const onStdinError = (err: Error) => {
+      if (entry.pendingResolve) {
+        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
+        entry.pendingResolve({
+          status: 'error',
+          result: null,
+          error: `Container stdin error: ${err.message}`,
+        });
+        entry.pendingResolve = null;
+        entry.pendingTimeout = null;
+        entry.hardDeadlineTimeout = null;
+      }
+    };
+    entry.process.stdin!.once('error', onStdinError);
+
+    // Pass secrets via stdin (never written to disk or mounted as files)
+    const fullInput = { ...input, secrets: readSecrets() };
+    const line = JSON.stringify(fullInput) + '\n';
+    entry.process.stdin!.write(line, (err) => {
+      if (err && entry.pendingResolve) {
+        entry.process.stdin!.removeListener('error', onStdinError);
+        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
+        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
+        entry.pendingResolve({
+          status: 'error',
+          result: null,
+          error: `Failed to write to container stdin: ${err.message}`,
+        });
+        entry.pendingResolve = null;
+        entry.pendingTimeout = null;
+        entry.hardDeadlineTimeout = null;
+      }
+    });
   }
 
   /**

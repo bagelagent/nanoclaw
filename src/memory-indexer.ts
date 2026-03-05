@@ -177,11 +177,13 @@ async function embedTexts(
       // Parse retry-after hint from error body, fall back to exponential backoff
       let waitMs = 1000 * 2 ** attempt;
       try {
-        const body = await response.json() as any;
+        const body = (await response.json()) as any;
         const msg: string = body?.error?.message || '';
         const match = msg.match(/try again in ([\d.]+)s/i);
         if (match) waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 200;
-      } catch { /* ignore parse errors */ }
+      } catch {
+        /* ignore parse errors */
+      }
       logger.warn(
         { attempt: attempt + 1, waitMs },
         'Embedding rate limited, retrying',
@@ -192,9 +194,7 @@ async function embedTexts(
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(
-        `OpenAI embedding API error ${response.status}: ${body}`,
-      );
+      throw new Error(`OpenAI embedding API error ${response.status}: ${body}`);
     }
 
     const json = (await response.json()) as {

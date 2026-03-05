@@ -15,7 +15,12 @@ import {
   setRegisteredGroup,
 } from './db.js';
 import { RegisteredGroup } from './types.js';
-import { fetchIssue, reactToComment, deleteReaction, reopenIssue } from './github-api.js';
+import {
+  fetchIssue,
+  reactToComment,
+  deleteReaction,
+  reopenIssue,
+} from './github-api.js';
 import { runContainerAgent, restartContainer } from './container-runner.js';
 import { DATA_DIR, GROUPS_DIR } from './config.js';
 import { GroupQueue } from './group-queue.js';
@@ -691,16 +696,9 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
     );
 
     try {
-      await reopenIssue(
-        repository.owner.login,
-        repository.name,
-        issue.number,
-      );
+      await reopenIssue(repository.owner.login, repository.name, issue.number);
     } catch (err) {
-      logger.error(
-        { err, issue: issue.number },
-        'Failed to reopen issue',
-      );
+      logger.error({ err, issue: issue.number }, 'Failed to reopen issue');
       return;
     }
 
