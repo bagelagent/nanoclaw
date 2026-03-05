@@ -210,6 +210,21 @@ export async function deleteReaction(
   );
 }
 
+export async function reopenIssue(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<void> {
+  const client = getGitHubClient();
+  await client.issues.update({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    state: 'open',
+  });
+  logger.info({ owner, repo, issueNumber }, 'Reopened issue');
+}
+
 export async function getIssueComments(
   owner: string,
   repo: string,

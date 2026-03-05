@@ -15,7 +15,7 @@ import {
   setRegisteredGroup,
 } from './db.js';
 import { RegisteredGroup } from './types.js';
-import { fetchIssue, reactToComment, deleteReaction } from './github-api.js';
+import { fetchIssue, reactToComment, deleteReaction, reopenIssue } from './github-api.js';
 import { runContainerAgent, restartContainer } from './container-runner.js';
 import { DATA_DIR, GROUPS_DIR } from './config.js';
 import { GroupQueue } from './group-queue.js';
@@ -70,6 +70,7 @@ interface GitHubCommentWebhookPayload {
     title: string;
     body?: string | null;
     html_url: string;
+    state: string;
     assignees: Array<{ login: string }>;
     pull_request?: { url: string };
   };
@@ -675,6 +676,74 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
   const isAssignedToBot = issue.assignees.some((a) => a.login === botUsername);
   if (!isAssignedToBot) {
     logger.debug({ issue: issue.number }, 'Bot not assigned to this issue');
+    return;
+  }
+
+  // If the issue is closed, reopen it and treat as a new assignment
+  if (issue.state === 'closed') {
+    logger.info(
+      {
+        issue: issue.number,
+        repo: `${repository.owner.login}/${repository.name}`,
+        commenter: comment.user.login,
+      },
+      'Comment on closed issue from allowed user — reopening',
+    );
+
+    try {
+      await reopenIssue(
+        repository.owner.login,
+        repository.name,
+        issue.number,
+      );
+    } catch (err) {
+      logger.error(
+        { err, issue: issue.number },
+        'Failed to reopen issue',
+      );
+      return;
+    }
+
+    // React with eyes to acknowledge
+    let eyesReactionId: number | undefined;
+    try {
+      eyesReactionId = await reactToComment(
+        repository.owner.login,
+        repository.name,
+        comment.id,
+        'eyes',
+      );
+    } catch (err) {
+      logger.warn(
+        { err, commentId: comment.id },
+        'Failed to add eyes reaction to comment',
+      );
+    }
+
+    const emojiSwap: EmojiSwap | undefined =
+      eyesReactionId !== undefined
+        ? {
+            owner: repository.owner.login,
+            repo: repository.name,
+            commentId: comment.id,
+            eyesReactionId,
+          }
+        : undefined;
+
+    // Treat as a fresh assignment with context from the comment
+    spawnGitHubContainer(
+      'issue_assigned',
+      {
+        repo_owner: repository.owner.login,
+        repo_name: repository.name,
+        issue_number: issue.number,
+        title: issue.title,
+        description: `${issue.body || '(No description)'}\n\n---\n\n**Reopened by ${comment.user.login}** with comment:\n\n${comment.body}`,
+        issue_url: issue.html_url,
+      },
+      emojiSwap,
+    );
+
     return;
   }
 

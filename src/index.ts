@@ -11,7 +11,7 @@ import makeWASocket, {
 import { CronExpressionParser } from 'cron-parser';
 
 import { handleGitHubIpc } from './github-handler.js';
-import { initGitHubClient } from './github-api.js';
+import { initGitHubClient, commentOnIssue } from './github-api.js';
 import {
   startWebhookServer,
   sweepClosedIssueGroups,
@@ -449,13 +449,31 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   const output = await runAgent(group, prompt, chatJid, async (result) => {
     // Streaming output callback — called for each agent result
     if (result.result) {
-      const raw =
-        typeof result.result === 'string'
+      // Agent uses structured output: { outputType, userMessage, internalLog }
+      // Only send userMessage to the user when outputType is 'message'.
+      const structured =
+        typeof result.result === 'object' && result.result !== null
+          ? (result.result as { outputType?: string; userMessage?: string; internalLog?: string })
+          : null;
+
+      let text: string;
+      if (structured?.outputType) {
+        if (structured.outputType === 'log') {
+          logger.info({ group: group.name, log: structured.internalLog }, 'Agent internal log');
+          resetIdleTimer();
+          return;
+        }
+        text = structured.userMessage || '';
+      } else {
+        // Legacy plain-string result
+        text = typeof result.result === 'string'
           ? result.result
           : JSON.stringify(result.result);
+      }
+
       // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
-      logger.info({ group: group.name }, `Agent output: ${raw.slice(0, 200)}`);
+      text = text.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+      logger.info({ group: group.name }, `Agent output: ${text.slice(0, 200)}`);
       if (text) {
         await channel.sendMessage(chatJid, text);
         outputSentToUser = true;
@@ -582,6 +600,7 @@ async function runAgent(
 
 async function sendMessage(jid: string, text: string): Promise<void> {
   // GitHub groups don't have a real chat JID - skip sending
+  // (GitHub commenting is handled by the IPC handler which has group context)
   if (jid.startsWith('github-')) {
     logger.debug({ jid }, 'Skipping sendMessage for GitHub group (no chat)');
     return;
@@ -749,19 +768,50 @@ function startIpcWatcher(): void {
               if (data.type === 'message' && data.chatJid && data.text) {
                 // Authorization: verify this group can send to this chatJid
                 const targetGroup = registeredGroups[data.chatJid];
+                const isGitHubSelf =
+                  sourceGroup.startsWith('github-') &&
+                  data.chatJid.startsWith('github-');
                 if (
                   isMain ||
+                  isGitHubSelf ||
                   (targetGroup && targetGroup.folder === sourceGroup)
                 ) {
-                  // For Discord, don't prefix with assistant name
-                  const message = data.chatJid.startsWith('discord:')
-                    ? data.text
-                    : `${ASSISTANT_NAME}: ${data.text}`;
-                  await sendMessage(data.chatJid, message);
-                  logger.info(
-                    { chatJid: data.chatJid, sourceGroup },
-                    'IPC message sent',
-                  );
+                  // GitHub groups: post as a comment on the issue
+                  if (isGitHubSelf) {
+                    const folderMatch = sourceGroup.match(
+                      /^github-(.+?)-(.+?)-issue-(\d+)$/,
+                    );
+                    if (folderMatch) {
+                      const [, owner, repo, issueNum] = folderMatch;
+                      try {
+                        await commentOnIssue(
+                          owner,
+                          repo,
+                          parseInt(issueNum, 10),
+                          data.text,
+                        );
+                        logger.info(
+                          { chatJid: data.chatJid, sourceGroup, issue: issueNum },
+                          'IPC message posted as GitHub comment',
+                        );
+                      } catch (err) {
+                        logger.error(
+                          { chatJid: data.chatJid, sourceGroup, err },
+                          'Failed to post GitHub comment from IPC',
+                        );
+                      }
+                    }
+                  } else {
+                    // For Discord, don't prefix with assistant name
+                    const message = data.chatJid.startsWith('discord:')
+                      ? data.text
+                      : `${ASSISTANT_NAME}: ${data.text}`;
+                    await sendMessage(data.chatJid, message);
+                    logger.info(
+                      { chatJid: data.chatJid, sourceGroup },
+                      'IPC message sent',
+                    );
+                  }
                 } else {
                   logger.warn(
                     { chatJid: data.chatJid, sourceGroup },
@@ -907,6 +957,8 @@ function startIpcWatcher(): void {
       }
 
       // Process progress updates from this group's IPC directory
+      // Progress updates are logged only — the typing indicator already
+      // shows the bot is active. Sending them as messages is noisy.
       const progressDir = path.join(ipcBaseDir, sourceGroup, 'progress');
       try {
         if (fs.existsSync(progressDir)) {
@@ -918,11 +970,9 @@ function startIpcWatcher(): void {
             try {
               const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
               if (data.chatJid && data.status) {
-                // Send progress update
-                await sendMessage(data.chatJid, data.status);
                 logger.debug(
                   { chatJid: data.chatJid, status: data.status },
-                  'Progress update sent',
+                  'Progress update (logged only)',
                 );
               }
               fs.unlinkSync(filePath);
@@ -2047,6 +2097,17 @@ async function main(): Promise<void> {
         // Always process Discord messages - auto-register channels on first use
         queue.enqueueMessageCheck(chatJid);
       },
+    });
+
+    // Register Discord as a Channel so findChannel() recognizes discord: JIDs
+    channels.push({
+      name: 'discord',
+      connect: async () => {},
+      sendMessage: sendDiscordMessage,
+      isConnected: () => true,
+      ownsJid: (jid: string) => jid.startsWith('discord:'),
+      disconnect: async () => {},
+      setTyping: setDiscordTyping,
     });
   }
 

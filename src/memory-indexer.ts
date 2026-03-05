@@ -152,33 +152,59 @@ function chunkText(text: string, maxSize: number, overlap: number): string[] {
 
 // ─── Embedding ───────────────────────────────────────────────────────────────
 
-async function embedTexts(texts: string[]): Promise<Float32Array[]> {
+async function embedTexts(
+  texts: string[],
+  maxRetries = 3,
+): Promise<Float32Array[]> {
   if (texts.length === 0) return [];
 
-  const response = await fetch('https://api.openai.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: EMBEDDING_MODEL,
-      input: texts,
-      encoding_format: 'float',
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: EMBEDDING_MODEL,
+        input: texts,
+        encoding_format: 'float',
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenAI embedding API error ${response.status}: ${body}`);
+    if (response.status === 429 && attempt < maxRetries) {
+      // Parse retry-after hint from error body, fall back to exponential backoff
+      let waitMs = 1000 * 2 ** attempt;
+      try {
+        const body = await response.json() as any;
+        const msg: string = body?.error?.message || '';
+        const match = msg.match(/try again in ([\d.]+)s/i);
+        if (match) waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 200;
+      } catch { /* ignore parse errors */ }
+      logger.warn(
+        { attempt: attempt + 1, waitMs },
+        'Embedding rate limited, retrying',
+      );
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `OpenAI embedding API error ${response.status}: ${body}`,
+      );
+    }
+
+    const json = (await response.json()) as {
+      data: Array<{ embedding: number[] }>;
+    };
+
+    return json.data.map((d) => new Float32Array(d.embedding));
   }
 
-  const json = (await response.json()) as {
-    data: Array<{ embedding: number[] }>;
-  };
-
-  return json.data.map((d) => new Float32Array(d.embedding));
+  throw new Error('Embedding request failed after max retries');
 }
 
 // ─── Indexing ────────────────────────────────────────────────────────────────
@@ -283,11 +309,14 @@ async function indexGroup(
 
   if (allChunks.length === 0) return 0;
 
-  // Embed in batches of 100
-  const BATCH_SIZE = 100;
+  // Embed in small batches with pauses to stay under OpenAI's 1M TPM limit.
+  // 20 chunks × ~850 tokens/chunk ≈ 17K tokens per batch.
+  const BATCH_SIZE = 20;
+  const BATCH_DELAY_MS = 5000;
   const allEmbeddings: Float32Array[] = [];
 
   for (let i = 0; i < allChunks.length; i += BATCH_SIZE) {
+    if (i > 0) await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
     const batch = allChunks.slice(i, i + BATCH_SIZE);
     const embeddings = await embedTexts(batch.map((c) => c.content));
     allEmbeddings.push(...embeddings);

@@ -69,15 +69,13 @@ function buildVolumeMounts(
   const groupDir = resolveGroupFolderPath(group.folder);
 
   if (isMain) {
-    // Main gets the project root read-only. Writable paths the agent needs
-    // (group folder, IPC, .claude/) are mounted separately below.
-    // Read-only prevents the agent from modifying host application code
-    // (src/, dist/, package.json, etc.) which would bypass the sandbox
-    // entirely on next restart.
+    // Main gets the project root read-write so the trusted main agent can
+    // self-modify (edit source, build, deploy). Non-main groups never get
+    // the project mount at all.
     mounts.push({
       hostPath: projectRoot,
       containerPath: '/workspace/project',
-      readonly: true,
+      readonly: false,
     });
 
     // Shadow .env so the agent cannot read secrets from the mounted project root.
@@ -315,6 +313,11 @@ function buildContainerArgs(
 
 // ─── Container Pool ──────────────────────────────────────────────────────────
 
+interface QueuedQuery {
+  input: ContainerInput;
+  resolve: (output: ContainerOutput) => void;
+}
+
 interface PoolEntry {
   process: ChildProcess;
   containerName: string;
@@ -340,6 +343,8 @@ interface PoolEntry {
   pendingResolve: ((output: ContainerOutput) => void) | null;
   pendingTimeout: NodeJS.Timeout | null;
   hardDeadlineTimeout: NodeJS.Timeout | null;
+  /** Queries waiting for the current one to finish */
+  queryQueue: QueuedQuery[];
 }
 
 class ContainerPool {
@@ -409,6 +414,7 @@ class ContainerPool {
       pendingResolve: null,
       pendingTimeout: null,
       hardDeadlineTimeout: null,
+      queryQueue: [],
     };
 
     // Stream stderr for logging/diagnostics
@@ -465,6 +471,9 @@ class ContainerPool {
         entry.hardDeadlineTimeout = null;
       }
 
+      // Reject any queued queries
+      this.drainQueue(entry);
+
       this.pool.delete(key);
     });
 
@@ -488,6 +497,9 @@ class ContainerPool {
         entry.pendingTimeout = null;
         entry.hardDeadlineTimeout = null;
       }
+
+      // Reject any queued queries
+      this.drainQueue(entry);
 
       this.pool.delete(key);
     });
@@ -540,6 +552,35 @@ class ContainerPool {
         error: `Failed to parse container output: ${err instanceof Error ? err.message : String(err)}`,
       });
     }
+
+    // Dispatch next queued query if any
+    this.drainQueue(entry);
+  }
+
+  /**
+   * Dispatch the next queued query to the container, if any.
+   */
+  private drainQueue(entry: PoolEntry): void {
+    if (entry.pendingResolve || entry.queryQueue.length === 0) return;
+    if (entry.exited) {
+      // Container is gone — reject all queued queries
+      for (const q of entry.queryQueue) {
+        q.resolve({
+          status: 'error',
+          result: null,
+          error: `Container exited before query could be dispatched`,
+        });
+      }
+      entry.queryQueue = [];
+      return;
+    }
+
+    const next = entry.queryQueue.shift()!;
+    logger.debug(
+      { group: entry.group.name, remaining: entry.queryQueue.length },
+      'Dispatching queued query',
+    );
+    this.dispatchQuery(entry, next.input, next.resolve);
   }
 
   /**
@@ -583,6 +624,28 @@ class ContainerPool {
         return;
       }
 
+      // If a query is already in flight, queue this one instead of overwriting
+      if (entry.pendingResolve) {
+        logger.debug(
+          { group: entry.group.name, containerName: entry.containerName },
+          'Query already in flight, queueing',
+        );
+        entry.queryQueue.push({ input, resolve });
+        return;
+      }
+
+      this.dispatchQuery(entry, input, resolve);
+    });
+  }
+
+  /**
+   * Actually dispatch a query to the container's stdin.
+   */
+  private dispatchQuery(
+    entry: PoolEntry,
+    input: ContainerInput,
+    resolve: (output: ContainerOutput) => void,
+  ): void {
       // Reset per-query stderr buffer for logging
       entry.stderr = '';
       entry.stderrTruncated = false;
@@ -660,7 +723,6 @@ class ContainerPool {
           entry.hardDeadlineTimeout = null;
         }
       });
-    });
   }
 
   /**

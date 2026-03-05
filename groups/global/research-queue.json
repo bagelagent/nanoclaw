@@ -150,21 +150,6 @@
       ]
     },
     {
-      "id": "rq-1772117825110-mcp-streaming",
-      "topic": "Model Context Protocol (MCP) support for streaming tool parameters - compatibility and implementation",
-      "source": "Follow-up from eager_input_streaming research",
-      "addedBy": "research-agent",
-      "addedAt": "2026-02-26T14:57:05.109237Z",
-      "priority": 6,
-      "status": "pending",
-      "tags": [
-        "mcp",
-        "streaming",
-        "tool-use",
-        "agent-development"
-      ]
-    },
-    {
       "id": "rq-1772162368874-energy-efficient-distillation",
       "topic": "Energy-efficient one-step training: 10-100\u00d7 reduction in distillation energy cost without quality loss?",
       "source": "Research follow-up from real-time diffusion study",
@@ -1508,6 +1493,38 @@
         "temporal-decomposition",
         "multi-scale",
         "texture-synthesis"
+      ]
+    },
+    {
+      "id": "rq-1772660134-mcp-tasks-adoption",
+      "topic": "MCP Tasks primitive adoption: Which servers/SDKs have implemented the experimental async Tasks feature in production?",
+      "source": "Research follow-up from MCP streaming study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-04T21:35:34.798165+00:00",
+      "priority": 4,
+      "status": "pending",
+      "tags": [
+        "mcp",
+        "tasks",
+        "async",
+        "adoption",
+        "production"
+      ]
+    },
+    {
+      "id": "rq-1772660135-a2a-vs-mcp",
+      "topic": "Google A2A vs MCP: How does Google's Agent-to-Agent protocol handle streaming and tool execution compared to MCP?",
+      "source": "Research follow-up from MCP streaming study",
+      "addedBy": "research-agent",
+      "addedAt": "2026-03-04T21:35:34.798170+00:00",
+      "priority": 5,
+      "status": "pending",
+      "tags": [
+        "a2a",
+        "mcp",
+        "streaming",
+        "agent-protocols",
+        "comparison"
       ]
     }
   ],
@@ -3705,11 +3722,36 @@
         "https://arxiv.org/html/2505.12053v2",
         "https://arxiv.org/html/2503.13956v1"
       ]
+    },
+    {
+      "id": "rq-1772117825110-mcp-streaming",
+      "topic": "Model Context Protocol (MCP) support for streaming tool parameters - compatibility and implementation",
+      "source": "Follow-up from eager_input_streaming research",
+      "addedBy": "research-agent",
+      "addedAt": "2026-02-26T14:57:05.109237Z",
+      "priority": 6,
+      "status": "completed",
+      "tags": [
+        "mcp",
+        "streaming",
+        "tool-use",
+        "agent-development"
+      ],
+      "completedAt": "2026-03-04T21:35:34.798131+00:00",
+      "summary": "MCP's transport layer supports streaming via Streamable HTTP (replacing SSE), but tool results still cannot be streamed incrementally\u2014they must return atomic JSON payloads. The Nov 2025 spec's experimental Tasks primitive enables async fire-and-forget tool execution with polling, partially addressing long-running operations.",
+      "sources": [
+        "https://modelcontextprotocol.io/specification/2025-11-25",
+        "https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/tasks",
+        "https://blog.modelcontextprotocol.io/posts/2025-11-25-first-mcp-anniversary/",
+        "https://github.com/modelcontextprotocol/modelcontextprotocol/issues/117",
+        "https://github.com/modelcontextprotocol/modelcontextprotocol/pull/383",
+        "https://workos.com/blog/mcp-2025-11-25-spec-update"
+      ]
     }
   ],
   "metadata": {
-    "lastUpdated": "2026-03-03T06:13:12.371930+00:00",
-    "totalResearched": 78,
+    "lastUpdated": "2026-03-04T21:35:34.798178+00:00",
+    "totalResearched": 79,
     "version": "1.0",
     "totalCompleted": 78,
     "totalPending": 105,
