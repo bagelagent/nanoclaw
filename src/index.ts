@@ -951,16 +951,18 @@ function startIpcWatcher(): void {
 
                   const audioBuffer = fs.readFileSync(hostPath);
                   const ext = path.extname(hostPath).toLowerCase();
-                  const mimetype = ext === '.ogg'
-                    ? 'audio/ogg; codecs=opus'
-                    : ext === '.mp3'
-                      ? 'audio/mpeg'
-                      : ext === '.wav'
-                        ? 'audio/wav'
-                        : 'audio/mpeg';
+                  const mimetype =
+                    ext === '.ogg'
+                      ? 'audio/ogg; codecs=opus'
+                      : ext === '.mp3'
+                        ? 'audio/mpeg'
+                        : ext === '.wav'
+                          ? 'audio/wav'
+                          : 'audio/mpeg';
 
                   if (data.chatJid.startsWith('discord:')) {
-                    const { sendDiscordVoiceMessage, sendDiscordImage } = await import('./discord.js');
+                    const { sendDiscordVoiceMessage, sendDiscordImage } =
+                      await import('./discord.js');
                     if (data.asVoice) {
                       await sendDiscordVoiceMessage(data.chatJid, audioBuffer);
                     } else {
@@ -992,7 +994,12 @@ function startIpcWatcher(): void {
                   }
 
                   logger.info(
-                    { chatJid: data.chatJid, sourceGroup, file: path.basename(hostPath), asVoice: data.asVoice },
+                    {
+                      chatJid: data.chatJid,
+                      sourceGroup,
+                      file: path.basename(hostPath),
+                      asVoice: data.asVoice,
+                    },
                     'IPC audio file sent',
                   );
                 } else {

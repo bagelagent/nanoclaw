@@ -684,7 +684,9 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
   // Closed/merged PR: can't reopen, so nudge the user to create an issue instead
   if (issue.state === 'closed' && issue.pull_request) {
     // Find linked issue number from PR body
-    const linkedMatch = issue.body?.match(/(?:fixes|closes|resolves)\s+#(\d+)/i);
+    const linkedMatch = issue.body?.match(
+      /(?:fixes|closes|resolves)\s+#(\d+)/i,
+    );
     const linkedRef = linkedMatch ? ` or reopen #${linkedMatch[1]}` : '';
     try {
       await commentOnIssue(
@@ -694,7 +696,10 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
         `This PR is already merged — I can't reopen it. If you'd like me to work on something, please open a new issue${linkedRef} and assign me.`,
       );
     } catch (err) {
-      logger.warn({ err, issue: issue.number }, 'Failed to comment on closed PR');
+      logger.warn(
+        { err, issue: issue.number },
+        'Failed to comment on closed PR',
+      );
     }
     return;
   }

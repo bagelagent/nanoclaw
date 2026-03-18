@@ -258,8 +258,12 @@ function buildVolumeMounts(
   // Mount code-review plugin (read-only) so container agents can invoke it
   const codeReviewPlugin = path.join(
     os.homedir(),
-    '.claude', 'plugins', 'marketplaces', 'claude-plugins-official',
-    'plugins', 'code-review',
+    '.claude',
+    'plugins',
+    'marketplaces',
+    'claude-plugins-official',
+    'plugins',
+    'code-review',
   );
   if (fs.existsSync(codeReviewPlugin)) {
     mounts.push({
