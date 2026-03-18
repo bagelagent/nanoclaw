@@ -11,6 +11,7 @@ import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
 import { search as memorySearch } from './memory-search.js';
 import { createGitHubMcpTools } from './github-mcp.js';
+import { generateTts, generateSoundEffect, generateMusic } from './elevenlabs.js';
 
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
@@ -690,6 +691,115 @@ Returns the most relevant chunks from your memory files, ranked by relevance.`,
               isError: true
             };
           }
+        }
+      ),
+
+      // ─── ElevenLabs audio tools ──────────────────────────────────────────
+      tool(
+        'elevenlabs_tts',
+        'Generate speech audio from text using ElevenLabs TTS. Returns a file path. Use send_audio to deliver it.',
+        {
+          text: z.string().describe('The text to convert to speech'),
+          voice_id: z.string().optional().describe('ElevenLabs voice ID (default: Rachel). Common voices: JBFqnCBsd6RMkjVDRZzb (Rachel), 21m00Tcm4TlvDq8ikWAM (Adam), EXAVITQu4vr4xnSDxMaL (Bella)'),
+          model_id: z.string().optional().describe('Model ID (default: eleven_multilingual_v2)')
+        },
+        async (args: { text: string; voice_id?: string; model_id?: string }) => {
+          try {
+            const outputDir = '/workspace/group';
+            const filePath = await generateTts(args.text, args.voice_id, args.model_id, outputDir);
+            return {
+              content: [{ type: 'text', text: `Speech generated: ${filePath}\n\nUse send_audio with audio_path="${filePath}" to send it (set as_voice=true for push-to-talk style).` }]
+            };
+          } catch (err) {
+            return {
+              content: [{ type: 'text', text: `ElevenLabs TTS error: ${err instanceof Error ? err.message : String(err)}` }],
+              isError: true
+            };
+          }
+        }
+      ),
+
+      tool(
+        'elevenlabs_sound_effect',
+        'Generate a sound effect from a text description using ElevenLabs. Returns a file path.',
+        {
+          prompt: z.string().describe('Description of the sound effect (e.g., "thunderstorm with heavy rain", "cat purring")'),
+          duration_seconds: z.number().min(0.5).max(30).optional().describe('Duration in seconds (0.5-30). Omit for auto duration.')
+        },
+        async (args: { prompt: string; duration_seconds?: number }) => {
+          try {
+            const outputDir = '/workspace/group';
+            const filePath = await generateSoundEffect(args.prompt, args.duration_seconds, outputDir);
+            return {
+              content: [{ type: 'text', text: `Sound effect generated: ${filePath}\n\nUse send_audio with audio_path="${filePath}" to send it.` }]
+            };
+          } catch (err) {
+            return {
+              content: [{ type: 'text', text: `ElevenLabs sound effect error: ${err instanceof Error ? err.message : String(err)}` }],
+              isError: true
+            };
+          }
+        }
+      ),
+
+      tool(
+        'elevenlabs_music',
+        'Generate music from a text prompt using ElevenLabs. Returns a file path.',
+        {
+          prompt: z.string().describe('Description of the music (e.g., "chill lo-fi beats with soft piano", "epic orchestral battle music")'),
+          duration_seconds: z.number().min(3).max(300).optional().describe('Duration in seconds (3-300). Omit for default.'),
+          instrumental: z.boolean().optional().describe('Force instrumental only (no vocals). Default: false.')
+        },
+        async (args: { prompt: string; duration_seconds?: number; instrumental?: boolean }) => {
+          try {
+            const outputDir = '/workspace/group';
+            const durationMs = args.duration_seconds ? args.duration_seconds * 1000 : undefined;
+            const filePath = await generateMusic(args.prompt, durationMs, args.instrumental, outputDir);
+            return {
+              content: [{ type: 'text', text: `Music generated: ${filePath}\n\nUse send_audio with audio_path="${filePath}" to send it.` }]
+            };
+          } catch (err) {
+            return {
+              content: [{ type: 'text', text: `ElevenLabs music error: ${err instanceof Error ? err.message : String(err)}` }],
+              isError: true
+            };
+          }
+        }
+      ),
+
+      tool(
+        'send_audio',
+        'Send an audio file to the user or group. The file must be under /workspace/group/ or /workspace/project/.',
+        {
+          audio_path: z.string().describe('Absolute path to the audio file (must be under /workspace/group/ or /workspace/project/)'),
+          caption: z.string().optional().describe('Optional caption to send with the audio'),
+          as_voice: z.boolean().default(false).describe('If true, send as a push-to-talk voice message (WhatsApp PTT). If false, send as an audio file attachment.')
+        },
+        async (args: { audio_path: string; caption?: string; as_voice?: boolean }) => {
+          const resolved = path.resolve(args.audio_path);
+          const allowedPrefixes = ['/workspace/group/', '/workspace/project/'];
+          if (!allowedPrefixes.some(prefix => resolved.startsWith(prefix))) {
+            return {
+              content: [{ type: 'text', text: 'Error: audio_path must be under /workspace/group/ or /workspace/project/' }],
+              isError: true
+            };
+          }
+
+          const data = {
+            type: 'audio_file',
+            chatJid,
+            audioPath: args.audio_path,
+            caption: args.caption,
+            asVoice: args.as_voice || false,
+            groupFolder,
+            timestamp: new Date().toISOString()
+          };
+
+          writeIpcFile(MESSAGES_DIR, data);
+
+          return {
+            content: [{ type: 'text', text: 'Audio queued for delivery.' }]
+          };
         }
       ),
 

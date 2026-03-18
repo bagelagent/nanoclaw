@@ -237,6 +237,19 @@ Container builds are the foundation of the deployment system. If they don't work
 - Can browse menus, add to cart, and place orders via browser automation
 - Always confirm order details and total before placing
 
+*Media Server (Plex/Overseerr)*
+- Plex server with Radarr (movies) and Sonarr (TV) for media management
+- Overseerr for download requests: https://overseerr-dkador.manitoba.usbx.me
+- Credentials in `/workspace/group/.env` as OVERSEERR_URL and OVERSEERR_API_KEY
+- Helper script: `/workspace/group/scripts/overseerr.sh`
+- Natural language media requests:
+  - "Download [movie name]" → search Overseerr, confirm match, submit request
+  - "Get [show name] season X" → search, request specific seasons
+  - "Is [title] on my server?" → search and check availability status
+- API status codes: 1=unknown, 2=pending, 3=processing, 4=partially available, 5=available
+- Always confirm with user before submitting a request
+- Search returns TMDB IDs which are used for requests
+
 *Projects*
 - Takeover Game: https://github.com/dkador/takeover-game
   - Live at: https://dkador.github.io/takeover-game/

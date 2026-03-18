@@ -785,8 +785,8 @@ function startIpcWatcher(): void {
                   (targetGroup && targetGroup.folder === sourceGroup)
                 ) {
                   // GitHub groups: skip send_message IPC — the agent has
-                // github_comment for posting to issues. Converting send_message
-                // to comments caused double-commenting.
+                  // github_comment for posting to issues. Converting send_message
+                  // to comments caused double-commenting.
                   if (isGitHubSelf) {
                     logger.debug(
                       {
@@ -925,6 +925,80 @@ function startIpcWatcher(): void {
                   logger.warn(
                     { chatJid: data.chatJid, sourceGroup },
                     'Unauthorized IPC image attempt blocked',
+                  );
+                }
+              } else if (data.type === 'audio_file' && data.chatJid) {
+                // Handle audio file message
+                const targetGroup = registeredGroups[data.chatJid];
+                if (
+                  isMain ||
+                  (targetGroup && targetGroup.folder === sourceGroup)
+                ) {
+                  // Translate container path to host path
+                  let hostPath = data.audioPath;
+                  if (hostPath.startsWith('/workspace/project/')) {
+                    hostPath = path.join(
+                      process.cwd(),
+                      hostPath.slice('/workspace/project/'.length),
+                    );
+                  } else if (hostPath.startsWith('/workspace/group/')) {
+                    hostPath = path.join(
+                      GROUPS_DIR,
+                      sourceGroup,
+                      hostPath.slice('/workspace/group/'.length),
+                    );
+                  }
+
+                  const audioBuffer = fs.readFileSync(hostPath);
+                  const ext = path.extname(hostPath).toLowerCase();
+                  const mimetype = ext === '.ogg'
+                    ? 'audio/ogg; codecs=opus'
+                    : ext === '.mp3'
+                      ? 'audio/mpeg'
+                      : ext === '.wav'
+                        ? 'audio/wav'
+                        : 'audio/mpeg';
+
+                  if (data.chatJid.startsWith('discord:')) {
+                    const { sendDiscordVoiceMessage, sendDiscordImage } = await import('./discord.js');
+                    if (data.asVoice) {
+                      await sendDiscordVoiceMessage(data.chatJid, audioBuffer);
+                    } else {
+                      // Send as file attachment (reuse image sender with audio file)
+                      const filename = path.basename(hostPath);
+                      await sendDiscordImage(
+                        data.chatJid,
+                        audioBuffer,
+                        filename,
+                        data.caption,
+                      );
+                    }
+                  } else {
+                    // WhatsApp
+                    if (data.asVoice) {
+                      await sock.sendMessage(data.chatJid, {
+                        audio: audioBuffer,
+                        mimetype: 'audio/ogg; codecs=opus',
+                        ptt: true,
+                      });
+                    } else {
+                      await sock.sendMessage(data.chatJid, {
+                        audio: audioBuffer,
+                        mimetype,
+                        ptt: false,
+                        ...(data.caption ? { caption: data.caption } : {}),
+                      });
+                    }
+                  }
+
+                  logger.info(
+                    { chatJid: data.chatJid, sourceGroup, file: path.basename(hostPath), asVoice: data.asVoice },
+                    'IPC audio file sent',
+                  );
+                } else {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'Unauthorized IPC audio attempt blocked',
                   );
                 }
               }

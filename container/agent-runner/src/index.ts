@@ -26,35 +26,9 @@ interface ContainerInput {
   assistantName?: string;
 }
 
-interface AgentResponse {
-  outputType: 'message' | 'log';
-  userMessage?: string;
-  internalLog?: string;
-}
-
-const AGENT_RESPONSE_SCHEMA = {
-  type: 'object',
-  properties: {
-    outputType: {
-      type: 'string',
-      enum: ['message', 'log'],
-      description: '"message": the userMessage field contains a message to send to the user or group. "log": the output will not be sent to the user or group.',
-    },
-    userMessage: {
-      type: 'string',
-      description: 'A message to send to the user or group. Include when outputType is "message".',
-    },
-    internalLog: {
-      type: 'string',
-      description: 'Information that will be logged internally but not sent to the user or group.',
-    },
-  },
-  required: ['outputType'],
-} as const;
-
 interface ContainerOutput {
   status: 'success' | 'error';
-  result: AgentResponse | null;
+  result: string | null;
   newSessionId?: string;
   error?: string;
 }
@@ -323,7 +297,7 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
   }
 
   async function runAgent(sessionId: string | undefined): Promise<ContainerOutput> {
-    let agentResult: AgentResponse | null = null;
+    let textResult: string | null = null;
     let agentSessionId: string | undefined;
 
     emitProgress('🤔 Thinking...');
@@ -351,6 +325,9 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
         permissionMode: 'bypassPermissions',
         allowDangerouslySkipPermissions: true,
         settingSources: ['project', 'user'],
+        plugins: fs.existsSync('/app/plugins/code-review')
+          ? [{ type: 'local' as const, path: '/app/plugins/code-review' }]
+          : [],
         mcpServers: {
           nanoclaw: ipcMcp
         },
@@ -358,10 +335,6 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
           PreCompact: [{ hooks: [createPreCompactHook(input.assistantName)] }],
           PreToolUse: [{ matcher: 'Bash', hooks: [createSanitizeBashHook()] }],
         },
-        outputFormat: {
-          type: 'json_schema',
-          schema: AGENT_RESPONSE_SCHEMA,
-        }
       }
     })) {
       // Log ALL message types to diagnose progress streaming
@@ -436,26 +409,15 @@ async function processQuery(input: ContainerInput): Promise<ContainerOutput> {
       }
 
       if (message.type === 'result') {
-        if (message.subtype === 'success' && message.structured_output) {
-          agentResult = message.structured_output as AgentResponse;
-          if (agentResult.outputType === 'message' && !agentResult.userMessage) {
-            log('Warning: outputType is "message" but userMessage is missing, treating as "log"');
-            agentResult = { outputType: 'log', internalLog: agentResult.internalLog };
-          }
-          log(`Agent result: outputType=${agentResult.outputType}${agentResult.internalLog ? `, log=${agentResult.internalLog}` : ''}`);
-        } else if (message.subtype === 'success' || message.subtype === 'error_max_structured_output_retries') {
-          log(`Structured output unavailable (subtype=${message.subtype}), falling back to text`);
-          const textResult = 'result' in message ? (message as { result?: string }).result : null;
-          if (textResult) {
-            agentResult = { outputType: 'message', userMessage: textResult };
-          }
-        }
+        const result = 'result' in message ? (message as { result?: string }).result : null;
+        log(`Result: subtype=${message.subtype}${result ? ` text=${result.slice(0, 200)}` : ''}`);
+        textResult = result || null;
       }
     }
 
     return {
       status: 'success',
-      result: agentResult ?? { outputType: 'log' },
+      result: textResult,
       newSessionId: agentSessionId
     };
   }

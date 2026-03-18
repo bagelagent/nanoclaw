@@ -20,6 +20,7 @@ import {
   reactToComment,
   deleteReaction,
   reopenIssue,
+  commentOnIssue,
 } from './github-api.js';
 import { runContainerAgent, restartContainer } from './container-runner.js';
 import { DATA_DIR, GROUPS_DIR } from './config.js';
@@ -679,6 +680,25 @@ async function handleIssueCommentWebhook(payload: GitHubCommentWebhookPayload) {
 
   // Check if bot is assigned to this issue
   const isAssignedToBot = issue.assignees.some((a) => a.login === botUsername);
+
+  // Closed/merged PR: can't reopen, so nudge the user to create an issue instead
+  if (issue.state === 'closed' && issue.pull_request) {
+    // Find linked issue number from PR body
+    const linkedMatch = issue.body?.match(/(?:fixes|closes|resolves)\s+#(\d+)/i);
+    const linkedRef = linkedMatch ? ` or reopen #${linkedMatch[1]}` : '';
+    try {
+      await commentOnIssue(
+        repository.owner.login,
+        repository.name,
+        issue.number,
+        `This PR is already merged — I can't reopen it. If you'd like me to work on something, please open a new issue${linkedRef} and assign me.`,
+      );
+    } catch (err) {
+      logger.warn({ err, issue: issue.number }, 'Failed to comment on closed PR');
+    }
+    return;
+  }
+
   if (!isAssignedToBot) {
     logger.debug({ issue: issue.number }, 'Bot not assigned to this issue');
     return;

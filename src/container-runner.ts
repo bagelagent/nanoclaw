@@ -4,6 +4,7 @@
  */
 import { ChildProcess, exec, spawn } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import {
@@ -199,6 +200,7 @@ function buildVolumeMounts(
       'CLAUDE_CODE_OAUTH_TOKEN',
       'ANTHROPIC_API_KEY',
       'OPENAI_API_KEY',
+      'ELEVENLABS_API_KEY',
     ];
     const filteredLines = envContent.split('\n').filter((line) => {
       const trimmed = line.trim();
@@ -249,6 +251,20 @@ function buildVolumeMounts(
     mounts.push({
       hostPath: embeddingsDbPath,
       containerPath: '/workspace/embeddings.db',
+      readonly: true,
+    });
+  }
+
+  // Mount code-review plugin (read-only) so container agents can invoke it
+  const codeReviewPlugin = path.join(
+    os.homedir(),
+    '.claude', 'plugins', 'marketplaces', 'claude-plugins-official',
+    'plugins', 'code-review',
+  );
+  if (fs.existsSync(codeReviewPlugin)) {
+    mounts.push({
+      hostPath: codeReviewPlugin,
+      containerPath: '/app/plugins/code-review',
       readonly: true,
     });
   }
