@@ -69,7 +69,7 @@ The project uses Docker by default (cross-platform). For macOS users who prefer 
 A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 
 **Core components:**
-- **Claude Agent SDK** as the core agent
+- **Claude Code CLI** as the core agent (running in tmux inside containers)
 - **Containers** for isolated agent execution (Linux VMs)
 - **WhatsApp** as the primary I/O channel
 - **Persistent memory** per conversation and globally
@@ -78,7 +78,7 @@ A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 - **Browser automation** via agent-browser
 
 **Implementation approach:**
-- Use existing tools (WhatsApp connector, Claude Agent SDK, MCP servers)
+- Use existing tools (WhatsApp connector, Claude Code CLI, MCP servers)
 - Minimal glue code
 - File-based systems where possible (CLAUDE.md for memory, folders for groups)
 
@@ -99,12 +99,12 @@ A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 - Agent runs in the group's folder, automatically inherits both CLAUDE.md files
 
 ### Session Management
-- Each group maintains a conversation session (via Claude Agent SDK)
+- Each group maintains a conversation session (via Claude Code CLI)
 - Sessions auto-compact when context gets too long, preserving critical information
 
 ### Container Isolation
 - All agents run inside containers (lightweight Linux VMs)
-- Each agent invocation spawns a container with mounted directories
+- Each group gets a persistent container with mounted directories (reused across queries)
 - Containers provide filesystem isolation - agents can only see mounted paths
 - Bash access is safe because commands run inside the container, not on the host
 - Browser automation via agent-browser with Chromium in the container
@@ -142,16 +142,16 @@ A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 - QR code authentication during setup
 
 ### Scheduler
-- Built-in scheduler runs on the host, spawns containers for task execution
+- Built-in scheduler runs on the host, executes tasks in existing group containers (headless `claude -p`)
 - Custom `nanoclaw` MCP server (inside container) provides scheduling tools
 - Tools: `schedule_task`, `list_tasks`, `pause_task`, `resume_task`, `cancel_task`, `send_message`
 - Tasks stored in SQLite with run history
 - Scheduler loop checks for due tasks every minute
-- Tasks execute Claude Agent SDK in containerized group context
+- Tasks execute Claude Code CLI (headless `claude -p`) in containerized group context
 
 ### Web Access
 - Built-in WebSearch and WebFetch tools
-- Standard Claude Agent SDK capabilities
+- Standard Claude Code CLI capabilities
 
 ### Browser Automation
 - agent-browser CLI with Chromium in container
@@ -175,7 +175,7 @@ A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 - `/update` - Pull upstream changes, merge with customizations, run migrations
 
 ### Deployment
-- Runs on local Mac via launchd
+- Runs as a background service: launchd on macOS, systemd on Linux
 - Single Node.js process handles everything
 
 ---

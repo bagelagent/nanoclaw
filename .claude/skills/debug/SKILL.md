@@ -10,12 +10,12 @@ This guide covers debugging the containerized agent execution system.
 ## Architecture Overview
 
 ```
-Host (macOS)                          Container (Linux VM)
+Host (macOS/Linux)                    Container (Docker)
 ─────────────────────────────────────────────────────────────
-src/container-runner.ts               container/agent-runner/
+src/container-runner.ts               Claude Code CLI (tmux)
     │                                      │
-    │ spawns container                      │ runs Claude Agent SDK
-    │ with volume mounts                   │ with MCP servers
+    │ persistent container                  │ runs Claude Code CLI
+    │ with volume mounts                   │ with MCP servers (stdio)
     │                                      │
     ├── data/env/env ──────────────> /workspace/env-dir/env
     ├── groups/{folder} ───────────> /workspace/group
@@ -207,25 +207,16 @@ docker run --rm --entrypoint /bin/bash \
 docker run --rm -it --entrypoint /bin/bash nanoclaw-agent:latest
 ```
 
-## SDK Options Reference
+## Container Communication Reference
 
-The agent-runner uses these Claude Agent SDK options:
+The host communicates with Claude Code CLI via tmux inside persistent Docker containers:
 
-```typescript
-query({
-  prompt: input.prompt,
-  options: {
-    cwd: '/workspace/group',
-    allowedTools: ['Bash', 'Read', 'Write', ...],
-    permissionMode: 'bypassPermissions',
-    allowDangerouslySkipPermissions: true,  // Required with bypassPermissions
-    settingSources: ['project'],
-    mcpServers: { ... }
-  }
-})
-```
+- **Prompts**: Base64-encoded, written to a file in the container, then pasted via `tmux load-buffer` + `tmux paste-buffer`
+- **Idle detection**: Two consecutive `tmux capture-pane` snapshots match and show idle state (no "Esc to interrupt")
+- **Context**: Per-query context written to `/workspace/ipc/context.json` before each prompt
+- **MCP tools**: Stdio-based MCP server (`ipc-mcp-stdio.ts`) provides scheduler/IPC tools — Claude Code connects to it via container's `settings.json`
 
-**Important:** `allowDangerouslySkipPermissions: true` is required when using `permissionMode: 'bypassPermissions'`. Without it, Claude Code exits with code 1.
+Claude Code runs with `--dangerously-skip-permissions` inside the container (safe because the container itself is the sandbox).
 
 ## Rebuilding After Changes
 

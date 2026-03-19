@@ -15,17 +15,21 @@ Both timers fire at the same time, so containers always exit via hard SIGKILL (c
 
 ```bash
 # 1. Is the service running?
+# macOS:
 launchctl list | grep nanoclaw
 # Expected: PID  0  com.nanoclaw (PID = running, "-" = not running, non-zero exit = crashed)
+# Linux:
+sudo systemctl status nanoclaw
 
 # 2. Any running containers?
-container ls --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
+docker ps --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
 
 # 3. Any stopped/orphaned containers?
-container ls -a --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
+docker ps -a --format '{{.Names}} {{.Status}}' 2>/dev/null | grep nanoclaw
 
 # 4. Recent errors in service log?
 grep -E 'ERROR|WARN' logs/nanoclaw.log | tail -20
+# Or on Linux: journalctl -u nanoclaw --no-pager | grep -E 'ERROR|WARN' | tail -20
 
 # 5. Is WhatsApp connected? (look for last connection event)
 grep -E 'Connected to WhatsApp|Connection closed|connection.*close' logs/nanoclaw.log | tail -5
@@ -107,7 +111,7 @@ sqlite3 store/messages.db "SELECT name, container_config FROM registered_groups;
 
 # Test-run a container to check mounts (dry run)
 # Replace <group-folder> with the group's folder name
-container run -i --rm --entrypoint ls nanoclaw-agent:latest /workspace/extra/
+docker run -i --rm --entrypoint ls nanoclaw-agent:latest /workspace/extra/
 ```
 
 ## WhatsApp Auth Issues
@@ -125,6 +129,7 @@ npm run auth
 
 ## Service Management
 
+### macOS (launchd)
 ```bash
 # Restart the service
 launchctl kickstart -k gui/$(id -u)/com.nanoclaw
@@ -140,4 +145,22 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nanoclaw.plist
 
 # Rebuild after code changes
 npm run build && launchctl kickstart -k gui/$(id -u)/com.nanoclaw
+```
+
+### Linux (systemd — system-level service)
+```bash
+# Restart the service
+sudo systemctl restart nanoclaw
+
+# View live logs
+journalctl -u nanoclaw -f
+
+# Stop the service
+sudo systemctl stop nanoclaw
+
+# Start the service
+sudo systemctl start nanoclaw
+
+# Rebuild after code changes
+npm run build && sudo systemctl restart nanoclaw
 ```

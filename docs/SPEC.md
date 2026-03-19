@@ -44,14 +44,15 @@ A personal Claude assistant with multi-channel support, persistent memory per co
 │  └────────┬─────────┘    └────────┬─────────┘    └───────────────┘   │
 │           │                       │                                   │
 │           └───────────┬───────────┘                                   │
-│                       │ spawns container                              │
+│                       │ persistent container                          │
 │                       ▼                                               │
 ├──────────────────────────────────────────────────────────────────────┤
 │                     CONTAINER (Linux VM)                               │
 ├──────────────────────────────────────────────────────────────────────┤
 │  ┌──────────────────────────────────────────────────────────────┐    │
-│  │                    AGENT RUNNER                               │    │
+│  │                 CLAUDE CODE CLI (tmux)                        │    │
 │  │                                                                │    │
+│  │  Claude Code CLI running in tmux session                       │    │
 │  │  Working directory: /workspace/group (mounted from host)       │    │
 │  │  Volume mounts:                                                │    │
 │  │    • groups/{name}/ → /workspace/group                         │    │
@@ -78,7 +79,7 @@ A personal Claude assistant with multi-channel support, persistent memory per co
 | Channel System | Channel registry (`src/channels/registry.ts`) | Channels self-register at startup |
 | Message Storage | SQLite (better-sqlite3) | Store messages for polling |
 | Container Runtime | Containers (Linux VMs) | Isolated environments for agent execution |
-| Agent | @anthropic-ai/claude-agent-sdk (0.2.29) | Run Claude with tools and MCP servers |
+| Agent | Claude Code CLI (via tmux in containers) | Run Claude with tools and MCP servers |
 | Browser Automation | agent-browser + Chromium | Web interaction and screenshots |
 | Runtime | Node.js 20+ | Host process for routing and scheduling |
 
@@ -331,7 +332,7 @@ Configuration constants are in `src/config.ts`:
 ```typescript
 import path from 'path';
 
-export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Andy';
+export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Bagel';
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 
@@ -343,7 +344,7 @@ export const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
 
 // Container configuration
 export const CONTAINER_IMAGE = process.env.CONTAINER_IMAGE || 'nanoclaw-agent:latest';
-export const CONTAINER_TIMEOUT = parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10); // 30min default
+export const CONTAINER_TIMEOUT = parseInt(process.env.CONTAINER_TIMEOUT || '600000', 10); // 10min default
 export const IPC_POLL_INTERVAL = 1000;
 export const IDLE_TIMEOUT = parseInt(process.env.IDLE_TIMEOUT || '1800000', 10); // 30min — keep container alive after last result
 export const MAX_CONCURRENT_CONTAINERS = Math.max(1, parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5);
@@ -397,7 +398,7 @@ The token can be extracted from `~/.claude/.credentials.json` if you're logged i
 ANTHROPIC_API_KEY=sk-ant-api03-...
 ```
 
-Only the authentication variables (`CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY`) are extracted from `.env` and written to `data/env/env`, then mounted into the container at `/workspace/env-dir/env` and sourced by the entrypoint script. This ensures other environment variables in `.env` are not exposed to the agent. This workaround is needed because some container runtimes lose `-e` environment variables when using `-i` (interactive mode with piped stdin).
+Only specific allowed variables (`CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`) are extracted from `.env` and written to `data/env/env`, then mounted into the container at `/workspace/env-dir/env` and sourced by the entrypoint script. This ensures other environment variables in `.env` (like `DISCORD_BOT_TOKEN`, `GITHUB_TOKEN`, etc.) are not exposed to the agent.
 
 ### Changing the Assistant Name
 
@@ -436,7 +437,7 @@ NanoClaw uses a hierarchical memory system based on CLAUDE.md files.
 
 1. **Agent Context Loading**
    - Agent runs with `cwd` set to `groups/{group-name}/`
-   - Claude Agent SDK with `settingSources: ['project']` automatically loads:
+   - Claude Code CLI automatically loads CLAUDE.md files from the project hierarchy:
      - `../CLAUDE.md` (parent directory = global memory)
      - `./CLAUDE.md` (current directory = group memory)
 
@@ -460,9 +461,9 @@ Sessions enable conversation continuity - Claude remembers what you talked about
 ### How Sessions Work
 
 1. Each group has a session ID stored in SQLite (`sessions` table, keyed by `group_folder`)
-2. Session ID is passed to Claude Agent SDK's `resume` option
-3. Claude continues the conversation with full context
-4. Session transcripts are stored as JSONL files in `data/sessions/{group}/.claude/`
+2. Session data is stored in `data/sessions/{group}/.claude/`, mounted into the container
+3. Claude Code CLI resumes the conversation with full context using the persisted session
+4. Session transcripts are stored as JSONL files in the `.claude/` directory
 
 ---
 
@@ -494,11 +495,11 @@ Sessions enable conversation continuity - Claude remembers what you talked about
    └── Build prompt with full conversation context
    │
    ▼
-7. Router invokes Claude Agent SDK:
-   ├── cwd: groups/{group-name}/
-   ├── prompt: conversation history + current message
-   ├── resume: session_id (for continuity)
-   └── mcpServers: nanoclaw (scheduler)
+7. Container runner sends prompt to Claude Code CLI via tmux:
+   ├── cwd: /workspace/group (mounted from groups/{group-name}/)
+   ├── prompt: conversation history + current message (pasted via tmux)
+   ├── context: written to /workspace/ipc/context.json
+   └── MCP: nanoclaw tools via stdio MCP server
    │
    ▼
 8. Claude processes message:
@@ -514,7 +515,7 @@ Sessions enable conversation continuity - Claude remembers what you talked about
 
 ### Trigger Word Matching
 
-Messages must start with the trigger pattern (default: `@Andy`):
+Messages must start with the trigger pattern (default: `@Bagel`, configurable via `ASSISTANT_NAME`):
 - `@Andy what's the weather?` → ✅ Triggers Claude
 - `@andy help me` → ✅ Triggers (case insensitive)
 - `Hey @Andy` → ❌ Ignored (trigger not at start)
@@ -636,7 +637,7 @@ The `nanoclaw` MCP server is created dynamically per agent call with the current
 
 ## Deployment
 
-NanoClaw runs as a single macOS launchd service.
+NanoClaw runs as a background service — launchd on macOS, systemd on Linux.
 
 ### Startup Sequence
 
@@ -690,7 +691,7 @@ When NanoClaw starts, it:
 </plist>
 ```
 
-### Managing the Service
+### Managing the Service (macOS)
 
 ```bash
 # Install service
@@ -709,6 +710,23 @@ launchctl list | grep nanoclaw
 tail -f logs/nanoclaw.log
 ```
 
+### Managing the Service (Linux)
+
+On Linux, NanoClaw runs as a **system-level** systemd service (not a user service):
+
+```bash
+# Start/stop/restart
+sudo systemctl start nanoclaw
+sudo systemctl stop nanoclaw
+sudo systemctl restart nanoclaw
+
+# Check status
+sudo systemctl status nanoclaw
+
+# View logs
+journalctl -u nanoclaw -f
+```
+
 ---
 
 ## Security Considerations
@@ -717,7 +735,7 @@ tail -f logs/nanoclaw.log
 
 All agents run inside containers (lightweight Linux VMs), providing:
 - **Filesystem isolation**: Agents can only access mounted directories
-- **Safe Bash access**: Commands run inside the container, not on your Mac
+- **Safe Bash access**: Commands run inside the container, not on the host
 - **Network isolation**: Can be configured per-container if needed
 - **Process isolation**: Container processes can't affect the host
 - **Non-root user**: Container runs as unprivileged `node` user (uid 1000)

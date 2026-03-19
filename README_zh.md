@@ -48,7 +48,7 @@ claude
 
 **技能（Skills）优于功能（Features）:** 贡献者不应该向代码库添加新功能（例如支持 Telegram）。相反，他们应该贡献像 `/add-telegram` 这样的 [Claude Code 技能](https://code.claude.com/docs/en/skills)，这些技能可以改造您的 fork。最终，您得到的是只做您需要事情的整洁代码。
 
-**最好的工具套件，最好的模型:** 本项目运行在 Claude Agent SDK 之上，这意味着您直接运行的就是 Claude Code。Claude Code 高度强大，其编码和问题解决能力使其能够修改和扩展 NanoClaw，为每个用户量身定制。
+**最好的工具套件，最好的模型:** 本项目在容器中运行 Claude Code CLI，这意味着您的代理拥有 Claude Code 的全部功能。Claude Code 高度强大，其编码和问题解决能力使其能够修改和扩展 NanoClaw，为每个用户量身定制。
 
 ## 功能支持
 
@@ -107,7 +107,7 @@ claude
 - `/add-signal` - 添加 Signal 作为渠道
 
 **会话管理**
-- `/clear` - 添加一个 `/clear` 命令，用于压缩会话（在同一会话中总结上下文，同时保留关键信息）。这需要研究如何通过 Claude Agent SDK 以编程方式触发压缩。
+- `/clear` - 添加一个 `/clear` 命令，用于压缩会话（在同一会话中总结上下文，同时保留关键信息）。这需要研究如何通过 Claude Code CLI 以编程方式触发压缩。
 
 ## 系统要求
 
@@ -119,7 +119,7 @@ claude
 ## 架构
 
 ```
-渠道 --> SQLite --> 轮询循环 --> 容器 (Claude Agent SDK) --> 响应
+渠道 --> SQLite --> 轮询循环 --> 容器 (Claude Code CLI via tmux) --> 响应
 ```
 
 单一 Node.js 进程。渠道通过技能添加，启动时自注册 — 编排器连接具有凭据的渠道。智能体在具有文件系统隔离的 Linux 容器中执行。每个群组的消息队列带有并发控制。通过文件系统进行 IPC。
