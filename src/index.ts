@@ -22,7 +22,6 @@ import {
   DATA_DIR,
   DISCORD_ENABLED,
   GROUPS_DIR,
-  IDLE_TIMEOUT,
   IPC_POLL_INTERVAL,
   MEMORY_ENABLED,
   POLL_INTERVAL,
@@ -37,9 +36,9 @@ import {
   getRegisteredChannelNames,
 } from './channels/registry.js';
 import {
-  ContainerOutput,
   runContainerAgent,
   shutdownPool,
+  warmUpMain,
   writeGroupsSnapshot,
   writeTasksSnapshot,
 } from './container-runner.js';
@@ -53,7 +52,6 @@ import {
   deleteTask,
   getAllChats,
   getAllRegisteredGroups,
-  getAllSessions,
   getAllTasks,
   getLastGroupSync,
   getMessagesSince,
@@ -65,7 +63,6 @@ import {
   setLastGroupSync,
   setRegisteredGroup,
   setRouterState,
-  setSession,
   storeChatMetadata,
   storeMessage,
   storeWhatsAppMessage,
@@ -102,7 +99,6 @@ const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 let sock: WASocket;
 let lastTimestamp = '';
-let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
 let lastAgentTimestamp: Record<string, string> = {};
 // LID to phone number mapping (WhatsApp now sends LID JIDs for self-chats)
@@ -152,7 +148,6 @@ function loadState(): void {
     logger.warn('Corrupted last_agent_timestamp in DB, resetting');
     lastAgentTimestamp = {};
   }
-  sessions = getAllSessions();
   registeredGroups = getAllRegisteredGroups();
   logger.info(
     { groupCount: Object.keys(registeredGroups).length },
@@ -428,90 +423,15 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     'Processing messages',
   );
 
-  // Track idle timer for closing stdin when agent is idle
-  let idleTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const resetIdleTimer = () => {
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      logger.debug(
-        { group: group.name },
-        'Idle timeout, closing container stdin',
-      );
-      queue.closeStdin(chatJid);
-    }, IDLE_TIMEOUT);
-  };
-
   await channel.setTyping?.(chatJid, true);
-  let hadError = false;
-  let outputSentToUser = false;
 
-  const output = await runAgent(group, prompt, chatJid, async (result) => {
-    // Streaming output callback — called for each agent result
-    if (result.result) {
-      // Agent uses structured output: { outputType, userMessage, internalLog }
-      // Only send userMessage to the user when outputType is 'message'.
-      const structured =
-        typeof result.result === 'object' && result.result !== null
-          ? (result.result as {
-              outputType?: string;
-              userMessage?: string;
-              internalLog?: string;
-            })
-          : null;
-
-      let text: string;
-      if (structured?.outputType) {
-        if (structured.outputType === 'log') {
-          logger.info(
-            { group: group.name, log: structured.internalLog },
-            'Agent internal log',
-          );
-          resetIdleTimer();
-          return;
-        }
-        text = structured.userMessage || '';
-      } else {
-        // Legacy plain-string result
-        text =
-          typeof result.result === 'string'
-            ? result.result
-            : JSON.stringify(result.result);
-      }
-
-      // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      text = text.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
-      logger.info({ group: group.name }, `Agent output: ${text.slice(0, 200)}`);
-      if (text) {
-        await channel.sendMessage(chatJid, text);
-        outputSentToUser = true;
-      }
-      // Only reset idle timer on actual results, not session-update markers (result: null)
-      resetIdleTimer();
-    }
-
-    if (result.status === 'success') {
-      queue.notifyIdle(chatJid);
-    }
-
-    if (result.status === 'error') {
-      hadError = true;
-    }
-  });
+  // Responses are delivered via MCP tools → IPC files → host IPC watcher.
+  // No streaming output callback needed — the IPC watcher handles delivery.
+  const output = await runAgent(group, prompt, chatJid);
 
   await channel.setTyping?.(chatJid, false);
-  if (idleTimer) clearTimeout(idleTimer);
 
-  if (output === 'error' || hadError) {
-    // If we already sent output to the user, don't roll back the cursor —
-    // the user got their response and re-processing would send duplicates.
-    if (outputSentToUser) {
-      logger.warn(
-        { group: group.name },
-        'Agent error after output was sent, skipping cursor rollback to prevent duplicates',
-      );
-      return true;
-    }
+  if (output === 'error') {
     // Roll back cursor so retries can re-process these messages
     lastAgentTimestamp[chatJid] = previousCursor;
     saveState();
@@ -529,10 +449,8 @@ async function runAgent(
   group: RegisteredGroup,
   prompt: string,
   chatJid: string,
-  onOutput?: (output: ContainerOutput) => Promise<void>,
 ): Promise<'success' | 'error'> {
   const isMain = group.isMain === true;
-  const sessionId = sessions[group.folder];
 
   // Update tasks snapshot for container to read (filtered by group)
   const tasks = getAllTasks();
@@ -559,37 +477,19 @@ async function runAgent(
     new Set(Object.keys(registeredGroups)),
   );
 
-  // Wrap onOutput to track session ID from streamed results
-  const wrappedOnOutput = onOutput
-    ? async (output: ContainerOutput) => {
-        if (output.newSessionId) {
-          sessions[group.folder] = output.newSessionId;
-          setSession(group.folder, output.newSessionId);
-        }
-        await onOutput(output);
-      }
-    : undefined;
-
   try {
     const output = await runContainerAgent(
       group,
       {
         prompt,
-        sessionId,
         groupFolder: group.folder,
         chatJid,
         isMain,
         assistantName: ASSISTANT_NAME,
       },
-      (proc, containerName) =>
-        queue.registerProcess(chatJid, proc, containerName, group.folder),
-      wrappedOnOutput,
+      (containerName) =>
+        queue.registerContainer(chatJid, containerName, group.folder),
     );
-
-    if (output.newSessionId) {
-      sessions[group.folder] = output.newSessionId;
-      setSession(group.folder, output.newSessionId);
-    }
 
     if (output.status === 'error') {
       logger.error(
@@ -1989,24 +1889,8 @@ async function startMessageLoop(): Promise<void> {
             allPending.length > 0 ? allPending : groupMessages;
           const formatted = formatMessages(messagesToSend);
 
-          if (queue.sendMessage(chatJid, formatted)) {
-            logger.debug(
-              { chatJid, count: messagesToSend.length },
-              'Piped messages to active container',
-            );
-            lastAgentTimestamp[chatJid] =
-              messagesToSend[messagesToSend.length - 1].timestamp;
-            saveState();
-            // Show typing indicator while the container processes the piped message
-            channel
-              .setTyping?.(chatJid, true)
-              ?.catch((err) =>
-                logger.warn({ chatJid, err }, 'Failed to set typing indicator'),
-              );
-          } else {
-            // No active container — enqueue for a new one
-            queue.enqueueMessageCheck(chatJid);
-          }
+          // Enqueue messages for processing (container pool handles queuing)
+          queue.enqueueMessageCheck(chatJid);
         }
       }
     } catch (err) {
@@ -2057,15 +1941,22 @@ function startSharedServices(): void {
   startSchedulerLoop({
     sendMessage,
     registeredGroups: () => registeredGroups,
-    getSessions: () => sessions,
     queue,
-    onProcess: (groupJid, proc, containerName, groupFolder) =>
-      queue.registerProcess(groupJid, proc, containerName, groupFolder),
+    onContainerReady: (groupJid, containerName, groupFolder) =>
+      queue.registerContainer(groupJid, containerName, groupFolder),
   });
   startIpcWatcher();
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();
   startMessageLoop();
+
+  // Pre-spawn the main container so the first query is fast
+  const mainGroup = Object.values(registeredGroups).find((g) => g.isMain);
+  if (mainGroup) {
+    warmUpMain(mainGroup).catch((err) =>
+      logger.error({ err }, 'Failed to pre-spawn main container'),
+    );
+  }
 }
 
 async function main(): Promise<void> {

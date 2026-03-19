@@ -1,20 +1,18 @@
 /**
  * Container Runner for NanoClaw
- * Manages persistent Docker containers per group and sends queries over stdin/stdout.
+ * Manages persistent Docker containers per group.
+ * Communication: docker exec into tmux + file-based IPC (no stdin/stdout piping).
  */
-import { ChildProcess, exec, spawn } from 'child_process';
+import { exec, execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { promisify } from 'util';
 
 import {
-  AGENT_MODEL,
   CONTAINER_IMAGE,
-  CONTAINER_MAX_OUTPUT_SIZE,
-  CONTAINER_TIMEOUT,
   DATA_DIR,
   GROUPS_DIR,
-  IDLE_TIMEOUT,
   TIMEZONE,
 } from './config.js';
 import { readEnvFile } from './env.js';
@@ -28,30 +26,30 @@ import {
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
 
-// Sentinel markers for robust output parsing (must match agent-runner)
-// These markers wrap the JSON output from the container to distinguish it from debug logs
-const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
-const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
+const execAsync = promisify(exec);
 
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const NON_MAIN_GRACE_PERIOD = 2 * 60 * 1000; // 2min grace after query before shutdown
 const MAX_QUERY_DURATION = 2 * 60 * 60 * 1000; // 2 hours hard cap
+// Adaptive idle polling: fast at first, ramps up over time
+const IDLE_POLL_FAST = 500;      // First 30s
+const IDLE_POLL_MEDIUM = 1500;   // 30s–2min
+const IDLE_POLL_SLOW = 3000;     // 2min+
+const IDLE_SNAP_GAP = 1000;      // Gap between snap1→snap2 (was 3000)
+const TMUX_READY_TIMEOUT = 120000; // 2 minutes to wait for Claude Code to start
 
 export interface ContainerInput {
   prompt: string;
-  sessionId?: string;
   groupFolder: string;
   chatJid: string;
   isMain: boolean;
   model?: string;
   isScheduledTask?: boolean;
   assistantName?: string;
-  secrets?: Record<string, string>;
 }
 
 export interface ContainerOutput {
   status: 'success' | 'error';
-  result: string | null;
-  newSessionId?: string;
+  result: null; // Responses go via MCP tools → IPC, not stdout
   error?: string;
 }
 
@@ -60,6 +58,97 @@ interface VolumeMount {
   containerPath: string;
   readonly: boolean;
 }
+
+// ─── Docker exec helper ──────────────────────────────────────────────────────
+
+async function dockerExec(containerName: string, cmd: string, timeoutMs: number = 15000): Promise<string> {
+  const { stdout } = await execAsync(
+    `${CONTAINER_RUNTIME_BIN} exec ${containerName} ${cmd}`,
+    { timeout: timeoutMs },
+  );
+  return stdout;
+}
+
+// ─── tmux communication ─────────────────────────────────────────────────────
+
+/**
+ * Send text to the Claude Code tmux session via load-buffer + paste-buffer.
+ * Uses base64 encoding to avoid shell escaping issues with complex prompts.
+ * After pasting, sends C-m (Return) to submit — matching the pmux pattern.
+ */
+async function sendToTmux(containerName: string, text: string): Promise<void> {
+  const b64 = Buffer.from(text).toString('base64');
+  await dockerExec(containerName,
+    `bash -c 'echo ${b64} | base64 -d > /tmp/nc_input.txt'`);
+  await dockerExec(containerName, 'tmux load-buffer /tmp/nc_input.txt');
+  await dockerExec(containerName, 'tmux paste-buffer -t claude');
+  // Small delay before submitting (ink TUI needs time to process paste)
+  await new Promise(r => setTimeout(r, 300));
+  await dockerExec(containerName, 'tmux send-keys -t claude C-m');
+}
+
+/**
+ * Check if Claude Code is idle by examining the tmux pane content.
+ * Claude is idle when:
+ * - Pane does NOT contain "Esc to interrupt" (which means it's working)
+ * - Pane does NOT contain "Enter to confirm" (which means it's showing a prompt)
+ * - Two consecutive snapshots are identical (output has stabilized)
+ */
+function isClaudeIdle(paneContent: string): boolean {
+  const trimmed = paneContent.trimEnd();
+  // Claude is working if it shows interrupt instructions
+  if (trimmed.includes('Esc to interrupt')) return false;
+  if (trimmed.includes('ctrl+c to interrupt')) return false;
+  // Claude is showing an interactive prompt
+  if (trimmed.includes('Enter to confirm')) return false;
+  // Must have some content (not just blank)
+  if (trimmed.length === 0) return false;
+  return true;
+}
+
+/**
+ * Wait for Claude Code to become idle (two consecutive snapshots match and show idle state).
+ * Uses the proven two-snapshot approach from Codeman/recon projects.
+ */
+async function waitForIdle(containerName: string, timeoutMs: number): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const snap1 = await dockerExec(containerName, 'tmux capture-pane -t claude -p', 10000);
+      await new Promise(r => setTimeout(r, IDLE_SNAP_GAP));
+      const snap2 = await dockerExec(containerName, 'tmux capture-pane -t claude -p', 10000);
+
+      if (snap1 === snap2 && isClaudeIdle(snap2)) {
+        return;
+      }
+    } catch {
+      // Docker exec might fail transiently, keep trying
+    }
+    // Adaptive backoff: fast polling early, slower over time
+    const elapsed = Date.now() - start;
+    const delay = elapsed < 30000 ? IDLE_POLL_FAST
+      : elapsed < 120000 ? IDLE_POLL_MEDIUM
+      : IDLE_POLL_SLOW;
+    await new Promise(r => setTimeout(r, delay));
+  }
+  throw new Error(`Timeout waiting for Claude Code idle after ${timeoutMs}ms`);
+}
+
+/**
+ * Write per-query context file for the MCP server to read.
+ */
+async function writeQueryContext(containerName: string, input: ContainerInput): Promise<void> {
+  const context = JSON.stringify({
+    chatJid: input.chatJid,
+    groupFolder: input.groupFolder,
+    isMain: input.isMain,
+  });
+  const b64 = Buffer.from(context).toString('base64');
+  await dockerExec(containerName,
+    `bash -c 'echo ${b64} | base64 -d > /workspace/ipc/context.json'`);
+}
+
+// ─── Volume mounts ───────────────────────────────────────────────────────────
 
 function buildVolumeMounts(
   group: RegisteredGroup,
@@ -71,8 +160,7 @@ function buildVolumeMounts(
 
   if (isMain) {
     // Main gets the project root read-write so the trusted main agent can
-    // self-modify (edit source, build, deploy). Non-main groups never get
-    // the project mount at all.
+    // self-modify (edit source, build, deploy).
     mounts.push({
       hostPath: projectRoot,
       containerPath: '/workspace/project',
@@ -80,7 +168,6 @@ function buildVolumeMounts(
     });
 
     // Shadow .env so the agent cannot read secrets from the mounted project root.
-    // Secrets are passed via stdin instead (see readSecrets()).
     const envFile = path.join(projectRoot, '.env');
     if (fs.existsSync(envFile)) {
       mounts.push({
@@ -105,7 +192,6 @@ function buildVolumeMounts(
     });
 
     // Global memory directory (read-only for non-main)
-    // Only directory mounts are supported, not file mounts
     const globalDir = path.join(GROUPS_DIR, 'global');
     if (fs.existsSync(globalDir)) {
       mounts.push({
@@ -117,7 +203,6 @@ function buildVolumeMounts(
   }
 
   // Per-group Claude sessions directory (isolated from other groups)
-  // Each group gets their own .claude/ to prevent cross-group session access
   const groupSessionsDir = path.join(
     DATA_DIR,
     'sessions',
@@ -125,29 +210,82 @@ function buildVolumeMounts(
     '.claude',
   );
   fs.mkdirSync(groupSessionsDir, { recursive: true });
+
+  // Write or update settings.json with MCP server config
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
-  if (!fs.existsSync(settingsFile)) {
-    fs.writeFileSync(
-      settingsFile,
-      JSON.stringify(
-        {
-          env: {
-            // Enable agent swarms (subagent orchestration)
-            // https://code.claude.com/docs/en/agent-teams#orchestrate-teams-of-claude-code-sessions
-            CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-            // Load CLAUDE.md from additional mounted directories
-            // https://code.claude.com/docs/en/memory#load-memory-from-additional-directories
-            CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-            // Enable Claude's memory feature (persists user preferences between sessions)
-            // https://code.claude.com/docs/en/memory#manage-auto-memory
-            CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
-          },
-        },
-        null,
-        2,
-      ) + '\n',
-    );
-  }
+  const existingSettings = fs.existsSync(settingsFile)
+    ? JSON.parse(fs.readFileSync(settingsFile, 'utf-8'))
+    : {};
+
+  const settings = {
+    ...existingSettings,
+    env: {
+      ...(existingSettings.env || {}),
+      CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
+      CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
+      CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+    },
+    // Skip the bypass-permissions confirmation dialog
+    skipDangerousModePermissionPrompt: true,
+  };
+
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+
+  // Write ~/.claude.json to skip ALL first-run onboarding prompts
+  // (theme picker, trust folder, API key confirmation, bypass permissions)
+  const onboardingFile = path.join(
+    DATA_DIR,
+    'sessions',
+    group.folder,
+    '.claude.json',
+  );
+  const existingOnboarding = fs.existsSync(onboardingFile)
+    ? (() => { try { return JSON.parse(fs.readFileSync(onboardingFile, 'utf-8')); } catch { return {}; } })()
+    : {};
+
+  // Extract API key suffix for pre-approval
+  const envVars = readEnvFile(['ANTHROPIC_API_KEY']);
+  const apiKey = envVars.ANTHROPIC_API_KEY || '';
+  const apiKeySuffix = apiKey ? apiKey.slice(-20) : '';
+
+  const onboardingData = {
+    ...existingOnboarding,
+    hasCompletedOnboarding: true,
+    hasAcknowledgedCostThreshold: true,
+    // Pre-approve the API key so Claude Code doesn't prompt
+    customApiKeyResponses: {
+      approved: apiKeySuffix ? [apiKeySuffix] : [],
+      rejected: [],
+    },
+    // MCP server config — Claude Code reads mcpServers from .claude.json (user scope)
+    mcpServers: {
+      ...(existingOnboarding.mcpServers || {}),
+      nanoclaw: {
+        type: 'stdio',
+        command: 'node',
+        args: ['/app/dist/ipc-mcp-stdio.js'],
+        env: {},
+      },
+    },
+    // Pre-accept workspace trust for known directories
+    projects: {
+      ...(existingOnboarding.projects || {}),
+      '/workspace/group': {
+        ...(existingOnboarding.projects?.['/workspace/group'] || {}),
+        allowedTools: [],
+        hasTrustDialogAccepted: true,
+      },
+    },
+  };
+  fs.writeFileSync(
+    onboardingFile,
+    JSON.stringify(onboardingData, null, 2) + '\n',
+  );
+  mounts.push({
+    hostPath: onboardingFile,
+    containerPath: '/home/node/.claude.json',
+    readonly: false,
+  });
 
   // Sync skills from container/skills/ into each group's .claude/skills/
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
@@ -166,8 +304,7 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Per-group IPC namespace: each group gets its own IPC directory
-  // This prevents cross-group privilege escalation via IPC
+  // Per-group IPC namespace
   const groupIpcDir = resolveGroupIpcPath(group.folder);
   fs.mkdirSync(path.join(groupIpcDir, 'messages'), { recursive: true });
   fs.mkdirSync(path.join(groupIpcDir, 'tasks'), { recursive: true });
@@ -180,7 +317,7 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Logs directory (read-only) - allows agent to debug by reading previous query logs
+  // Logs directory (read-only)
   const logsHostPath = path.join(GROUPS_DIR, group.folder, 'logs');
   fs.mkdirSync(logsHostPath, { recursive: true });
   mounts.push({
@@ -190,7 +327,6 @@ function buildVolumeMounts(
   });
 
   // Environment file directory
-  // Only expose specific auth variables needed by Claude Code, not the entire .env
   const envDir = path.join(DATA_DIR, 'env');
   fs.mkdirSync(envDir, { recursive: true });
   const envFile = path.join(projectRoot, '.env');
@@ -221,30 +357,6 @@ function buildVolumeMounts(
     }
   }
 
-  // Copy agent-runner source into a per-group writable location so agents
-  // can customize it (add tools, change behavior) without affecting other
-  // groups. Recompiled on container startup via entrypoint.sh.
-  const agentRunnerSrc = path.join(
-    projectRoot,
-    'container',
-    'agent-runner',
-    'src',
-  );
-  const groupAgentRunnerDir = path.join(
-    DATA_DIR,
-    'sessions',
-    group.folder,
-    'agent-runner-src',
-  );
-  if (!fs.existsSync(groupAgentRunnerDir) && fs.existsSync(agentRunnerSrc)) {
-    fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
-  }
-  mounts.push({
-    hostPath: groupAgentRunnerDir,
-    containerPath: '/app/src',
-    readonly: false,
-  });
-
   // Embeddings DB for semantic memory (read-only, shared across all groups)
   const embeddingsDbPath = path.join(DATA_DIR, 'embeddings.db');
   if (fs.existsSync(embeddingsDbPath)) {
@@ -255,7 +367,7 @@ function buildVolumeMounts(
     });
   }
 
-  // Mount code-review plugin (read-only) so container agents can invoke it
+  // Mount code-review plugin (read-only)
   const codeReviewPlugin = path.join(
     os.homedir(),
     '.claude',
@@ -273,7 +385,7 @@ function buildVolumeMounts(
     });
   }
 
-  // Additional mounts validated against external allowlist (tamper-proof from containers)
+  // Additional mounts validated against external allowlist
   if (group.containerConfig?.additionalMounts) {
     const validatedMounts = validateAdditionalMounts(
       group.containerConfig.additionalMounts,
@@ -286,31 +398,17 @@ function buildVolumeMounts(
   return mounts;
 }
 
-/**
- * Read allowed secrets from .env for passing to the container via stdin.
- * Secrets are never written to disk or mounted as files.
- */
-function readSecrets(): Record<string, string> {
-  return readEnvFile([
-    'CLAUDE_CODE_OAUTH_TOKEN',
-    'ANTHROPIC_API_KEY',
-    'ANTHROPIC_BASE_URL',
-    'ANTHROPIC_AUTH_TOKEN',
-  ]);
-}
-
 function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
 ): string[] {
-  const args: string[] = ['run', '-i', '--rm', '--name', containerName];
+  // Use -dt (detached + TTY) instead of -i (interactive stdin)
+  const args: string[] = ['run', '-dt', '--rm', '--name', containerName];
 
-  // Pass host timezone so container's local time matches the user's
+  // Pass host timezone
   args.push('-e', `TZ=${TIMEZONE}`);
 
   // Run as host user so bind-mounted files are accessible.
-  // Skip when running as root (uid 0), as the container's node user (uid 1000),
-  // or when getuid is unavailable (native Windows without WSL).
   const hostUid = process.getuid?.();
   const hostGid = process.getgid?.();
   if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
@@ -339,31 +437,14 @@ interface QueuedQuery {
 }
 
 interface PoolEntry {
-  process: ChildProcess;
   containerName: string;
   group: RegisteredGroup;
   isMain: boolean;
   lastUsed: number;
-  idleTimer: NodeJS.Timeout;
-  /** Stderr buffer for diagnostics */
-  stderr: string;
-  stderrTruncated: boolean;
-  /**
-   * Stdout accumulator between sentinel markers.
-   * Data arrives in chunks; we buffer until we see both markers.
-   */
-  stdoutBuf: string;
-  /** Whether the container process has exited */
+  shutdownTimer: NodeJS.Timeout | null;
+  busy: boolean;
   exited: boolean;
-  exitCode: number | null;
-  /**
-   * If a query is in flight, this holds the resolve callback.
-   * Only one query can be active per container at a time.
-   */
-  pendingResolve: ((output: ContainerOutput) => void) | null;
-  pendingTimeout: NodeJS.Timeout | null;
-  hardDeadlineTimeout: NodeJS.Timeout | null;
-  /** Queries waiting for the current one to finish */
+  confirmedIdle: boolean;
   queryQueue: QueuedQuery[];
 }
 
@@ -373,7 +454,7 @@ class ContainerPool {
   /**
    * Get or spawn a persistent container for a group.
    */
-  getOrSpawn(group: RegisteredGroup, isMain: boolean): PoolEntry {
+  async getOrSpawn(group: RegisteredGroup, isMain: boolean): Promise<PoolEntry> {
     const key = group.folder;
     const existing = this.pool.get(key);
     if (existing && !existing.exited) {
@@ -412,436 +493,272 @@ class ContainerPool {
         mountCount: mounts.length,
         isMain,
       },
-      'Spawning persistent container',
+      'Spawning persistent container (tmux)',
     );
 
-    const container = spawn(CONTAINER_RUNTIME_BIN, containerArgs, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    // Spawn container in detached mode with TTY
+    execSync(
+      `${CONTAINER_RUNTIME_BIN} ${containerArgs.join(' ')}`,
+      { timeout: 30000 },
+    );
 
     const entry: PoolEntry = {
-      process: container,
       containerName,
       group,
       isMain,
       lastUsed: Date.now(),
-      idleTimer: setTimeout(() => this.shutdownEntry(key), IDLE_TIMEOUT_MS),
-      stderr: '',
-      stderrTruncated: false,
-      stdoutBuf: '',
+      shutdownTimer: null,
+      busy: false,
       exited: false,
-      exitCode: null,
-      pendingResolve: null,
-      pendingTimeout: null,
-      hardDeadlineTimeout: null,
+      confirmedIdle: false,
       queryQueue: [],
     };
 
-    // Stream stderr for logging/diagnostics
-    container.stderr.on('data', (data) => {
-      const chunk = data.toString();
+    this.pool.set(key, entry);
 
-      // Reset activity timeout on any stderr output (SDK messages flow here)
-      if (entry.pendingResolve && entry.pendingTimeout) {
-        clearTimeout(entry.pendingTimeout);
-        entry.pendingTimeout = this.createActivityTimeout(entry);
-      }
-
-      const lines = chunk.trim().split('\n');
-      for (const line of lines) {
-        if (line) logger.debug({ container: group.folder }, line);
-      }
-      if (entry.stderrTruncated) return;
-      const remaining = CONTAINER_MAX_OUTPUT_SIZE - entry.stderr.length;
-      if (chunk.length > remaining) {
-        entry.stderr += chunk.slice(0, remaining);
-        entry.stderrTruncated = true;
-      } else {
-        entry.stderr += chunk;
-      }
-    });
-
-    // Stream stdout — look for sentinel-delimited output per query
-    container.stdout.on('data', (data) => {
-      entry.stdoutBuf += data.toString();
-      this.checkForOutput(entry);
-    });
-
-    container.on('close', (code) => {
-      entry.exited = true;
-      entry.exitCode = code;
-      clearTimeout(entry.idleTimer);
-
+    // Wait for Claude Code to be ready (shows `>` prompt)
+    try {
+      await waitForIdle(containerName, TMUX_READY_TIMEOUT);
+      entry.confirmedIdle = true;
       logger.info(
-        { group: group.name, containerName, code },
-        'Persistent container exited',
+        { group: group.name, containerName },
+        'Claude Code ready in container',
       );
-
-      // If a query was pending, resolve with error
-      if (entry.pendingResolve) {
-        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
-        entry.pendingResolve({
-          status: 'error',
-          result: null,
-          error: `Container exited unexpectedly with code ${code}: ${entry.stderr.slice(-200)}`,
-        });
-        entry.pendingResolve = null;
-        entry.pendingTimeout = null;
-        entry.hardDeadlineTimeout = null;
-      }
-
-      // Reject any queued queries
-      this.drainQueue(entry);
-
-      this.pool.delete(key);
-    });
-
-    container.on('error', (err) => {
-      entry.exited = true;
-      clearTimeout(entry.idleTimer);
+    } catch (err) {
       logger.error(
         { group: group.name, containerName, error: err },
-        'Container spawn error',
+        'Claude Code failed to start in container',
       );
-
-      if (entry.pendingResolve) {
-        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
-        entry.pendingResolve({
-          status: 'error',
-          result: null,
-          error: `Container spawn error: ${err.message}`,
-        });
-        entry.pendingResolve = null;
-        entry.pendingTimeout = null;
-        entry.hardDeadlineTimeout = null;
-      }
-
-      // Reject any queued queries
-      this.drainQueue(entry);
-
+      entry.exited = true;
       this.pool.delete(key);
-    });
+      // Try to stop the container
+      exec(stopContainer(containerName));
+      throw err;
+    }
 
-    this.pool.set(key, entry);
     return entry;
   }
 
   /**
-   * Check if stdout buffer contains a complete sentinel-delimited response.
+   * Send a query to a persistent container and wait for completion.
+   * Response is delivered via MCP tools → IPC files, not stdout.
    */
-  private checkForOutput(entry: PoolEntry): void {
-    if (!entry.pendingResolve) return;
-
-    const startIdx = entry.stdoutBuf.indexOf(OUTPUT_START_MARKER);
-    const endIdx = entry.stdoutBuf.indexOf(OUTPUT_END_MARKER);
-
-    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return;
-
-    // Extract the JSON between markers
-    const jsonStr = entry.stdoutBuf
-      .slice(startIdx + OUTPUT_START_MARKER.length, endIdx)
-      .trim();
-
-    // Remove the consumed output from buffer (keep anything after end marker)
-    entry.stdoutBuf = entry.stdoutBuf.slice(endIdx + OUTPUT_END_MARKER.length);
-
-    const resolve = entry.pendingResolve;
-    entry.pendingResolve = null;
-    if (entry.pendingTimeout) {
-      clearTimeout(entry.pendingTimeout);
-      entry.pendingTimeout = null;
-    }
-    if (entry.hardDeadlineTimeout) {
-      clearTimeout(entry.hardDeadlineTimeout);
-      entry.hardDeadlineTimeout = null;
-    }
-
-    try {
-      const output: ContainerOutput = JSON.parse(jsonStr);
-      resolve(output);
-    } catch (err) {
-      logger.error(
-        { group: entry.group.name, jsonStr: jsonStr.slice(0, 200), error: err },
-        'Failed to parse container output from persistent container',
-      );
-      resolve({
+  async sendQuery(entry: PoolEntry, input: ContainerInput): Promise<ContainerOutput> {
+    if (entry.exited) {
+      return {
         status: 'error',
         result: null,
-        error: `Failed to parse container output: ${err instanceof Error ? err.message : String(err)}`,
-      });
+        error: 'Container already exited',
+      };
     }
 
-    // Dispatch next queued query if any
-    this.drainQueue(entry);
-  }
-
-  /**
-   * Dispatch the next queued query to the container, if any.
-   */
-  private drainQueue(entry: PoolEntry): void {
-    if (entry.pendingResolve || entry.queryQueue.length === 0) return;
-    if (entry.exited) {
-      // Container is gone — reject all queued queries
-      for (const q of entry.queryQueue) {
-        q.resolve({
-          status: 'error',
-          result: null,
-          error: `Container exited before query could be dispatched`,
-        });
-      }
-      entry.queryQueue = [];
-      return;
-    }
-
-    const next = entry.queryQueue.shift()!;
-    logger.debug(
-      { group: entry.group.name, remaining: entry.queryQueue.length },
-      'Dispatching queued query',
-    );
-    this.dispatchQuery(entry, next.input, next.resolve);
-  }
-
-  /**
-   * Create an activity-based timeout that fires after CONTAINER_TIMEOUT ms
-   * of inactivity. Each stderr chunk resets this timer.
-   */
-  private createActivityTimeout(entry: PoolEntry): NodeJS.Timeout {
-    return setTimeout(() => {
-      if (entry.pendingResolve) {
-        logger.error(
-          { group: entry.group.name, containerName: entry.containerName },
-          'Query activity timeout — no container output',
-        );
-        entry.pendingResolve({
-          status: 'error',
-          result: null,
-          error: `Query timed out after ${CONTAINER_TIMEOUT}ms of inactivity`,
-        });
-        entry.pendingResolve = null;
-        entry.pendingTimeout = null;
-        if (entry.hardDeadlineTimeout) {
-          clearTimeout(entry.hardDeadlineTimeout);
-          entry.hardDeadlineTimeout = null;
-        }
-        this.shutdownEntry(entry.group.folder);
-      }
-    }, CONTAINER_TIMEOUT);
-  }
-
-  /**
-   * Send a query to a persistent container and wait for the response.
-   */
-  sendQuery(entry: PoolEntry, input: ContainerInput): Promise<ContainerOutput> {
-    return new Promise((resolve) => {
-      if (entry.exited) {
-        resolve({
-          status: 'error',
-          result: null,
-          error: `Container already exited with code ${entry.exitCode}`,
-        });
-        return;
-      }
-
-      // If a query is already in flight, queue this one instead of overwriting
-      if (entry.pendingResolve) {
+    // If a query is already in flight, queue this one
+    if (entry.busy) {
+      return new Promise((resolve) => {
         logger.debug(
           { group: entry.group.name, containerName: entry.containerName },
           'Query already in flight, queueing',
         );
         entry.queryQueue.push({ input, resolve });
-        return;
-      }
+      });
+    }
 
-      this.dispatchQuery(entry, input, resolve);
-    });
+    return this.dispatchQuery(entry, input);
   }
 
-  /**
-   * Actually dispatch a query to the container's stdin.
-   */
-  private dispatchQuery(
+  private async dispatchQuery(
     entry: PoolEntry,
     input: ContainerInput,
-    resolve: (output: ContainerOutput) => void,
-  ): void {
-    // Reset per-query stderr buffer for logging
-    entry.stderr = '';
-    entry.stderrTruncated = false;
-
-    entry.pendingResolve = resolve;
+  ): Promise<ContainerOutput> {
+    entry.busy = true;
     entry.lastUsed = Date.now();
 
-    // Reset idle timer
-    clearTimeout(entry.idleTimer);
-    entry.idleTimer = setTimeout(
-      () => this.shutdownEntry(entry.group.folder),
-      IDLE_TIMEOUT_MS,
-    );
+    // Cancel any pending shutdown — new work arrived
+    if (entry.shutdownTimer) {
+      clearTimeout(entry.shutdownTimer);
+      entry.shutdownTimer = null;
+    }
 
-    // Activity-based timeout: resets on each stderr chunk from container
-    entry.pendingTimeout = this.createActivityTimeout(entry);
+    try {
+      // Update per-query context for MCP server
+      await writeQueryContext(entry.containerName, input);
 
-    // Hard wall-clock deadline as safety cap
-    entry.hardDeadlineTimeout = setTimeout(() => {
-      if (entry.pendingResolve) {
-        logger.error(
+      // Skip pre-query idle check if we already confirmed idle after last query
+      if (entry.confirmedIdle) {
+        logger.info(
           { group: entry.group.name, containerName: entry.containerName },
-          'Query hard deadline reached',
+          'Skipping pre-query idle check (confirmed idle)',
         );
-        entry.pendingResolve({
-          status: 'error',
-          result: null,
-          error: `Query exceeded maximum duration of ${MAX_QUERY_DURATION}ms`,
-        });
-        entry.pendingResolve = null;
-        if (entry.pendingTimeout) {
-          clearTimeout(entry.pendingTimeout);
-          entry.pendingTimeout = null;
-        }
-        entry.hardDeadlineTimeout = null;
-        this.shutdownEntry(entry.group.folder);
+      } else {
+        await waitForIdle(entry.containerName, 30000);
       }
-    }, MAX_QUERY_DURATION);
+      entry.confirmedIdle = false;
 
-    // Write JSON line to stdin
-    // Attach a one-time error handler to prevent unhandled 'error' event crashes
-    const onStdinError = (err: Error) => {
-      if (entry.pendingResolve) {
-        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
-        entry.pendingResolve({
-          status: 'error',
-          result: null,
-          error: `Container stdin error: ${err.message}`,
-        });
-        entry.pendingResolve = null;
-        entry.pendingTimeout = null;
-        entry.hardDeadlineTimeout = null;
-      }
-    };
-    entry.process.stdin!.once('error', onStdinError);
+      // Paste the prompt into tmux
+      await sendToTmux(entry.containerName, input.prompt);
 
-    // Pass secrets via stdin (never written to disk or mounted as files)
-    const fullInput = { ...input, secrets: readSecrets() };
-    const line = JSON.stringify(fullInput) + '\n';
-    entry.process.stdin!.write(line, (err) => {
-      if (err && entry.pendingResolve) {
-        entry.process.stdin!.removeListener('error', onStdinError);
-        if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-        if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
-        entry.pendingResolve({
-          status: 'error',
-          result: null,
-          error: `Failed to write to container stdin: ${err.message}`,
-        });
-        entry.pendingResolve = null;
-        entry.pendingTimeout = null;
-        entry.hardDeadlineTimeout = null;
+      // Wait for processing to complete
+      await waitForIdle(entry.containerName, MAX_QUERY_DURATION);
+      entry.confirmedIdle = true;
+
+      // Response delivered via MCP tools → IPC files (not stdout)
+      return { status: 'success', result: null };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      logger.error(
+        { group: entry.group.name, containerName: entry.containerName, error: errorMsg },
+        'Query error',
+      );
+
+      // Check if container is still alive
+      try {
+        await dockerExec(entry.containerName, 'tmux has-session -t claude', 5000);
+      } catch {
+        entry.exited = true;
+        this.pool.delete(entry.group.folder);
       }
-    });
+
+      return { status: 'error', result: null, error: errorMsg };
+    } finally {
+      entry.busy = false;
+
+      // Schedule shutdown for non-main containers after query completes
+      if (!entry.isMain && !entry.exited) {
+        this.scheduleShutdown(entry);
+      }
+
+      // Drain next queued query
+      if (entry.queryQueue.length > 0 && !entry.exited) {
+        const next = entry.queryQueue.shift()!;
+        logger.debug(
+          { group: entry.group.name, remaining: entry.queryQueue.length },
+          'Dispatching queued query',
+        );
+        this.dispatchQuery(entry, next.input).then(next.resolve);
+      }
+    }
   }
 
   /**
-   * Gracefully shut down a single container by closing its stdin.
-   * @param force If true, shut down even if a query is in flight
+   * Schedule a shutdown check for a non-main container.
+   * After a grace period, verify the container is truly idle via tmux before killing.
    */
-  private shutdownEntry(key: string, force: boolean = false): void {
+  private scheduleShutdown(entry: PoolEntry): void {
+    if (entry.shutdownTimer) {
+      clearTimeout(entry.shutdownTimer);
+    }
+    entry.shutdownTimer = setTimeout(async () => {
+      entry.shutdownTimer = null;
+      if (entry.exited || entry.busy) return;
+
+      // Real tmux idle check before shutting down
+      try {
+        const snap1 = await dockerExec(entry.containerName, 'tmux capture-pane -t claude -p', 10000);
+        await new Promise(r => setTimeout(r, IDLE_SNAP_GAP));
+        const snap2 = await dockerExec(entry.containerName, 'tmux capture-pane -t claude -p', 10000);
+        if (snap1 !== snap2 || !isClaudeIdle(snap2)) {
+          logger.debug(
+            { group: entry.group.name, containerName: entry.containerName },
+            'Container still active in tmux, rescheduling shutdown',
+          );
+          this.scheduleShutdown(entry);
+          return;
+        }
+      } catch {
+        // If we can't check, assume it's dead
+      }
+
+      this.shutdownEntry(entry.group.folder);
+    }, NON_MAIN_GRACE_PERIOD);
+  }
+
+  /**
+   * Gracefully shut down a single container.
+   */
+  private async shutdownEntry(key: string, force: boolean = false): Promise<void> {
     const entry = this.pool.get(key);
     if (!entry || entry.exited) {
       this.pool.delete(key);
       return;
     }
 
-    // Don't shut down if a query is in flight — reschedule the idle timer
-    // Unless force=true (for explicit restarts)
-    if (entry.pendingResolve && !force) {
+    // Don't shut down if a query is in flight
+    if (entry.busy && !force) {
       logger.debug(
         { group: entry.group.name, containerName: entry.containerName },
-        'Skipping idle shutdown, query still in flight',
-      );
-      clearTimeout(entry.idleTimer);
-      entry.idleTimer = setTimeout(
-        () => this.shutdownEntry(key),
-        IDLE_TIMEOUT_MS,
+        'Skipping shutdown, query still in flight',
       );
       return;
     }
 
     logger.info(
       { group: entry.group.name, containerName: entry.containerName },
-      'Shutting down idle persistent container',
+      'Shutting down container',
     );
 
-    clearTimeout(entry.idleTimer);
-    if (entry.pendingTimeout) clearTimeout(entry.pendingTimeout);
-    if (entry.hardDeadlineTimeout) clearTimeout(entry.hardDeadlineTimeout);
+    if (entry.shutdownTimer) {
+      clearTimeout(entry.shutdownTimer);
+      entry.shutdownTimer = null;
+    }
 
-    // Remove from pool immediately so getOrSpawn() won't return
-    // this entry while it's draining (prevents write-after-end crashes)
+    // Remove from pool immediately
     this.pool.delete(key);
+    entry.exited = true;
 
-    // Send shutdown signal and close stdin
-    try {
-      entry.process.stdin!.write(JSON.stringify({ type: 'shutdown' }) + '\n');
-    } catch {
-      // stdin may already be closed
+    // Reject any queued queries
+    for (const q of entry.queryQueue) {
+      q.resolve({
+        status: 'error',
+        result: null,
+        error: 'Container shutting down',
+      });
     }
+    entry.queryQueue = [];
+
+    // Send /exit to Claude Code via tmux
     try {
-      entry.process.stdin!.end();
+      await dockerExec(entry.containerName, 'tmux send-keys -t claude "/exit" Enter', 5000);
     } catch {
-      // ignore
+      // tmux might already be gone
     }
 
-    // Give it a few seconds, then force kill the container directly
+    // Fallback: docker stop after 5s
     setTimeout(() => {
-      if (!entry.exited) {
-        logger.warn(
-          { group: entry.group.name, containerName: entry.containerName },
-          'Container did not exit after shutdown, force killing',
-        );
-        exec(stopContainer(entry.containerName), { timeout: 10000 }, (err) => {
-          if (err) {
-            logger.error(
-              { containerName: entry.containerName, error: err.message },
-              'Container stop failed, trying SIGKILL on client',
-            );
-            entry.process.kill('SIGKILL');
-          }
-        });
-      }
+      exec(stopContainer(entry.containerName), { timeout: 10000 }, (err) => {
+        if (err) {
+          logger.warn(
+            { containerName: entry.containerName, error: err.message },
+            'Container stop failed (may already be stopped)',
+          );
+        }
+      });
     }, 5000);
   }
 
   /**
-   * Shut down all persistent containers. Called during process shutdown.
+   * Shut down all persistent containers.
    */
   async shutdownAll(): Promise<void> {
     const entries = Array.from(this.pool.keys());
     for (const key of entries) {
-      this.shutdownEntry(key);
+      await this.shutdownEntry(key);
     }
   }
 
   /**
-   * Get the ChildProcess and container name for a group (if active).
-   * Used by GroupQueue for shutdown tracking.
+   * Get info about a group's container (if active).
    */
-  getEntry(
-    groupFolder: string,
-  ): { process: ChildProcess; containerName: string } | null {
+  getEntry(groupFolder: string): { containerName: string } | null {
     const entry = this.pool.get(groupFolder);
     if (entry && !entry.exited) {
-      return { process: entry.process, containerName: entry.containerName };
+      return { containerName: entry.containerName };
     }
     return null;
   }
 
   /**
    * Restart a specific container by shutting it down.
-   * The next query will spawn a fresh container with new code.
-   * Forces shutdown even if a query is currently in flight.
+   * The next query will spawn a fresh container.
    */
   restartContainer(groupFolder: string): boolean {
     const entry = this.pool.get(groupFolder);
@@ -850,7 +767,7 @@ class ContainerPool {
         { group: entry.group.name, containerName: entry.containerName },
         'Restarting container (requested via IPC) - forcing shutdown',
       );
-      this.shutdownEntry(groupFolder, true); // force=true to shutdown during query
+      this.shutdownEntry(groupFolder, true);
       return true;
     }
     return false;
@@ -863,18 +780,17 @@ const containerPool = new ContainerPool();
 export async function runContainerAgent(
   group: RegisteredGroup,
   input: ContainerInput,
-  onProcess: (proc: ChildProcess, containerName: string) => void,
-  onOutput?: (output: ContainerOutput) => Promise<void>,
+  onContainerReady: (containerName: string) => void,
 ): Promise<ContainerOutput> {
   const startTime = Date.now();
 
   const logsDir = path.join(GROUPS_DIR, group.folder, 'logs');
   fs.mkdirSync(logsDir, { recursive: true });
 
-  const entry = containerPool.getOrSpawn(group, input.isMain);
+  const entry = await containerPool.getOrSpawn(group, input.isMain);
 
-  // Always register the process with the queue so shutdown can find it
-  onProcess(entry.process, entry.containerName);
+  // Notify caller of container name (for queue tracking)
+  onContainerReady(entry.containerName);
 
   logger.info(
     {
@@ -882,24 +798,16 @@ export async function runContainerAgent(
       containerName: entry.containerName,
       isMain: input.isMain,
     },
-    'Sending query to persistent container',
+    'Sending query to container (tmux)',
   );
 
-  const fullInput = { ...input, model: AGENT_MODEL };
-  const output = await containerPool.sendQuery(entry, fullInput);
-
-  // Notify caller of output (used for streaming results to channels)
-  if (onOutput && output.status === 'success' && output.result) {
-    await onOutput(output);
-  }
+  const output = await containerPool.sendQuery(entry, input);
 
   const duration = Date.now() - startTime;
 
   // Write log file
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const logFile = path.join(logsDir, `container-${timestamp}.log`);
-  const isVerbose =
-    process.env.LOG_LEVEL === 'debug' || process.env.LOG_LEVEL === 'trace';
 
   const logLines = [
     `=== Container Query Log ===`,
@@ -910,42 +818,72 @@ export async function runContainerAgent(
     `Duration: ${duration}ms`,
     `Status: ${output.status}`,
     ``,
+    `=== Input Summary ===`,
+    `Prompt length: ${input.prompt.length} chars`,
+    ``,
   ];
 
-  if (isVerbose || output.status === 'error') {
-    logLines.push(
-      `=== Input ===`,
-      JSON.stringify(input, null, 2),
-      ``,
-      `=== Stderr${entry.stderrTruncated ? ' (TRUNCATED)' : ''} ===`,
-      entry.stderr,
-      ``,
-      `=== Output ===`,
-      JSON.stringify(output, null, 2),
-    );
-  } else {
-    logLines.push(
-      `=== Input Summary ===`,
-      `Prompt length: ${input.prompt.length} chars`,
-      `Session ID: ${input.sessionId || 'new'}`,
-      ``,
-    );
+  if (output.status === 'error') {
+    logLines.push(`=== Error ===`, output.error || 'Unknown error');
   }
 
   fs.writeFileSync(logFile, logLines.join('\n'));
-  logger.debug({ logFile, verbose: isVerbose }, 'Container log written');
+  logger.debug({ logFile }, 'Container log written');
 
   logger.info(
     {
       group: group.name,
       duration,
       status: output.status,
-      hasResult: !!output.result,
     },
     'Container query completed',
   );
 
   return output;
+}
+
+/**
+ * Run a headless query using `claude -p` inside an existing container.
+ * Used for scheduled tasks.
+ */
+export async function runHeadlessQuery(
+  group: RegisteredGroup,
+  input: ContainerInput,
+  onContainerReady: (containerName: string) => void,
+): Promise<ContainerOutput> {
+  const entry = await containerPool.getOrSpawn(group, input.isMain);
+  onContainerReady(entry.containerName);
+
+  try {
+    // Write context file for MCP server
+    await writeQueryContext(entry.containerName, input);
+
+    // Run headless claude -p inside the existing container
+    // Escape single quotes in prompt for bash
+    const escapedPrompt = input.prompt.replace(/'/g, "'\\''");
+    const b64 = Buffer.from(input.prompt).toString('base64');
+    await dockerExec(
+      entry.containerName,
+      `bash -c 'echo ${b64} | base64 -d | claude -p --dangerously-skip-permissions'`,
+      MAX_QUERY_DURATION,
+    );
+
+    return { status: 'success', result: null };
+  } catch (err) {
+    return {
+      status: 'error',
+      result: null,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * Pre-spawn the main container so it's warm for the first query.
+ */
+export async function warmUpMain(group: RegisteredGroup): Promise<void> {
+  logger.info({ group: group.name }, 'Pre-spawning main container');
+  await containerPool.getOrSpawn(group, true);
 }
 
 /**
@@ -957,7 +895,6 @@ export async function shutdownPool(): Promise<void> {
 
 /**
  * Restart a specific container to pick up new code.
- * Returns true if a container was restarted, false if none was running.
  */
 export function restartContainer(groupFolder: string): boolean {
   return containerPool.restartContainer(groupFolder);
@@ -976,11 +913,9 @@ export function writeTasksSnapshot(
     next_run: string | null;
   }>,
 ): void {
-  // Write filtered tasks to the group's IPC directory
   const groupIpcDir = resolveGroupIpcPath(groupFolder);
   fs.mkdirSync(groupIpcDir, { recursive: true });
 
-  // Main sees all tasks, others only see their own
   const filteredTasks = isMain
     ? tasks
     : tasks.filter((t) => t.groupFolder === groupFolder);
@@ -996,11 +931,6 @@ export interface AvailableGroup {
   isRegistered: boolean;
 }
 
-/**
- * Write available groups snapshot for the container to read.
- * Only main group can see all available groups (for activation).
- * Non-main groups only see their own registration status.
- */
 export function writeGroupsSnapshot(
   groupFolder: string,
   isMain: boolean,
@@ -1010,7 +940,6 @@ export function writeGroupsSnapshot(
   const groupIpcDir = resolveGroupIpcPath(groupFolder);
   fs.mkdirSync(groupIpcDir, { recursive: true });
 
-  // Main sees all groups; others see nothing (they can't activate groups)
   const visibleGroups = isMain ? groups : [];
 
   const groupsFile = path.join(groupIpcDir, 'available_groups.json');

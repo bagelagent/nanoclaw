@@ -1,4 +1,3 @@
-import { ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -16,11 +15,9 @@ const BASE_RETRY_MS = 5000;
 
 interface GroupState {
   active: boolean;
-  idleWaiting: boolean;
   isTaskContainer: boolean;
   pendingMessages: boolean;
   pendingTasks: QueuedTask[];
-  process: ChildProcess | null;
   containerName: string | null;
   groupFolder: string | null;
   retryCount: number;
@@ -39,11 +36,9 @@ export class GroupQueue {
     if (!state) {
       state = {
         active: false,
-        idleWaiting: false,
         isTaskContainer: false,
         pendingMessages: false,
         pendingTasks: [],
-        process: null,
         containerName: null,
         groupFolder: null,
         retryCount: 0,
@@ -98,9 +93,6 @@ export class GroupQueue {
 
     if (state.active) {
       state.pendingTasks.push({ id: taskId, groupJid, fn });
-      if (state.idleWaiting) {
-        this.closeStdin(groupJid);
-      }
       logger.debug({ groupJid, taskId }, 'Container active, task queued');
       return;
     }
@@ -123,68 +115,17 @@ export class GroupQueue {
     );
   }
 
-  registerProcess(
+  /**
+   * Register the container name for a group (for tracking/shutdown).
+   */
+  registerContainer(
     groupJid: string,
-    proc: ChildProcess,
     containerName: string,
     groupFolder?: string,
   ): void {
     const state = this.getGroup(groupJid);
-    state.process = proc;
     state.containerName = containerName;
     if (groupFolder) state.groupFolder = groupFolder;
-  }
-
-  /**
-   * Mark the container as idle-waiting (finished work, waiting for IPC input).
-   * If tasks are pending, preempt the idle container immediately.
-   */
-  notifyIdle(groupJid: string): void {
-    const state = this.getGroup(groupJid);
-    state.idleWaiting = true;
-    if (state.pendingTasks.length > 0) {
-      this.closeStdin(groupJid);
-    }
-  }
-
-  /**
-   * Send a follow-up message to the active container via IPC file.
-   * Returns true if the message was written, false if no active container.
-   */
-  sendMessage(groupJid: string, text: string): boolean {
-    const state = this.getGroup(groupJid);
-    if (!state.active || !state.groupFolder || state.isTaskContainer)
-      return false;
-    state.idleWaiting = false; // Agent is about to receive work, no longer idle
-
-    const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
-    try {
-      fs.mkdirSync(inputDir, { recursive: true });
-      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
-      const filepath = path.join(inputDir, filename);
-      const tempPath = `${filepath}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
-      fs.renameSync(tempPath, filepath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Signal the active container to wind down by writing a close sentinel.
-   */
-  closeStdin(groupJid: string): void {
-    const state = this.getGroup(groupJid);
-    if (!state.active || !state.groupFolder) return;
-
-    const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
-    try {
-      fs.mkdirSync(inputDir, { recursive: true });
-      fs.writeFileSync(path.join(inputDir, '_close'), '');
-    } catch {
-      // ignore
-    }
   }
 
   private async runForGroup(
@@ -193,7 +134,6 @@ export class GroupQueue {
   ): Promise<void> {
     const state = this.getGroup(groupJid);
     state.active = true;
-    state.idleWaiting = false;
     state.isTaskContainer = false;
     state.pendingMessages = false;
     this.activeCount++;
@@ -217,7 +157,6 @@ export class GroupQueue {
       this.scheduleRetry(groupJid, state);
     } finally {
       state.active = false;
-      state.process = null;
       state.containerName = null;
       state.groupFolder = null;
       this.activeCount--;
@@ -228,7 +167,6 @@ export class GroupQueue {
   private async runTask(groupJid: string, task: QueuedTask): Promise<void> {
     const state = this.getGroup(groupJid);
     state.active = true;
-    state.idleWaiting = false;
     state.isTaskContainer = true;
     this.activeCount++;
 
@@ -244,7 +182,6 @@ export class GroupQueue {
     } finally {
       state.active = false;
       state.isTaskContainer = false;
-      state.process = null;
       state.containerName = null;
       state.groupFolder = null;
       this.activeCount--;
@@ -332,19 +269,15 @@ export class GroupQueue {
           ),
         );
       }
-      // If neither pending, skip this group
     }
   }
 
   async shutdown(_gracePeriodMs: number): Promise<void> {
     this.shuttingDown = true;
 
-    // Count active containers but don't kill them — they'll finish on their own
-    // via idle timeout or container timeout. The --rm flag cleans them up on exit.
-    // This prevents WhatsApp reconnection restarts from killing working agents.
     const activeContainers: string[] = [];
-    for (const [jid, state] of this.groups) {
-      if (state.process && !state.process.killed && state.containerName) {
+    for (const [_jid, state] of this.groups) {
+      if (state.containerName) {
         activeContainers.push(state.containerName);
       }
     }

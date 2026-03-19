@@ -1,11 +1,10 @@
-import { ChildProcess } from 'child_process';
 import { CronExpressionParser } from 'cron-parser';
 import fs from 'fs';
 
 import { ASSISTANT_NAME, SCHEDULER_POLL_INTERVAL, TIMEZONE } from './config.js';
 import {
   ContainerOutput,
-  runContainerAgent,
+  runHeadlessQuery,
   writeTasksSnapshot,
 } from './container-runner.js';
 import {
@@ -23,11 +22,9 @@ import { RegisteredGroup, ScheduledTask } from './types.js';
 
 export interface SchedulerDependencies {
   registeredGroups: () => Record<string, RegisteredGroup>;
-  getSessions: () => Record<string, string>;
   queue: GroupQueue;
-  onProcess: (
+  onContainerReady: (
     groupJid: string,
-    proc: ChildProcess,
     containerName: string,
     groupFolder: string,
   ) => void;
@@ -44,7 +41,6 @@ async function runTask(
     groupDir = resolveGroupFolderPath(task.group_folder);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
-    // Stop retry churn for malformed legacy rows.
     updateTask(task.id, { status: 'paused' });
     logger.error(
       { taskId: task.id, groupFolder: task.group_folder, error },
@@ -88,7 +84,7 @@ async function runTask(
     return;
   }
 
-  // Update tasks snapshot for container to read (filtered by group)
+  // Update tasks snapshot for container to read
   const isMain = group.isMain === true;
   const tasks = getAllTasks();
   writeTasksSnapshot(
@@ -105,65 +101,29 @@ async function runTask(
     })),
   );
 
-  let result: string | null = null;
   let error: string | null = null;
 
-  // For group context mode, use the group's current session
-  const sessions = deps.getSessions();
-  const sessionId =
-    task.context_mode === 'group' ? sessions[task.group_folder] : undefined;
-
-  // After the task produces a result, close the container promptly.
-  // Tasks are single-turn — no need to wait IDLE_TIMEOUT (30 min) for the
-  // query loop to time out. A short delay handles any final MCP calls.
-  const TASK_CLOSE_DELAY_MS = 10000;
-  let closeTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const scheduleClose = () => {
-    if (closeTimer) return; // already scheduled
-    closeTimer = setTimeout(() => {
-      logger.debug({ taskId: task.id }, 'Closing task container after result');
-      deps.queue.closeStdin(task.chat_jid);
-    }, TASK_CLOSE_DELAY_MS);
-  };
+  // Prefix prompt for scheduled tasks
+  const prompt = `[SCHEDULED TASK]\n${task.prompt}`;
 
   try {
-    const output = await runContainerAgent(
+    // Run as headless `claude -p` inside the existing container
+    const output = await runHeadlessQuery(
       group,
       {
-        prompt: task.prompt,
-        sessionId,
+        prompt,
         groupFolder: task.group_folder,
         chatJid: task.chat_jid,
         isMain,
         isScheduledTask: true,
         assistantName: ASSISTANT_NAME,
       },
-      (proc, containerName) =>
-        deps.onProcess(task.chat_jid, proc, containerName, task.group_folder),
-      async (streamedOutput: ContainerOutput) => {
-        if (streamedOutput.result) {
-          result = streamedOutput.result;
-          // Forward result to user (sendMessage handles formatting)
-          await deps.sendMessage(task.chat_jid, streamedOutput.result);
-          scheduleClose();
-        }
-        if (streamedOutput.status === 'success') {
-          deps.queue.notifyIdle(task.chat_jid);
-        }
-        if (streamedOutput.status === 'error') {
-          error = streamedOutput.error || 'Unknown error';
-        }
-      },
+      (containerName) =>
+        deps.onContainerReady(task.chat_jid, containerName, task.group_folder),
     );
-
-    if (closeTimer) clearTimeout(closeTimer);
 
     if (output.status === 'error') {
       error = output.error || 'Unknown error';
-    } else if (output.result) {
-      // Messages are sent via MCP tool (IPC), result text is just logged
-      result = output.result;
     }
 
     logger.info(
@@ -171,7 +131,6 @@ async function runTask(
       'Task completed',
     );
   } catch (err) {
-    if (closeTimer) clearTimeout(closeTimer);
     error = err instanceof Error ? err.message : String(err);
     logger.error({ taskId: task.id, error }, 'Task failed');
   }
@@ -183,7 +142,7 @@ async function runTask(
     run_at: new Date().toISOString(),
     duration_ms: durationMs,
     status: error ? 'error' : 'success',
-    result,
+    result: null,
     error,
   });
 
@@ -199,11 +158,7 @@ async function runTask(
   }
   // 'once' tasks have no next run
 
-  const resultSummary = error
-    ? `Error: ${error}`
-    : result
-      ? result.slice(0, 200)
-      : 'Completed';
+  const resultSummary = error ? `Error: ${error}` : 'Completed';
   updateTaskAfterRun(task.id, nextRun, resultSummary);
 }
 
@@ -225,7 +180,6 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
       }
 
       for (const task of dueTasks) {
-        // Re-check task status in case it was paused/cancelled
         const currentTask = getTaskById(task.id);
         if (!currentTask || currentTask.status !== 'active') {
           continue;

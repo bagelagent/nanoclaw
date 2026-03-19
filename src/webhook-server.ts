@@ -331,7 +331,6 @@ function spawnGitHubContainer(
   }
 
   const chatJid = `github-${eventType}-${data.issue_number}-${Date.now()}`;
-  const sessionId = `github-${data.assignmentId || data.issue_number}-${Date.now()}`;
   const taskId = `github-${eventType}-${data.repo_owner}-${data.repo_name}-${data.issue_number}-${Date.now()}`;
 
   // Per-issue group key — each issue gets its own queue slot for parallelism
@@ -343,13 +342,12 @@ function spawnGitHubContainer(
         group,
         {
           prompt,
-          sessionId,
           groupFolder: group.folder,
           chatJid,
           isMain: false,
         },
-        (proc, containerName) => {
-          if (queue) queue.registerProcess(groupKey, proc, containerName);
+        (containerName) => {
+          if (queue) queue.registerContainer(groupKey, containerName);
         },
       );
     } catch (err) {

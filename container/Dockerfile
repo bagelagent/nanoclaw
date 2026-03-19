@@ -1,9 +1,9 @@
 # NanoClaw Agent Container
-# Runs Claude Agent SDK in isolated Linux VM with browser automation
+# Runs Claude Code CLI in tmux with MCP tools for IPC
 
 FROM node:22-slim
 
-# Install system dependencies for Chromium and GitHub CLI
+# Install system dependencies for Chromium, tmux, and GitHub CLI
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     git \
     postgresql \
     postgresql-client \
+    tmux \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Install GitHub CLI
@@ -43,19 +45,19 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 # Install agent-browser and claude-code globally
 RUN npm install -g agent-browser @anthropic-ai/claude-code
 
-# Create app directory
+# Create app directory for MCP server
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy MCP server package files first for better caching
 COPY agent-runner/package*.json ./
 
-# Install dependencies (--legacy-peer-deps: openai wants zod@3, agent SDK uses zod@4)
+# Install dependencies (MCP server deps only)
 RUN npm install --legacy-peer-deps
 
-# Copy source code
+# Copy MCP server source code
 COPY agent-runner/ ./
 
-# Build TypeScript
+# Build TypeScript (MCP server)
 RUN npm run build
 
 # Install Playwright globally and download browsers (as root)
@@ -66,11 +68,53 @@ RUN npm install -g @playwright/test && \
     chown -R node:node /home/node/.cache
 
 # Create workspace directories
-RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input
+RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input /workspace/ipc/replies /workspace/ipc/progress
 
-# Create entrypoint script
-# Sources env, then execs node directly so stdin is piped to the loop
-RUN printf '#!/bin/bash\nset -e\n[ -f /workspace/env-dir/env ] && export $(cat /workspace/env-dir/env | xargs)\n# Configure gh CLI if GITHUB_TOKEN is set\nif [ -n "$GITHUB_TOKEN" ]; then\n  export GH_TOKEN="$GITHUB_TOKEN"\nfi\nexec node /app/dist/index.js\n' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+# Create entrypoint script that starts tmux with Claude Code
+RUN cat > /app/entrypoint.sh << 'ENTRYPOINT_EOF'
+#!/bin/bash
+set -e
+
+# Source environment variables
+[ -f /workspace/env-dir/env ] && export $(cat /workspace/env-dir/env | xargs)
+
+# Configure gh CLI if GITHUB_TOKEN is set
+if [ -n "$GITHUB_TOKEN" ]; then
+  export GH_TOKEN="$GITHUB_TOKEN"
+fi
+
+# Ensure onboarding is marked complete (host should write .claude.json, but belt-and-suspenders)
+if [ ! -f "$HOME/.claude.json" ]; then
+  echo '{"hasCompletedOnboarding":true,"hasAcknowledgedCostThreshold":true}' > "$HOME/.claude.json"
+fi
+
+# Pre-accept the bypass permissions dialog
+# Use cp instead of mv since these may be bind-mounted files
+if [ -f "$HOME/.claude.json" ]; then
+  jq '. + {"hasDangerouslySkipPermissionsAccepted": true}' \
+    "$HOME/.claude.json" > /tmp/claude.tmp && cp /tmp/claude.tmp "$HOME/.claude.json" && rm /tmp/claude.tmp
+fi
+
+# Pre-accept the workspace trust prompt and skip bypass permissions dialog
+if [ -f "$HOME/.claude/settings.json" ]; then
+  jq '. + {"trustedDirectories": ["/workspace/group", "/workspace/project"], "skipDangerousModePermissionPrompt": true}' \
+    "$HOME/.claude/settings.json" > /tmp/settings.tmp && cp /tmp/settings.tmp "$HOME/.claude/settings.json" && rm /tmp/settings.tmp
+fi
+
+# Start PostgreSQL if needed
+pg_ctl -D /home/node/pgdata -l /tmp/pg.log start 2>/dev/null || true
+
+# Start tmux with Claude Code
+# NOTE: First-run prompts (bypass permissions, trust folder) must be accepted
+# once manually. The acceptance is saved to the mounted ~/.claude.json.
+# After that, subsequent launches skip the prompts automatically.
+tmux new-session -d -s claude -x 200 -y 50 \
+  "claude --dangerously-skip-permissions"
+
+# Keep container alive; exit when tmux session dies
+while tmux has-session -t claude 2>/dev/null; do sleep 5; done
+ENTRYPOINT_EOF
+RUN chmod +x /app/entrypoint.sh
 
 # Set ownership to node user (non-root) for writable directories
 RUN chown -R node:node /workspace && chmod 777 /home/node
@@ -93,5 +137,5 @@ RUN initdb -D /home/node/pgdata && \
 # Set working directory to group workspace
 WORKDIR /workspace/group
 
-# Entry point reads JSON from stdin, outputs JSON to stdout
+# Entry point starts tmux with Claude Code
 ENTRYPOINT ["/app/entrypoint.sh"]
