@@ -9,12 +9,7 @@ import os from 'os';
 import path from 'path';
 import { promisify } from 'util';
 
-import {
-  CONTAINER_IMAGE,
-  DATA_DIR,
-  GROUPS_DIR,
-  TIMEZONE,
-} from './config.js';
+import { CONTAINER_IMAGE, DATA_DIR, GROUPS_DIR, TIMEZONE } from './config.js';
 import { readEnvFile } from './env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
@@ -31,10 +26,10 @@ const execAsync = promisify(exec);
 const NON_MAIN_GRACE_PERIOD = 2 * 60 * 1000; // 2min grace after query before shutdown
 const MAX_QUERY_DURATION = 2 * 60 * 60 * 1000; // 2 hours hard cap
 // Adaptive idle polling: fast at first, ramps up over time
-const IDLE_POLL_FAST = 500;      // First 30s
-const IDLE_POLL_MEDIUM = 1500;   // 30s–2min
-const IDLE_POLL_SLOW = 3000;     // 2min+
-const IDLE_SNAP_GAP = 1000;      // Gap between snap1→snap2 (was 3000)
+const IDLE_POLL_FAST = 500; // First 30s
+const IDLE_POLL_MEDIUM = 1500; // 30s–2min
+const IDLE_POLL_SLOW = 3000; // 2min+
+const IDLE_SNAP_GAP = 1000; // Gap between snap1→snap2 (was 3000)
 const TMUX_READY_TIMEOUT = 120000; // 2 minutes to wait for Claude Code to start
 
 export interface ContainerInput {
@@ -61,7 +56,11 @@ interface VolumeMount {
 
 // ─── Docker exec helper ──────────────────────────────────────────────────────
 
-async function dockerExec(containerName: string, cmd: string, timeoutMs: number = 15000): Promise<string> {
+async function dockerExec(
+  containerName: string,
+  cmd: string,
+  timeoutMs: number = 15000,
+): Promise<string> {
   const { stdout } = await execAsync(
     `${CONTAINER_RUNTIME_BIN} exec ${containerName} ${cmd}`,
     { timeout: timeoutMs },
@@ -78,12 +77,14 @@ async function dockerExec(containerName: string, cmd: string, timeoutMs: number 
  */
 async function sendToTmux(containerName: string, text: string): Promise<void> {
   const b64 = Buffer.from(text).toString('base64');
-  await dockerExec(containerName,
-    `bash -c 'echo ${b64} | base64 -d > /tmp/nc_input.txt'`);
+  await dockerExec(
+    containerName,
+    `bash -c 'echo ${b64} | base64 -d > /tmp/nc_input.txt'`,
+  );
   await dockerExec(containerName, 'tmux load-buffer /tmp/nc_input.txt');
   await dockerExec(containerName, 'tmux paste-buffer -t claude');
   // Small delay before submitting (ink TUI needs time to process paste)
-  await new Promise(r => setTimeout(r, 300));
+  await new Promise((r) => setTimeout(r, 300));
   await dockerExec(containerName, 'tmux send-keys -t claude C-m');
 }
 
@@ -110,13 +111,24 @@ function isClaudeIdle(paneContent: string): boolean {
  * Wait for Claude Code to become idle (two consecutive snapshots match and show idle state).
  * Uses the proven two-snapshot approach from Codeman/recon projects.
  */
-async function waitForIdle(containerName: string, timeoutMs: number): Promise<void> {
+async function waitForIdle(
+  containerName: string,
+  timeoutMs: number,
+): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      const snap1 = await dockerExec(containerName, 'tmux capture-pane -t claude -p', 10000);
-      await new Promise(r => setTimeout(r, IDLE_SNAP_GAP));
-      const snap2 = await dockerExec(containerName, 'tmux capture-pane -t claude -p', 10000);
+      const snap1 = await dockerExec(
+        containerName,
+        'tmux capture-pane -t claude -p',
+        10000,
+      );
+      await new Promise((r) => setTimeout(r, IDLE_SNAP_GAP));
+      const snap2 = await dockerExec(
+        containerName,
+        'tmux capture-pane -t claude -p',
+        10000,
+      );
 
       if (snap1 === snap2 && isClaudeIdle(snap2)) {
         return;
@@ -126,10 +138,13 @@ async function waitForIdle(containerName: string, timeoutMs: number): Promise<vo
     }
     // Adaptive backoff: fast polling early, slower over time
     const elapsed = Date.now() - start;
-    const delay = elapsed < 30000 ? IDLE_POLL_FAST
-      : elapsed < 120000 ? IDLE_POLL_MEDIUM
-      : IDLE_POLL_SLOW;
-    await new Promise(r => setTimeout(r, delay));
+    const delay =
+      elapsed < 30000
+        ? IDLE_POLL_FAST
+        : elapsed < 120000
+          ? IDLE_POLL_MEDIUM
+          : IDLE_POLL_SLOW;
+    await new Promise((r) => setTimeout(r, delay));
   }
   throw new Error(`Timeout waiting for Claude Code idle after ${timeoutMs}ms`);
 }
@@ -137,15 +152,20 @@ async function waitForIdle(containerName: string, timeoutMs: number): Promise<vo
 /**
  * Write per-query context file for the MCP server to read.
  */
-async function writeQueryContext(containerName: string, input: ContainerInput): Promise<void> {
+async function writeQueryContext(
+  containerName: string,
+  input: ContainerInput,
+): Promise<void> {
   const context = JSON.stringify({
     chatJid: input.chatJid,
     groupFolder: input.groupFolder,
     isMain: input.isMain,
   });
   const b64 = Buffer.from(context).toString('base64');
-  await dockerExec(containerName,
-    `bash -c 'echo ${b64} | base64 -d > /workspace/ipc/context.json'`);
+  await dockerExec(
+    containerName,
+    `bash -c 'echo ${b64} | base64 -d > /workspace/ipc/context.json'`,
+  );
 }
 
 // ─── Volume mounts ───────────────────────────────────────────────────────────
@@ -240,7 +260,13 @@ function buildVolumeMounts(
     '.claude.json',
   );
   const existingOnboarding = fs.existsSync(onboardingFile)
-    ? (() => { try { return JSON.parse(fs.readFileSync(onboardingFile, 'utf-8')); } catch { return {}; } })()
+    ? (() => {
+        try {
+          return JSON.parse(fs.readFileSync(onboardingFile, 'utf-8'));
+        } catch {
+          return {};
+        }
+      })()
     : {};
 
   // Extract API key suffix for pre-approval
@@ -454,7 +480,10 @@ class ContainerPool {
   /**
    * Get or spawn a persistent container for a group.
    */
-  async getOrSpawn(group: RegisteredGroup, isMain: boolean): Promise<PoolEntry> {
+  async getOrSpawn(
+    group: RegisteredGroup,
+    isMain: boolean,
+  ): Promise<PoolEntry> {
     const key = group.folder;
     const existing = this.pool.get(key);
     if (existing && !existing.exited) {
@@ -497,10 +526,9 @@ class ContainerPool {
     );
 
     // Spawn container in detached mode with TTY
-    execSync(
-      `${CONTAINER_RUNTIME_BIN} ${containerArgs.join(' ')}`,
-      { timeout: 30000 },
-    );
+    execSync(`${CONTAINER_RUNTIME_BIN} ${containerArgs.join(' ')}`, {
+      timeout: 30000,
+    });
 
     const entry: PoolEntry = {
       containerName,
@@ -543,7 +571,10 @@ class ContainerPool {
    * Send a query to a persistent container and wait for completion.
    * Response is delivered via MCP tools → IPC files, not stdout.
    */
-  async sendQuery(entry: PoolEntry, input: ContainerInput): Promise<ContainerOutput> {
+  async sendQuery(
+    entry: PoolEntry,
+    input: ContainerInput,
+  ): Promise<ContainerOutput> {
     if (entry.exited) {
       return {
         status: 'error',
@@ -606,13 +637,21 @@ class ContainerPool {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       logger.error(
-        { group: entry.group.name, containerName: entry.containerName, error: errorMsg },
+        {
+          group: entry.group.name,
+          containerName: entry.containerName,
+          error: errorMsg,
+        },
         'Query error',
       );
 
       // Check if container is still alive
       try {
-        await dockerExec(entry.containerName, 'tmux has-session -t claude', 5000);
+        await dockerExec(
+          entry.containerName,
+          'tmux has-session -t claude',
+          5000,
+        );
       } catch {
         entry.exited = true;
         this.pool.delete(entry.group.folder);
@@ -653,9 +692,17 @@ class ContainerPool {
 
       // Real tmux idle check before shutting down
       try {
-        const snap1 = await dockerExec(entry.containerName, 'tmux capture-pane -t claude -p', 10000);
-        await new Promise(r => setTimeout(r, IDLE_SNAP_GAP));
-        const snap2 = await dockerExec(entry.containerName, 'tmux capture-pane -t claude -p', 10000);
+        const snap1 = await dockerExec(
+          entry.containerName,
+          'tmux capture-pane -t claude -p',
+          10000,
+        );
+        await new Promise((r) => setTimeout(r, IDLE_SNAP_GAP));
+        const snap2 = await dockerExec(
+          entry.containerName,
+          'tmux capture-pane -t claude -p',
+          10000,
+        );
         if (snap1 !== snap2 || !isClaudeIdle(snap2)) {
           logger.debug(
             { group: entry.group.name, containerName: entry.containerName },
@@ -675,7 +722,10 @@ class ContainerPool {
   /**
    * Gracefully shut down a single container.
    */
-  private async shutdownEntry(key: string, force: boolean = false): Promise<void> {
+  private async shutdownEntry(
+    key: string,
+    force: boolean = false,
+  ): Promise<void> {
     const entry = this.pool.get(key);
     if (!entry || entry.exited) {
       this.pool.delete(key);
@@ -717,7 +767,11 @@ class ContainerPool {
 
     // Send /exit to Claude Code via tmux
     try {
-      await dockerExec(entry.containerName, 'tmux send-keys -t claude "/exit" Enter', 5000);
+      await dockerExec(
+        entry.containerName,
+        'tmux send-keys -t claude "/exit" Enter',
+        5000,
+      );
     } catch {
       // tmux might already be gone
     }

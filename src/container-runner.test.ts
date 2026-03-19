@@ -50,7 +50,11 @@ vi.mock('child_process', async () => {
     ...actual,
     execSync: vi.fn(() => ''),
     exec: vi.fn(
-      (_cmd: string, _opts: unknown, cb?: (err: Error | null, stdout?: string) => void) => {
+      (
+        _cmd: string,
+        _opts: unknown,
+        cb?: (err: Error | null, stdout?: string) => void,
+      ) => {
         if (cb) cb(null, '');
       },
     ),
