@@ -550,9 +550,15 @@ async function sendMessage(jid: string, text: string): Promise<void> {
     // Discord is handled below via its own sendDiscordMessage path
     try {
       await channel.sendMessage(jid, text);
-      logger.info({ jid, channel: channel.name, length: text.length }, 'Message sent via channel');
+      logger.info(
+        { jid, channel: channel.name, length: text.length },
+        'Message sent via channel',
+      );
     } catch (err) {
-      logger.error({ jid, channel: channel.name, err }, 'Failed to send message via channel');
+      logger.error(
+        { jid, channel: channel.name, err },
+        'Failed to send message via channel',
+      );
     }
     return;
   }
@@ -961,7 +967,7 @@ function startIpcWatcher(): void {
                   if (yahooChannel && yahooChannel.sendEmail) {
                     // Translate attachment paths from container to host
                     const attachments = (data.attachments || []).map(
-                      (a: { filename: string; path: string }) => {
+                      (a: { filename: string; path: string; inline?: boolean }) => {
                         let hostPath = a.path;
                         if (hostPath.startsWith('/workspace/project/')) {
                           hostPath = path.join(
@@ -975,7 +981,7 @@ function startIpcWatcher(): void {
                             hostPath.slice('/workspace/group/'.length),
                           );
                         }
-                        return { filename: a.filename, path: hostPath };
+                        return { filename: a.filename, path: hostPath, ...(a.inline ? { inline: true } : {}) };
                       },
                     );
 

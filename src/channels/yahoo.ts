@@ -201,7 +201,7 @@ export class YahooEmailChannel implements Channel {
     to: string;
     subject: string;
     body: string;
-    attachments?: Array<{ filename: string; path: string }>;
+    attachments?: Array<{ filename: string; path: string; inline?: boolean }>;
   }): Promise<void> {
     if (!this.smtpTransport) {
       logger.warn('Yahoo SMTP not initialized');
@@ -209,18 +209,49 @@ export class YahooEmailChannel implements Channel {
     }
 
     try {
+      const inlineAttachments = opts.attachments?.filter((a) => a.inline) || [];
+      const regularAttachments = opts.attachments?.filter((a) => !a.inline) || [];
+
+      // Build HTML body if there are inline images
+      let html: string | undefined;
+      if (inlineAttachments.length > 0) {
+        // Convert plain text body to HTML paragraphs
+        const bodyHtml = opts.body
+          .split('\n')
+          .map((line) => (line.trim() ? `<p>${line}</p>` : '<br>'))
+          .join('\n');
+        const imagesHtml = inlineAttachments
+          .map((a) => `<p><img src="cid:${a.filename}" style="max-width:100%;" /></p>`)
+          .join('\n');
+        html = bodyHtml + '\n' + imagesHtml;
+      }
+
+      const nodemailerAttachments = [
+        ...regularAttachments.map((a) => ({
+          filename: a.filename,
+          path: a.path,
+        })),
+        ...inlineAttachments.map((a) => ({
+          filename: a.filename,
+          path: a.path,
+          cid: a.filename,
+        })),
+      ];
+
       await this.smtpTransport.sendMail({
         from: this.userEmail,
         to: opts.to,
         subject: opts.subject,
         text: opts.body,
-        attachments: opts.attachments?.map((a) => ({
-          filename: a.filename,
-          path: a.path,
-        })),
+        ...(html ? { html } : {}),
+        ...(nodemailerAttachments.length > 0 ? { attachments: nodemailerAttachments } : {}),
       });
       logger.info(
-        { to: opts.to, subject: opts.subject, attachments: opts.attachments?.length || 0 },
+        {
+          to: opts.to,
+          subject: opts.subject,
+          attachments: opts.attachments?.length || 0,
+        },
         'Yahoo email sent (structured)',
       );
     } catch (err) {
@@ -273,10 +304,7 @@ export class YahooEmailChannel implements Channel {
         });
         const unseenMessages = unseenResult || [];
 
-        logger.info(
-          { count: unseenMessages.length },
-          'Yahoo: unseen messages',
-        );
+        logger.info({ count: unseenMessages.length }, 'Yahoo: unseen messages');
 
         // Quick envelope check: only download full body for allowlisted senders
         for (const seq of unseenMessages) {

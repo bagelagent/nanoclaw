@@ -323,7 +323,10 @@ function buildVolumeMounts(
   const credSymlink = path.join(groupSessionsDir, '.credentials.json');
   try {
     // Remove existing file/symlink before creating
-    if (fs.existsSync(credSymlink) || fs.lstatSync(credSymlink).isSymbolicLink()) {
+    if (
+      fs.existsSync(credSymlink) ||
+      fs.lstatSync(credSymlink).isSymbolicLink()
+    ) {
       fs.unlinkSync(credSymlink);
     }
   } catch {
@@ -342,10 +345,7 @@ function buildVolumeMounts(
       readonly: false,
     });
     // Symlink from where Claude Code expects it to the mounted file
-    fs.symlinkSync(
-      '/workspace/credentials/.credentials.json',
-      credSymlink,
-    );
+    fs.symlinkSync('/workspace/credentials/.credentials.json', credSymlink);
   }
 
   // Sync skills from container/skills/ into each group's .claude/skills/

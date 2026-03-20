@@ -138,6 +138,7 @@ server.tool(
     attachments: z.array(z.object({
       filename: z.string().describe('Display filename (e.g. "chart.png")'),
       path: z.string().describe('Absolute path to file (must be under /workspace/group/ or /workspace/project/)'),
+      inline: z.boolean().optional().describe('If true, embed as inline image in HTML body instead of attachment'),
     })).optional().describe('Optional file attachments'),
   },
   async (args) => {
