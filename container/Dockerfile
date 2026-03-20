@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     tmux \
     jq \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install GitHub CLI

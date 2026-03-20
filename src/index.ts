@@ -967,7 +967,11 @@ function startIpcWatcher(): void {
                   if (yahooChannel && yahooChannel.sendEmail) {
                     // Translate attachment paths from container to host
                     const attachments = (data.attachments || []).map(
-                      (a: { filename: string; path: string; inline?: boolean }) => {
+                      (a: {
+                        filename: string;
+                        path: string;
+                        inline?: boolean;
+                      }) => {
                         let hostPath = a.path;
                         if (hostPath.startsWith('/workspace/project/')) {
                           hostPath = path.join(
@@ -981,7 +985,11 @@ function startIpcWatcher(): void {
                             hostPath.slice('/workspace/group/'.length),
                           );
                         }
-                        return { filename: a.filename, path: hostPath, ...(a.inline ? { inline: true } : {}) };
+                        return {
+                          filename: a.filename,
+                          path: hostPath,
+                          ...(a.inline ? { inline: true } : {}),
+                        };
                       },
                     );
 

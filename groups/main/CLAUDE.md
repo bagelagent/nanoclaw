@@ -235,7 +235,7 @@ Container builds are the foundation of the deployment system. If they don't work
 - Sheets: Data (transactions), Balances (current totals), Chart (line chart), Constants
 - Chart sheet gid: `562181994`, Chart ID: `1940648109`
 - Deposit task runs every Friday at 9:00 AM (task `task-1773979444732-hx9z38`)
-- Chart/balances report task runs every Friday at 9:15 AM (task `task-1773981153006-ouu4nn`)
+- Chart/balances email task runs every Friday at 9:15 AM (task `6ef869ca-004f-4585-9e4f-1157ddad98e7`) — sends to dkador@gmail.com and kathleen.kowal@gmail.com with inline chart image
 - Google credentials: `/workspace/group/google-credentials.json` and `/workspace/group/google-token.json`
 - **How to export the chart** (browser login doesn't work — use API):
   1. Refresh OAuth token using refresh_token grant to `https://oauth2.googleapis.com/token`
