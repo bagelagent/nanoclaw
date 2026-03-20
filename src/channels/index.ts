@@ -10,3 +10,6 @@
 // telegram
 
 // whatsapp
+
+// yahoo
+import './yahoo.js';

@@ -392,6 +392,8 @@ export async function sendDiscordMessage(
         }
       }
       logger.info({ jid, length: text.length }, 'Discord message sent');
+      // Stop typing indicator — response has been delivered
+      setDiscordTyping(jid, false);
     } else {
       logger.error({ jid, channelId }, 'Channel not found or not text-based');
     }

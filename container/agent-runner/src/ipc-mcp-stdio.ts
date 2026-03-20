@@ -126,6 +126,38 @@ server.tool(
   },
 );
 
+// ─── send_email ─────────────────────────────────────────────────────────────
+
+server.tool(
+  'send_email',
+  'Send an email via Yahoo (bagel.agent@yahoo.com). Supports text body and optional file attachments. Main group only.',
+  {
+    to: z.string().describe('Recipient email address'),
+    subject: z.string().describe('Email subject line'),
+    body: z.string().describe('Email body text'),
+    attachments: z.array(z.object({
+      filename: z.string().describe('Display filename (e.g. "chart.png")'),
+      path: z.string().describe('Absolute path to file (must be under /workspace/group/ or /workspace/project/)'),
+    })).optional().describe('Optional file attachments'),
+  },
+  async (args) => {
+    const ctx = getContext();
+    const data: Record<string, unknown> = {
+      type: 'email',
+      to: args.to,
+      subject: args.subject,
+      body: args.body,
+      attachments: args.attachments || [],
+      groupFolder: ctx.groupFolder,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(MESSAGES_DIR, data);
+
+    return { content: [{ type: 'text' as const, text: `Email queued for delivery to ${args.to}.` }] };
+  },
+);
+
 // ─── send_voice_message ──────────────────────────────────────────────────────
 
 server.tool(

@@ -309,6 +309,36 @@ async function downloadAttachments(
 async function processGroupMessages(chatJid: string): Promise<boolean> {
   let group = registeredGroups[chatJid];
 
+  // Auto-register Yahoo inbox on first message
+  if (!group && chatJid === 'yahoo:inbox') {
+    group = {
+      name: 'Email',
+      folder: 'email',
+      trigger: `@${ASSISTANT_NAME}`,
+      requiresTrigger: false,
+      added_at: new Date().toISOString(),
+    };
+
+    registeredGroups[chatJid] = group;
+    setRegisteredGroup(chatJid, group);
+
+    const groupDir = path.join(DATA_DIR, '..', 'groups', 'email');
+    fs.mkdirSync(groupDir, { recursive: true });
+
+    const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
+    if (!fs.existsSync(claudeMdPath)) {
+      fs.writeFileSync(
+        claudeMdPath,
+        `# Email\n\nThis is the Yahoo email workspace with persistent memory.\n`,
+      );
+    }
+
+    logger.info(
+      { jid: chatJid, name: group.name, folder: group.folder },
+      'Auto-registered Yahoo email group',
+    );
+  }
+
   // Auto-register Discord channels on first message
   if (
     !group &&
@@ -514,6 +544,19 @@ async function sendMessage(jid: string, text: string): Promise<void> {
     return;
   }
 
+  // Try channel registry first (Yahoo, Gmail, etc.)
+  const channel = findChannel(channels, jid);
+  if (channel && channel.name !== 'discord') {
+    // Discord is handled below via its own sendDiscordMessage path
+    try {
+      await channel.sendMessage(jid, text);
+      logger.info({ jid, channel: channel.name, length: text.length }, 'Message sent via channel');
+    } catch (err) {
+      logger.error({ jid, channel: channel.name, err }, 'Failed to send message via channel');
+    }
+    return;
+  }
+
   if (jid.startsWith('discord:')) {
     await sendDiscordMessage(jid, text);
   } else {
@@ -696,8 +739,11 @@ function startIpcWatcher(): void {
                       'Skipping IPC send_message for GitHub group (use github_comment instead)',
                     );
                   } else {
-                    // For Discord, don't prefix with assistant name
-                    const message = data.chatJid.startsWith('discord:')
+                    // For Discord and Yahoo email, don't prefix with assistant name
+                    const skipPrefix =
+                      data.chatJid.startsWith('discord:') ||
+                      data.chatJid.startsWith('yahoo:');
+                    const message = skipPrefix
                       ? data.text
                       : `${ASSISTANT_NAME}: ${data.text}`;
                     await sendMessage(data.chatJid, message);
@@ -906,6 +952,57 @@ function startIpcWatcher(): void {
                   logger.warn(
                     { chatJid: data.chatJid, sourceGroup },
                     'Unauthorized IPC audio attempt blocked',
+                  );
+                }
+              } else if (data.type === 'email' && data.to && data.body) {
+                // Handle email with optional attachments (main group only)
+                if (isMain) {
+                  const yahooChannel = channels.find((c) => c.name === 'yahoo');
+                  if (yahooChannel && yahooChannel.sendEmail) {
+                    // Translate attachment paths from container to host
+                    const attachments = (data.attachments || []).map(
+                      (a: { filename: string; path: string }) => {
+                        let hostPath = a.path;
+                        if (hostPath.startsWith('/workspace/project/')) {
+                          hostPath = path.join(
+                            process.cwd(),
+                            hostPath.slice('/workspace/project/'.length),
+                          );
+                        } else if (hostPath.startsWith('/workspace/group/')) {
+                          hostPath = path.join(
+                            GROUPS_DIR,
+                            sourceGroup,
+                            hostPath.slice('/workspace/group/'.length),
+                          );
+                        }
+                        return { filename: a.filename, path: hostPath };
+                      },
+                    );
+
+                    await yahooChannel.sendEmail({
+                      to: data.to,
+                      subject: data.subject || 'Message from Bagel',
+                      body: data.body,
+                      attachments,
+                    });
+                    logger.info(
+                      {
+                        to: data.to,
+                        subject: data.subject,
+                        attachments: attachments.length,
+                        sourceGroup,
+                      },
+                      'IPC email sent',
+                    );
+                  } else {
+                    logger.warn(
+                      'Yahoo channel not available for email sending',
+                    );
+                  }
+                } else {
+                  logger.warn(
+                    { sourceGroup },
+                    'Non-main group attempted to send email',
                   );
                 }
               }
@@ -1831,6 +1928,13 @@ async function startMessageLoop(): Promise<void> {
   while (true) {
     try {
       const jids = Object.keys(registeredGroups);
+      // Include yahoo:inbox even before registration so stored messages get picked up
+      if (!jids.includes('yahoo:inbox')) {
+        const yahooChannel = channels.find((c) => c.name === 'yahoo');
+        if (yahooChannel?.isConnected()) {
+          jids.push('yahoo:inbox');
+        }
+      }
       const { messages, newTimestamp } = getNewMessages(
         jids,
         lastTimestamp,
@@ -1857,7 +1961,13 @@ async function startMessageLoop(): Promise<void> {
 
         for (const [chatJid, groupMessages] of messagesByGroup) {
           const group = registeredGroups[chatJid];
-          if (!group) continue;
+          if (!group) {
+            // Allow yahoo:inbox through — it will be auto-registered in processGroupMessages
+            if (chatJid === 'yahoo:inbox') {
+              queue.enqueueMessageCheck(chatJid);
+            }
+            continue;
+          }
 
           const channel = findChannel(channels, chatJid);
           if (!channel) {

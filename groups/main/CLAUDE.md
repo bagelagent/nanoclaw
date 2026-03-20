@@ -11,6 +11,7 @@ You are Bagel, a personal assistant. You help with tasks, answer questions, and 
 - Run bash commands in your sandbox
 - Schedule tasks to run later or on a recurring basis
 - Send messages back to the chat
+- **Send email** via Yahoo (bagel.agent@yahoo.com) — see Email section below
 
 ## Communication
 
@@ -227,6 +228,21 @@ Container builds are the foundation of the deployment system. If they don't work
 - Primary theater: Cinemark Century Daly City 20 XD and IMAX
 - Already seen with Edith: Zootopia 2
 - User preference: Almost never wants to call anyone - avoid suggesting phone calls
+
+*Edie's Allowance Spreadsheet*
+- Spreadsheet ID: `1cgZFrQNaHYedUi_YSawEse_EkR8LaVZlqsR75RE89YE`
+- Tracks weekly $7 allowance: Spend ($3.50), Save ($2.80), Give ($0.70)
+- Sheets: Data (transactions), Balances (current totals), Chart (line chart), Constants
+- Chart sheet gid: `562181994`, Chart ID: `1940648109`
+- Deposit task runs every Friday at 9:00 AM (task `task-1773979444732-hx9z38`)
+- Chart/balances report task runs every Friday at 9:15 AM (task `599796ef-c3b4-4b5c-a1f0-05cba6dc2a3e`)
+- Google credentials: `/workspace/group/google-credentials.json` and `/workspace/group/google-token.json`
+- **How to export the chart** (browser login doesn't work — use API):
+  1. Refresh OAuth token using refresh_token grant to `https://oauth2.googleapis.com/token`
+  2. Read balances: `GET https://sheets.googleapis.com/v4/spreadsheets/{id}/values/Balances!A1:Z20` with Bearer token
+  3. Export chart sheet as PDF: `GET https://docs.google.com/spreadsheets/d/{id}/export?format=pdf&gid=562181994&size=letter&portrait=true&gridlines=false&printtitle=false&sheetnames=false` with Bearer token (follow 307 redirects)
+  4. Convert PDF to PNG: use `pdf-to-img` npm package (installed in /workspace/group): `const { pdf } = require('pdf-to-img'); for await (const image of await pdf('file.pdf', { scale: 2 })) { fs.writeFileSync('out.png', image); }`
+  5. Send image via `send_image`, send balances via `send_message`
 
 *Food Delivery*
 - DoorDash skill available at `.claude/skills/doordash/SKILL.md`
@@ -503,3 +519,31 @@ When scheduling tasks for other groups, use the `target_group_jid` parameter wit
 - `schedule_task(prompt: "...", schedule_type: "cron", schedule_value: "0 9 * * 1", target_group_jid: "120363336345536173@g.us")`
 
 The task will run in that group's context with access to their files and memory.
+
+## Email
+
+You can send email from bagel.agent@yahoo.com. Emails are handled by the `yahoo:inbox` group.
+
+### Sending email from scheduled tasks
+
+When creating a scheduled task that should send email, set `target_group_jid: "yahoo:inbox"` and have the task use `send_message` with `To:` and `Subject:` headers:
+
+```
+schedule_task(
+  prompt: "Send a daily summary email to Dan. Use send_message with the text starting with 'To: dkador@gmail.com' and 'Subject: Daily Summary' followed by the email body.",
+  schedule_type: "cron",
+  schedule_value: "0 9 * * *",
+  target_group_jid: "yahoo:inbox"
+)
+```
+
+### Email format for send_message
+
+When sending via the email group, start the `send_message` text with headers:
+```
+To: recipient@example.com
+Subject: Your subject line
+The email body goes here...
+```
+
+If replying to the most recent inbound email, just write the reply text normally — the To/Subject are filled in automatically.

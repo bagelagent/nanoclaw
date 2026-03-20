@@ -68,6 +68,11 @@ export const WHATSAPP_ENABLED = fs.existsSync(
   path.join(STORE_DIR, 'auth', 'creds.json'),
 );
 
+// Yahoo Email — enabled if config exists
+export const YAHOO_EMAIL_ENABLED = fs.existsSync(
+  path.join(os.homedir(), '.yahoo-email', 'config.json'),
+);
+
 // Google Gemini (image generation)
 export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 

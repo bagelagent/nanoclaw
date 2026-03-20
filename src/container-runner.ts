@@ -149,6 +149,8 @@ async function waitForIdle(
   throw new Error(`Timeout waiting for Claude Code idle after ${timeoutMs}ms`);
 }
 
+const IDLE_CHECK_DELAY = 120000; // Don't check for idle until 2min after sending prompt
+
 /**
  * Write per-query context file for the MCP server to read.
  */
@@ -243,7 +245,7 @@ function buildVolumeMounts(
       ...(existingSettings.env || {}),
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
       CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD: '1',
-      CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+      CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
     },
     // Skip the bypass-permissions confirmation dialog
     skipDangerousModePermissionPrompt: true,
@@ -313,6 +315,39 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  // Symlink OAuth credentials so Claude Code CLI can authenticate.
+  // We symlink rather than copy because OAuth tokens get refreshed —
+  // a copy would go stale and invalidate the host's token.
+  // The symlink target (/workspace/credentials/.credentials.json) is
+  // where we mount the shared credentials file.
+  const credSymlink = path.join(groupSessionsDir, '.credentials.json');
+  try {
+    // Remove existing file/symlink before creating
+    if (fs.existsSync(credSymlink) || fs.lstatSync(credSymlink).isSymbolicLink()) {
+      fs.unlinkSync(credSymlink);
+    }
+  } catch {
+    // lstatSync throws if path doesn't exist at all — that's fine
+  }
+  const hostCredentials = path.join(
+    os.homedir(),
+    '.claude',
+    '.credentials.json',
+  );
+  if (fs.existsSync(hostCredentials)) {
+    // Mount the host credentials file into a dedicated path in the container
+    mounts.push({
+      hostPath: hostCredentials,
+      containerPath: '/workspace/credentials/.credentials.json',
+      readonly: false,
+    });
+    // Symlink from where Claude Code expects it to the mounted file
+    fs.symlinkSync(
+      '/workspace/credentials/.credentials.json',
+      credSymlink,
+    );
+  }
+
   // Sync skills from container/skills/ into each group's .claude/skills/
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
   const skillsDst = path.join(groupSessionsDir, 'skills');
@@ -359,7 +394,6 @@ function buildVolumeMounts(
   if (fs.existsSync(envFile)) {
     const envContent = fs.readFileSync(envFile, 'utf-8');
     const allowedVars = [
-      'CLAUDE_CODE_OAUTH_TOKEN',
       'ANTHROPIC_API_KEY',
       'OPENAI_API_KEY',
       'ELEVENLABS_API_KEY',
@@ -627,6 +661,11 @@ class ContainerPool {
 
       // Paste the prompt into tmux
       await sendToTmux(entry.containerName, input.prompt);
+
+      // Wait before checking for idle — gives Claude Code time to start
+      // processing. Without this, the idle detector can see the pre-processing
+      // state and immediately declare the query complete.
+      await new Promise((r) => setTimeout(r, IDLE_CHECK_DELAY));
 
       // Wait for processing to complete
       await waitForIdle(entry.containerName, MAX_QUERY_DURATION);
