@@ -332,6 +332,65 @@ Tips: Be specific and descriptive. Include style (photorealistic, watercolor, pi
   },
 );
 
+// ─── comfyui_generate ────────────────────────────────────────────────────────
+
+server.tool(
+  'comfyui_generate',
+  `Generate an image using ComfyUI (local Stable Diffusion on a Windows PC). Returns a file path you can send with send_image.
+
+Uses a local GPU for generation — supports custom models/checkpoints. Default model is z-image-turbo (fast, 8 steps).
+The PC may be turned off — the tool will tell you if ComfyUI is unreachable so you can let the user know.
+Generation can take a while (30s to several minutes depending on settings). This is normal.
+Tips: Be specific and descriptive. For negative_prompt, list things to avoid (e.g. "blurry, low quality, watermark").`,
+  {
+    prompt: z.string().describe('Detailed description of the image to generate'),
+    negative_prompt: z.string().optional().describe('Things to avoid in the image (e.g. "blurry, low quality")'),
+    width: z.number().optional().default(1024).describe('Image width in pixels (default: 1024)'),
+    height: z.number().optional().default(1024).describe('Image height in pixels (default: 1024)'),
+    steps: z.number().optional().describe('Number of sampling steps (default: 8 for turbo models)'),
+    cfg_scale: z.number().optional().describe('CFG scale / guidance (default: 2.0 for turbo models)'),
+    checkpoint: z.string().optional().describe('UNET model filename (e.g. "z_image_turbo_bf16.safetensors", "flux1-schnell.safetensors")'),
+  },
+  async (args) => {
+    const ctx = getContext();
+    const requestId = writeIpcFile(TASKS_DIR, {
+      type: 'comfyui_generate',
+      prompt: args.prompt,
+      negativePrompt: args.negative_prompt || '',
+      width: args.width || 1024,
+      height: args.height || 1024,
+      steps: args.steps,
+      cfgScale: args.cfg_scale,
+      checkpoint: args.checkpoint,
+      groupFolder: ctx.groupFolder,
+      chatJid: ctx.chatJid,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const reply = await waitForReply(requestId, 720000);
+
+      if (reply.status === 'success') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `Image generated with ComfyUI! Saved to: ${reply.data.containerPath}\n\nUse send_image with image_path="${reply.data.containerPath}" to send it.`,
+          }],
+        };
+      }
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI image generation failed: ${reply.error}` }],
+        isError: true,
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI image generation error: ${err instanceof Error ? err.message : String(err)}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
 // ─── schedule_task ───────────────────────────────────────────────────────────
 
 server.tool(

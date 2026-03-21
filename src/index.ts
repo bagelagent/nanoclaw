@@ -21,6 +21,7 @@ import {
   ASSISTANT_NAME,
   DATA_DIR,
   DISCORD_ENABLED,
+  COMFYUI_URL,
   GROUPS_DIR,
   IPC_POLL_INTERVAL,
   MEMORY_ENABLED,
@@ -91,6 +92,12 @@ import {
   generateImageGemini,
   isGeminiEnabled,
 } from './image-gen.js';
+import {
+  initComfyUI,
+  generateImageComfyUI,
+  isComfyUIEnabled,
+  checkComfyUIAvailable,
+} from './comfyui.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -1723,6 +1730,96 @@ async function processTaskIpc(
       return;
     }
 
+    case 'comfyui_generate': {
+      const requestId = data.requestId;
+      if (!requestId || !(data as any).prompt) {
+        logger.warn(
+          { sourceGroup },
+          'comfyui_generate missing requestId or prompt',
+        );
+        return;
+      }
+      if (!isComfyUIEnabled()) {
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'error',
+          error: 'ComfyUI image generation disabled (missing COMFYUI_URL)',
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+        return;
+      }
+
+      try {
+        const imgData = data as any;
+        const groupDir = path.join(GROUPS_DIR, sourceGroup);
+        const result = await generateImageComfyUI(
+          {
+            prompt: imgData.prompt,
+            negativePrompt: imgData.negativePrompt,
+            width: imgData.width,
+            height: imgData.height,
+            steps: imgData.steps,
+            cfgScale: imgData.cfgScale,
+            checkpoint: imgData.checkpoint,
+          },
+          groupDir,
+        );
+
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'success',
+          data: {
+            containerPath: result.containerPath,
+            filename: result.filename,
+          },
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        logger.debug(
+          { requestId, status: 'success' },
+          'comfyui_generate reply sent',
+        );
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      } catch (err) {
+        logger.error({ err, sourceGroup }, 'comfyui_generate failed');
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      }
+      return;
+    }
+
     default:
       // Check if it's a GitHub IPC request
       if (data.type.startsWith('github_')) {
@@ -2104,6 +2201,13 @@ async function main(): Promise<void> {
     initGemini(googleApiKey);
   } else {
     logger.warn('GOOGLE_API_KEY not set - image generation disabled');
+  }
+
+  // Initialize ComfyUI for local image generation
+  if (COMFYUI_URL) {
+    initComfyUI(COMFYUI_URL);
+  } else {
+    logger.warn('COMFYUI_URL not set - ComfyUI image generation disabled');
   }
 
   // Initialize GitHub API client

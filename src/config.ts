@@ -76,6 +76,9 @@ export const YAHOO_EMAIL_ENABLED = fs.existsSync(
 // Google Gemini (image generation)
 export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 
+// ComfyUI (local image generation)
+export const COMFYUI_URL = process.env.COMFYUI_URL || '';
+
 // Semantic memory (vector search)
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 export const MEMORY_ENABLED = !!OPENAI_API_KEY;
