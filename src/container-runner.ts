@@ -1017,10 +1017,42 @@ export async function clearContainerContext(
     return true;
   } catch (err) {
     logger.error(
-      { group: groupFolder, error: err instanceof Error ? err.message : String(err) },
+      {
+        group: groupFolder,
+        error: err instanceof Error ? err.message : String(err),
+      },
       'Failed to clear context',
     );
     return false;
+  }
+}
+
+/**
+ * Capture the current tmux pane content for a group's container.
+ * Returns the pane text, or null if no container exists.
+ */
+export async function captureTmuxPane(
+  groupFolder: string,
+): Promise<string | null> {
+  const entry = containerPool.getEntry(groupFolder);
+  if (!entry) return null;
+
+  try {
+    const content = await dockerExec(
+      entry.containerName,
+      'tmux capture-pane -t claude -p -S -',
+      10000,
+    );
+    return content;
+  } catch (err) {
+    logger.error(
+      {
+        group: groupFolder,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      'Failed to capture tmux pane',
+    );
+    return null;
   }
 }
 

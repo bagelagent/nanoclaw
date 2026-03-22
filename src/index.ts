@@ -37,6 +37,7 @@ import {
   getRegisteredChannelNames,
 } from './channels/registry.js';
 import {
+  captureTmuxPane,
   clearContainerContext,
   runContainerAgent,
   shutdownPool,
@@ -438,6 +439,22 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         chatJid,
         'No active session to clear — context will start fresh on the next message.',
       );
+    }
+    return true;
+  }
+
+  // Handle /tmux-show command — display current tmux pane content
+  const tmuxShowPattern = /^(?:@\w+\s+)?\/tmux-show$/i;
+  if (tmuxShowPattern.test(lastMsg.content.trim())) {
+    lastAgentTimestamp[chatJid] =
+      missedMessages[missedMessages.length - 1].timestamp;
+    saveState();
+
+    const paneContent = await captureTmuxPane(group.folder);
+    if (paneContent) {
+      await sendMessage(chatJid, '```\n' + paneContent.trimEnd() + '\n```');
+    } else {
+      await sendMessage(chatJid, 'No active container for this group.');
     }
     return true;
   }
