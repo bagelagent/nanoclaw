@@ -391,6 +391,69 @@ Tips: Be specific and descriptive. For negative_prompt, list things to avoid (e.
   },
 );
 
+// ─── comfyui_music ──────────────────────────────────────────────────────────
+
+server.tool(
+  'comfyui_music',
+  `Generate music using ACE-Step 1.5 via ComfyUI (local GPU). Returns a file path you can send with send_audio.
+
+Uses the ACE-Step 1.5 turbo model on a local Windows PC GPU. The PC may be turned off — the tool will tell you if ComfyUI is unreachable.
+Generation can take a while (30s to several minutes depending on duration). This is normal.
+
+Tips:
+- tags: describe genre, instruments, mood (e.g. "pop rock energetic electric guitar drums")
+- lyrics: use [Verse], [Chorus], [Bridge] markers. Omit for instrumental.
+- keyscale: e.g. "C major", "A minor", "E minor"
+- timesignature: "2", "3", "4" (most common), or "6"`,
+  {
+    tags: z.string().describe('Genre/style/instrument tags (e.g. "chill lo-fi hip hop piano soft drums")'),
+    lyrics: z.string().optional().describe('Song lyrics with [Verse], [Chorus], [Bridge] markers. Omit for instrumental.'),
+    duration_seconds: z.number().min(5).max(300).optional().describe('Duration in seconds (5-300, default: 30)'),
+    bpm: z.number().min(10).max(300).optional().describe('Beats per minute (default: 120)'),
+    language: z.string().optional().describe('Language code for lyrics (default: "en"). Options: en, ja, zh, es, de, fr, pt, ru, it, ko, etc.'),
+    keyscale: z.string().optional().describe('Musical key and scale (e.g. "C major", "A minor", "E minor")'),
+    timesignature: z.string().optional().describe('Time signature: "2", "3", "4" (default), or "6"'),
+  },
+  async (args) => {
+    const ctx = getContext();
+    const requestId = writeIpcFile(TASKS_DIR, {
+      type: 'comfyui_music',
+      tags: args.tags,
+      lyrics: args.lyrics || '',
+      durationSeconds: args.duration_seconds || 30,
+      bpm: args.bpm || 120,
+      language: args.language || 'en',
+      keyscale: args.keyscale,
+      timesignature: args.timesignature || '4',
+      groupFolder: ctx.groupFolder,
+      chatJid: ctx.chatJid,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const reply = await waitForReply(requestId, 720000);
+
+      if (reply.status === 'success') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `Music generated with ComfyUI (ACE-Step 1.5)! Saved to: ${reply.data.containerPath}\n\nUse send_audio with audio_path="${reply.data.containerPath}" to send it.`,
+          }],
+        };
+      }
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI music generation failed: ${reply.error}` }],
+        isError: true,
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI music generation error: ${err instanceof Error ? err.message : String(err)}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
 // ─── schedule_task ───────────────────────────────────────────────────────────
 
 server.tool(

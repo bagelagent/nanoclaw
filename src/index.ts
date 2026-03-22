@@ -95,6 +95,7 @@ import {
 import {
   initComfyUI,
   generateImageComfyUI,
+  generateMusicComfyUI,
   isComfyUIEnabled,
   checkComfyUIAvailable,
 } from './comfyui.js';
@@ -1800,6 +1801,96 @@ async function processTaskIpc(
         }, 60000);
       } catch (err) {
         logger.error({ err, sourceGroup }, 'comfyui_generate failed');
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      }
+      return;
+    }
+
+    case 'comfyui_music': {
+      const requestId = data.requestId;
+      if (!requestId || !(data as any).tags) {
+        logger.warn(
+          { sourceGroup },
+          'comfyui_music missing requestId or tags',
+        );
+        return;
+      }
+      if (!isComfyUIEnabled()) {
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'error',
+          error: 'ComfyUI music generation disabled (missing COMFYUI_URL)',
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+        return;
+      }
+
+      try {
+        const musicData = data as any;
+        const groupDir = path.join(GROUPS_DIR, sourceGroup);
+        const result = await generateMusicComfyUI(
+          {
+            tags: musicData.tags,
+            lyrics: musicData.lyrics,
+            durationSeconds: musicData.durationSeconds,
+            bpm: musicData.bpm,
+            language: musicData.language,
+            keyscale: musicData.keyscale,
+            timesignature: musicData.timesignature,
+          },
+          groupDir,
+        );
+
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'success',
+          data: {
+            containerPath: result.containerPath,
+            filename: result.filename,
+          },
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        logger.debug(
+          { requestId, status: 'success' },
+          'comfyui_music reply sent',
+        );
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      } catch (err) {
+        logger.error({ err, sourceGroup }, 'comfyui_music failed');
         const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
         fs.mkdirSync(repliesDir, { recursive: true });
         const replyPath = path.join(repliesDir, `${requestId}.json`);
