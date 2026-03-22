@@ -97,6 +97,7 @@ import {
 import {
   initComfyUI,
   generateImageComfyUI,
+  generateImageWithIPAdapter,
   generateMusicComfyUI,
   getComfyUIModels,
   getComfyUINodeTypes,
@@ -1842,6 +1843,111 @@ async function processTaskIpc(
         }, 60000);
       } catch (err) {
         logger.error({ err, sourceGroup }, 'comfyui_generate failed');
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      }
+      return;
+    }
+
+    case 'comfyui_ipadapter': {
+      const requestId = data.requestId;
+      const ipaData = data as any;
+      if (!requestId || !ipaData.prompt || !ipaData.referenceImagePath) {
+        logger.warn(
+          { sourceGroup },
+          'comfyui_ipadapter missing requestId, prompt, or referenceImagePath',
+        );
+        return;
+      }
+      if (!isComfyUIEnabled()) {
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'error',
+          error: 'ComfyUI disabled (missing COMFYUI_URL)',
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+        return;
+      }
+
+      try {
+        // Resolve the host-side path for the reference image
+        const groupDir = path.join(GROUPS_DIR, sourceGroup);
+        const refPath = ipaData.referenceImagePath.startsWith(
+          '/workspace/group/',
+        )
+          ? path.join(
+              groupDir,
+              ipaData.referenceImagePath.replace('/workspace/group/', ''),
+            )
+          : ipaData.referenceImagePath.startsWith('/workspace/project/')
+            ? path.join(
+                path.dirname(GROUPS_DIR),
+                ipaData.referenceImagePath.replace('/workspace/project/', ''),
+              )
+            : ipaData.referenceImagePath;
+
+        const result = await generateImageWithIPAdapter(
+          {
+            prompt: ipaData.prompt,
+            referenceImagePath: refPath,
+            negativePrompt: ipaData.negativePrompt || '',
+            width: ipaData.width || 1024,
+            height: ipaData.height || 1024,
+            steps: ipaData.steps,
+            cfgScale: ipaData.cfgScale,
+            weight: ipaData.weight,
+            startPercent: ipaData.startPercent,
+            endPercent: ipaData.endPercent,
+            checkpoint: ipaData.checkpoint,
+          },
+          groupDir,
+        );
+
+        const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+        fs.mkdirSync(repliesDir, { recursive: true });
+        const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'success',
+          data: {
+            containerPath: result.containerPath,
+            filename: result.filename,
+          },
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      } catch (err) {
+        logger.error({ err, sourceGroup }, 'comfyui_ipadapter failed');
         const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
         fs.mkdirSync(repliesDir, { recursive: true });
         const replyPath = path.join(repliesDir, `${requestId}.json`);

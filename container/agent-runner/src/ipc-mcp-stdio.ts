@@ -454,6 +454,74 @@ Tips:
   },
 );
 
+// ─── comfyui_ipadapter ───────────────────────────────────────────────────────
+
+server.tool(
+  'comfyui_ipadapter',
+  `Generate an image using FLUX + IP-Adapter on ComfyUI. Uses a reference image to guide the generation while following a text prompt.
+
+Perfect for: creating variations of an existing image, maintaining character consistency across frames, style transfer.
+Requires: IP-Adapter custom node and model installed on the ComfyUI PC.
+
+The reference_image must be a path to an image file on the container filesystem (e.g. a previously generated image in /workspace/group/tmp/).
+The weight parameter controls how strongly the reference image influences the output (0.0 = ignore reference, 1.0 = strong influence).`,
+  {
+    prompt: z.string().describe('Text description of the image to generate'),
+    reference_image: z.string().describe('Path to the reference image file (e.g. "/workspace/group/tmp/comfyui-1234.png")'),
+    negative_prompt: z.string().optional().describe('Things to avoid in the image'),
+    width: z.number().optional().default(1024).describe('Image width in pixels (default: 1024)'),
+    height: z.number().optional().default(1024).describe('Image height in pixels (default: 1024)'),
+    weight: z.number().optional().default(0.8).describe('IP-Adapter strength 0.0-1.0 (default: 0.8). Higher = more like reference image'),
+    start_percent: z.number().optional().default(0.0).describe('When to start applying IP-Adapter (0.0-1.0, default: 0.0)'),
+    end_percent: z.number().optional().default(1.0).describe('When to stop applying IP-Adapter (0.0-1.0, default: 1.0)'),
+    steps: z.number().optional().describe('Number of sampling steps (default: 20)'),
+    cfg_scale: z.number().optional().describe('Guidance scale (default: 3.5)'),
+    checkpoint: z.string().optional().describe('Override UNET model (default: flux2_dev_fp8mixed.safetensors)'),
+  },
+  async (args) => {
+    const ctx = getContext();
+    const requestId = writeIpcFile(TASKS_DIR, {
+      type: 'comfyui_ipadapter',
+      prompt: args.prompt,
+      referenceImagePath: args.reference_image,
+      negativePrompt: args.negative_prompt || '',
+      width: args.width || 1024,
+      height: args.height || 1024,
+      weight: args.weight ?? 0.8,
+      startPercent: args.start_percent ?? 0.0,
+      endPercent: args.end_percent ?? 1.0,
+      steps: args.steps,
+      cfgScale: args.cfg_scale,
+      checkpoint: args.checkpoint,
+      groupFolder: ctx.groupFolder,
+      chatJid: ctx.chatJid,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const reply = await waitForReply(requestId, 720000);
+
+      if (reply.status === 'success') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `IP-Adapter image generated! Saved to: ${reply.data.containerPath}\n\nUse send_image with image_path="${reply.data.containerPath}" to send it.`,
+          }],
+        };
+      }
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI IP-Adapter generation failed: ${reply.error}` }],
+        isError: true,
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI IP-Adapter error: ${err instanceof Error ? err.message : String(err)}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
 // ─── comfyui_info ────────────────────────────────────────────────────────────
 
 server.tool(

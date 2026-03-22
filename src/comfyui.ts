@@ -80,6 +80,42 @@ export async function getComfyUIModels(
   }
 }
 
+/**
+ * Upload an image to ComfyUI's input folder.
+ * Returns the filename as stored on the server.
+ */
+export async function uploadImageToComfyUI(
+  imagePath: string,
+): Promise<string> {
+  if (!comfyuiUrl) throw new Error('ComfyUI not initialized');
+
+  const imageBuffer = fs.readFileSync(imagePath);
+  const filename = path.basename(imagePath);
+
+  const formData = new FormData();
+  formData.append(
+    'image',
+    new Blob([imageBuffer], { type: 'image/png' }),
+    filename,
+  );
+  formData.append('type', 'input');
+  formData.append('overwrite', 'true');
+
+  const res = await fetch(`${comfyuiUrl}/upload/image`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!res.ok) {
+    throw new Error(`ComfyUI /upload/image failed (${res.status})`);
+  }
+
+  const result = (await res.json()) as { name: string; subfolder?: string };
+  logger.info({ filename: result.name }, 'Image uploaded to ComfyUI');
+  return result.name;
+}
+
 interface ComfyUIOptions {
   prompt: string;
   negativePrompt?: string;
@@ -374,6 +410,271 @@ export async function generateImageComfyUI(
 
   throw new Error(
     `ComfyUI generation timed out after ${GENERATION_TIMEOUT / 1000}s`,
+  );
+}
+
+// ─── IP-Adapter FLUX Generation ─────────────────────────────────────────────
+
+interface IPAdapterOptions {
+  prompt: string;
+  referenceImagePath: string; // host-side path to the reference image
+  negativePrompt?: string;
+  width?: number;
+  height?: number;
+  steps?: number;
+  cfgScale?: number;
+  weight?: number; // IP-Adapter strength (0-1, default 0.8)
+  startPercent?: number;
+  endPercent?: number;
+  checkpoint?: string;
+}
+
+const IPADAPTER_WORKFLOW = {
+  '1': {
+    class_type: 'UNETLoader',
+    inputs: {
+      unet_name: 'flux2_dev_fp8mixed.safetensors',
+      weight_dtype: 'default',
+    },
+  },
+  '2': {
+    class_type: 'DualCLIPLoader',
+    inputs: {
+      clip_name1: 't5xxl_fp16.safetensors',
+      clip_name2: 'clip_l.safetensors',
+      type: 'flux',
+    },
+  },
+  '3': {
+    class_type: 'VAELoader',
+    inputs: { vae_name: 'ae.safetensors' },
+  },
+  '4': {
+    class_type: 'CLIPTextEncode',
+    _meta: { title: 'Positive Prompt' },
+    inputs: { text: '', clip: ['2', 0] },
+  },
+  '5': {
+    class_type: 'ConditioningZeroOut',
+    inputs: { conditioning: ['4', 0] },
+  },
+  '6': {
+    class_type: 'EmptySD3LatentImage',
+    inputs: { width: 1024, height: 1024, batch_size: 1 },
+  },
+  '10': {
+    class_type: 'IPAdapterFluxLoader',
+    inputs: {
+      ipadapter: 'ip-adapter.bin',
+      clip_vision: 'google/siglip-so400m-patch14-384',
+      provider: 'cuda',
+    },
+  },
+  '11': {
+    class_type: 'LoadImage',
+    inputs: { image: '' }, // filename from upload
+  },
+  '12': {
+    class_type: 'ApplyIPAdapterFlux',
+    inputs: {
+      model: ['1', 0],
+      ipadapter_flux: ['10', 0],
+      image: ['11', 0],
+      weight: 0.8,
+      start_percent: 0.0,
+      end_percent: 1.0,
+    },
+  },
+  '7': {
+    class_type: 'ModelSamplingFlux',
+    inputs: { max_shift: 1.15, base_shift: 0.5, width: 1024, height: 1024, model: ['12', 0] },
+  },
+  '13': {
+    class_type: 'FluxGuidance',
+    inputs: { guidance: 3.5, conditioning: ['4', 0] },
+  },
+  '8': {
+    class_type: 'KSampler',
+    inputs: {
+      seed: 0,
+      steps: 20,
+      cfg: 1.0,
+      sampler_name: 'euler',
+      scheduler: 'simple',
+      denoise: 1.0,
+      model: ['7', 0],
+      positive: ['13', 0],
+      negative: ['5', 0],
+      latent_image: ['6', 0],
+    },
+  },
+  '9': {
+    class_type: 'VAEDecode',
+    inputs: { samples: ['8', 0], vae: ['3', 0] },
+  },
+  '14': {
+    class_type: 'SaveImage',
+    inputs: { filename_prefix: 'nanoclaw_ipadapter', images: ['9', 0] },
+  },
+};
+
+export async function generateImageWithIPAdapter(
+  opts: IPAdapterOptions,
+  groupDir: string,
+): Promise<{ hostPath: string; containerPath: string; filename: string }> {
+  if (!comfyuiUrl)
+    throw new Error('ComfyUI not initialized (missing COMFYUI_URL)');
+
+  const available = await checkComfyUIAvailable();
+  if (!available) {
+    throw new Error(
+      'ComfyUI server is not reachable — the PC may be turned off or ComfyUI is not running.',
+    );
+  }
+
+  // Upload reference image
+  const uploadedFilename = await uploadImageToComfyUI(opts.referenceImagePath);
+
+  const workflow = JSON.parse(JSON.stringify(IPADAPTER_WORKFLOW));
+
+  // Inject checkpoint
+  if (opts.checkpoint) {
+    workflow['1'].inputs.unet_name = opts.checkpoint;
+  }
+
+  // Inject prompt
+  workflow['4'].inputs.text = opts.prompt;
+
+  // Inject dimensions
+  const w = opts.width || 1024;
+  const h = opts.height || 1024;
+  workflow['6'].inputs.width = w;
+  workflow['6'].inputs.height = h;
+  workflow['7'].inputs.width = w;
+  workflow['7'].inputs.height = h;
+
+  // Inject reference image
+  workflow['11'].inputs.image = uploadedFilename;
+
+  // Inject IP-Adapter settings
+  if (opts.weight !== undefined) workflow['12'].inputs.weight = opts.weight;
+  if (opts.startPercent !== undefined)
+    workflow['12'].inputs.start_percent = opts.startPercent;
+  if (opts.endPercent !== undefined)
+    workflow['12'].inputs.end_percent = opts.endPercent;
+
+  // Inject sampler settings
+  if (opts.steps) workflow['8'].inputs.steps = opts.steps;
+  if (opts.cfgScale !== undefined)
+    workflow['13'].inputs.guidance = opts.cfgScale;
+  workflow['8'].inputs.seed = Math.floor(
+    Math.random() * Number.MAX_SAFE_INTEGER,
+  );
+
+  // Queue the prompt
+  let queueRes: Response;
+  try {
+    queueRes = await fetch(`${comfyuiUrl}/prompt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: workflow }),
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch (err) {
+    if (isConnectionError(err)) {
+      throw new Error(
+        'Lost connection to ComfyUI while submitting the IP-Adapter prompt.',
+      );
+    }
+    throw err;
+  }
+
+  if (!queueRes.ok) {
+    const body = await queueRes.text();
+    throw new Error(
+      `ComfyUI /prompt failed (${queueRes.status}): ${body}`,
+    );
+  }
+
+  const { prompt_id } = (await queueRes.json()) as { prompt_id: string };
+  logger.debug({ prompt_id }, 'ComfyUI IP-Adapter prompt queued');
+
+  // Poll for completion
+  const POLL_INTERVAL = 3000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < GENERATION_TIMEOUT) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+
+    let histRes: Response;
+    try {
+      histRes = await fetch(`${comfyuiUrl}/history/${prompt_id}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch (err) {
+      if (isConnectionError(err)) {
+        throw new Error(
+          'Lost connection to ComfyUI during IP-Adapter generation.',
+        );
+      }
+      continue;
+    }
+    if (!histRes.ok) continue;
+
+    const history = (await histRes.json()) as Record<string, any>;
+    const entry = history[prompt_id];
+    if (!entry) continue;
+
+    if (entry.status?.status_str === 'error') {
+      throw new Error(
+        `ComfyUI IP-Adapter generation failed: ${JSON.stringify(entry.status)}`,
+      );
+    }
+
+    if (entry.outputs) {
+      for (const nodeOutput of Object.values(entry.outputs) as any[]) {
+        if (nodeOutput.images && nodeOutput.images.length > 0) {
+          const img = nodeOutput.images[0];
+          const viewUrl = `${comfyuiUrl}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder || '')}&type=${encodeURIComponent(img.type || 'output')}`;
+
+          const imgRes = await fetch(viewUrl, {
+            signal: AbortSignal.timeout(30000),
+          });
+          if (!imgRes.ok) {
+            throw new Error(`ComfyUI /view failed (${imgRes.status})`);
+          }
+
+          const imageBuffer = Buffer.from(await imgRes.arrayBuffer());
+          const filename = `comfyui-ipadapter-${Date.now()}.png`;
+          const tmpDir = path.join(groupDir, 'tmp');
+          fs.mkdirSync(tmpDir, { recursive: true });
+          const hostPath = path.join(tmpDir, filename);
+
+          const tempPath = `${hostPath}.tmp`;
+          fs.writeFileSync(tempPath, imageBuffer);
+          fs.renameSync(tempPath, hostPath);
+
+          logger.info(
+            {
+              prompt: opts.prompt.slice(0, 100),
+              filename,
+              elapsed: Date.now() - startTime,
+            },
+            'ComfyUI IP-Adapter image generated',
+          );
+          return {
+            hostPath,
+            containerPath: `/workspace/group/tmp/${filename}`,
+            filename,
+          };
+        }
+      }
+      throw new Error('ComfyUI completed but no image output found');
+    }
+  }
+
+  throw new Error(
+    `ComfyUI IP-Adapter generation timed out after ${GENERATION_TIMEOUT / 1000}s`,
   );
 }
 
