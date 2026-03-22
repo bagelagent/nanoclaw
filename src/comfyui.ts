@@ -191,6 +191,7 @@ function loadWorkflow(variant?: string): Record<string, any> {
     ? `comfyui-workflow-${variant}.json`
     : 'comfyui-workflow.json';
   const workflowPath = path.join(process.cwd(), 'data', filename);
+  logger.debug({ variant, filename, workflowPath, exists: fs.existsSync(workflowPath) }, 'Loading ComfyUI workflow');
   try {
     if (fs.existsSync(workflowPath)) {
       return JSON.parse(fs.readFileSync(workflowPath, 'utf-8'));
