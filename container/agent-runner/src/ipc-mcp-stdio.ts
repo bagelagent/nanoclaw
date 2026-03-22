@@ -350,6 +350,7 @@ Tips: Be specific and descriptive. For negative_prompt, list things to avoid (e.
     steps: z.number().optional().describe('Number of sampling steps (default: 8 for turbo models)'),
     cfg_scale: z.number().optional().describe('CFG scale / guidance (default: 2.0 for turbo models)'),
     checkpoint: z.string().optional().describe('UNET model filename (e.g. "z_image_turbo_bf16.safetensors", "flux1-schnell.safetensors")'),
+    lora_strength: z.number().optional().describe('LoRA strength when using a LoRA-based workflow like Illustrious (0.0-1.0, default: 0.7)'),
   },
   async (args) => {
     const ctx = getContext();
@@ -362,6 +363,7 @@ Tips: Be specific and descriptive. For negative_prompt, list things to avoid (e.
       steps: args.steps,
       cfgScale: args.cfg_scale,
       checkpoint: args.checkpoint,
+      loraStrength: args.lora_strength,
       groupFolder: ctx.groupFolder,
       chatJid: ctx.chatJid,
       timestamp: new Date().toISOString(),

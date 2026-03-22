@@ -1814,6 +1814,7 @@ async function processTaskIpc(
             steps: imgData.steps,
             cfgScale: imgData.cfgScale,
             checkpoint: imgData.checkpoint,
+            loraStrength: imgData.loraStrength,
           },
           groupDir,
         );

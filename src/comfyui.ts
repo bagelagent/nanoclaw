@@ -122,6 +122,7 @@ interface ComfyUIOptions {
   steps?: number;
   cfgScale?: number;
   checkpoint?: string;
+  loraStrength?: number;
 }
 
 const DEFAULT_WORKFLOW = {
@@ -191,7 +192,10 @@ function loadWorkflow(variant?: string): Record<string, any> {
     ? `comfyui-workflow-${variant}.json`
     : 'comfyui-workflow.json';
   const workflowPath = path.join(process.cwd(), 'data', filename);
-  logger.debug({ variant, filename, workflowPath, exists: fs.existsSync(workflowPath) }, 'Loading ComfyUI workflow');
+  logger.debug(
+    { variant, filename, workflowPath, exists: fs.existsSync(workflowPath) },
+    'Loading ComfyUI workflow',
+  );
   try {
     if (fs.existsSync(workflowPath)) {
       return JSON.parse(fs.readFileSync(workflowPath, 'utf-8'));
@@ -287,6 +291,15 @@ export async function generateImageComfyUI(
       checkpoint.inputs.ckpt_name = opts.checkpoint;
     } else if (unetLoader) {
       unetLoader.inputs.unet_name = opts.checkpoint;
+    }
+  }
+
+  // Inject LoRA strength if specified
+  if (opts.loraStrength !== undefined) {
+    const loraLoader = findNodeByClass(workflow, 'LoraLoader');
+    if (loraLoader) {
+      loraLoader.inputs.strength_model = opts.loraStrength;
+      loraLoader.inputs.strength_clip = opts.loraStrength;
     }
   }
 
