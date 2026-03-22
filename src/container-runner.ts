@@ -83,9 +83,44 @@ async function sendToTmux(containerName: string, text: string): Promise<void> {
   );
   await dockerExec(containerName, 'tmux load-buffer /tmp/nc_input.txt');
   await dockerExec(containerName, 'tmux paste-buffer -t claude');
-  // Small delay before submitting (ink TUI needs time to process paste)
-  await new Promise((r) => setTimeout(r, 300));
+  // Delay before submitting — ink TUI needs time to process paste.
+  // Scale with paste size: 500ms base + 50ms per KB (large pastes need more time).
+  const pasteDelay = Math.min(500 + Math.ceil(text.length / 1024) * 50, 3000);
+  await new Promise((r) => setTimeout(r, pasteDelay));
   await dockerExec(containerName, 'tmux send-keys -t claude C-m');
+
+  // Verify Claude started processing — retry Enter if it didn't register.
+  // Check for "Esc to interrupt" or "ctrl+c to interrupt" which appear when processing.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const pane = await dockerExec(
+        containerName,
+        'tmux capture-pane -t claude -p',
+        10000,
+      );
+      if (
+        pane.includes('Esc to interrupt') ||
+        pane.includes('ctrl+c to interrupt')
+      ) {
+        return; // Claude is processing
+      }
+    } catch {
+      // Docker exec can fail transiently
+    }
+    // Retry sending Enter
+    logger.warn(
+      { containerName, attempt: attempt + 1 },
+      'Claude not processing after paste — retrying Enter',
+    );
+    await dockerExec(containerName, 'tmux send-keys -t claude C-m');
+  }
+  // If we get here, Claude may still not be processing — the IDLE_CHECK_DELAY
+  // will handle it, but log a warning.
+  logger.warn(
+    { containerName },
+    'Claude did not start processing after 3 Enter retries',
+  );
 }
 
 /**

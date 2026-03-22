@@ -98,6 +98,8 @@ import {
   initComfyUI,
   generateImageComfyUI,
   generateMusicComfyUI,
+  getComfyUIModels,
+  getComfyUINodeTypes,
   isComfyUIEnabled,
   checkComfyUIAvailable,
 } from './comfyui.js';
@@ -1930,6 +1932,84 @@ async function processTaskIpc(
         const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
         fs.mkdirSync(repliesDir, { recursive: true });
         const replyPath = path.join(repliesDir, `${requestId}.json`);
+        const replyPayload = {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      }
+      return;
+    }
+
+    case 'comfyui_info': {
+      const requestId = data.requestId;
+      if (!requestId) {
+        logger.warn({ sourceGroup }, 'comfyui_info missing requestId');
+        return;
+      }
+
+      const repliesDir = path.join(DATA_DIR, 'ipc', sourceGroup, 'replies');
+      fs.mkdirSync(repliesDir, { recursive: true });
+      const replyPath = path.join(repliesDir, `${requestId}.json`);
+
+      if (!isComfyUIEnabled()) {
+        const replyPayload = {
+          status: 'error',
+          error: 'ComfyUI disabled (missing COMFYUI_URL)',
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+        return;
+      }
+
+      try {
+        const infoData = data as any;
+        const nodeTypes = infoData.includeNodes
+          ? await getComfyUINodeTypes()
+          : null;
+        const models: Record<string, string[] | null> = {};
+        if (infoData.modelFolders) {
+          for (const folder of infoData.modelFolders) {
+            models[folder] = await getComfyUIModels(folder);
+          }
+        }
+        const available = await checkComfyUIAvailable();
+
+        const replyPayload = {
+          status: 'success',
+          data: {
+            online: !!available,
+            vram_free: available?.vram_free,
+            nodeTypes,
+            models,
+          },
+          timestamp: new Date().toISOString(),
+        };
+        const tempPath = `${replyPath}.tmp`;
+        fs.writeFileSync(tempPath, JSON.stringify(replyPayload, null, 2));
+        fs.renameSync(tempPath, replyPath);
+        setTimeout(() => {
+          try {
+            fs.unlinkSync(replyPath);
+          } catch {}
+        }, 60000);
+      } catch (err) {
+        logger.error({ err, sourceGroup }, 'comfyui_info failed');
         const replyPayload = {
           status: 'error',
           error: err instanceof Error ? err.message : String(err),

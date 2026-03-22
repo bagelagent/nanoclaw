@@ -42,6 +42,44 @@ export async function checkComfyUIAvailable(): Promise<{
   }
 }
 
+/**
+ * Query available node types from ComfyUI /object_info endpoint.
+ * Returns a list of class_type names, or null if unreachable.
+ */
+export async function getComfyUINodeTypes(): Promise<string[] | null> {
+  if (!comfyuiUrl) return null;
+  try {
+    const res = await fetch(`${comfyuiUrl}/object_info`, {
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const info = (await res.json()) as Record<string, any>;
+    return Object.keys(info);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * List available models in a specific ComfyUI models subdirectory.
+ * Uses the /models endpoint if available, otherwise returns null.
+ */
+export async function getComfyUIModels(
+  subfolder: string,
+): Promise<string[] | null> {
+  if (!comfyuiUrl) return null;
+  try {
+    const res = await fetch(
+      `${comfyuiUrl}/models/${encodeURIComponent(subfolder)}`,
+      { signal: AbortSignal.timeout(10000) },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as string[];
+  } catch {
+    return null;
+  }
+}
+
 interface ComfyUIOptions {
   prompt: string;
   negativePrompt?: string;

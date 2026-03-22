@@ -454,6 +454,53 @@ Tips:
   },
 );
 
+// ─── comfyui_info ────────────────────────────────────────────────────────────
+
+server.tool(
+  'comfyui_info',
+  `Query ComfyUI server for available node types and models. Use this to check what custom nodes and model files are installed.
+
+Returns: online status, available node class types, and model files in specified directories.
+Model folder names: "checkpoints", "loras", "clip_vision", "ipadapter", "controlnet", "unet", "vae", "clip", etc.`,
+  {
+    include_nodes: z.boolean().optional().default(false).describe('Include list of all available node types (can be large)'),
+    model_folders: z.array(z.string()).optional().describe('List of model subdirectories to query (e.g. ["checkpoints", "loras", "clip_vision", "ipadapter"])'),
+  },
+  async (args) => {
+    const ctx = getContext();
+    const requestId = writeIpcFile(TASKS_DIR, {
+      type: 'comfyui_info',
+      includeNodes: args.include_nodes || false,
+      modelFolders: args.model_folders || [],
+      groupFolder: ctx.groupFolder,
+      chatJid: ctx.chatJid,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const reply = await waitForReply(requestId, 30000);
+
+      if (reply.status === 'success') {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(reply.data, null, 2),
+          }],
+        };
+      }
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI info query failed: ${reply.error}` }],
+        isError: true,
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ComfyUI info error: ${err instanceof Error ? err.message : String(err)}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
 // ─── schedule_task ───────────────────────────────────────────────────────────
 
 server.tool(
