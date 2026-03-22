@@ -110,7 +110,7 @@ pg_ctl -D /home/node/pgdata -l /tmp/pg.log start 2>/dev/null || true
 # once manually. The acceptance is saved to the mounted ~/.claude.json.
 # After that, subsequent launches skip the prompts automatically.
 tmux new-session -d -s claude -x 200 -y 50 \
-  "claude --dangerously-skip-permissions"
+  "claude --continue --dangerously-skip-permissions || claude --dangerously-skip-permissions"
 
 # Keep container alive; exit when tmux session dies
 while tmux has-session -t claude 2>/dev/null; do sleep 5; done
