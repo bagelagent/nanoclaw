@@ -17,6 +17,7 @@ Single Node.js process with skill-based channel system. Channels (WhatsApp, Tele
 | `src/config.ts` | Trigger pattern, paths, intervals |
 | `src/container-runner.ts` | Manages persistent containers (tmux + docker exec) |
 | `src/task-scheduler.ts` | Runs scheduled tasks (headless `claude -p`) |
+| `src/comfyui.ts` | ComfyUI integration (image + music generation via local GPU) |
 | `src/db.ts` | SQLite operations |
 | `groups/{name}/CLAUDE.md` | Per-group memory (isolated) |
 | `container/skills/agent-browser.md` | Browser automation tool (available to all agents via Bash) |

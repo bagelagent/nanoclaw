@@ -65,7 +65,7 @@ A personal Claude assistant with multi-channel support, persistent memory per co
 │  │    • Read, Write, Edit, Glob, Grep (file operations)           │    │
 │  │    • WebSearch, WebFetch (internet access)                     │    │
 │  │    • agent-browser (browser automation)                        │    │
-│  │    • mcp__nanoclaw__* (scheduler tools via IPC)                │    │
+│  │    • mcp__nanoclaw__* (scheduler, media, messaging via IPC)    │    │
 │  │                                                                │    │
 │  └──────────────────────────────────────────────────────────────┘    │
 │                                                                       │
@@ -398,7 +398,7 @@ The token can be extracted from `~/.claude/.credentials.json` if you're logged i
 ANTHROPIC_API_KEY=sk-ant-api03-...
 ```
 
-Only specific allowed variables (`CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`) are extracted from `.env` and written to `data/env/env`, then mounted into the container at `/workspace/env-dir/env` and sourced by the entrypoint script. This ensures other environment variables in `.env` (like `DISCORD_BOT_TOKEN`, `GITHUB_TOKEN`, etc.) are not exposed to the agent.
+Only specific allowed variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`) are extracted from `.env` and written to `data/env/env`, then mounted into the container at `/workspace/env-dir/env` and sourced by the entrypoint script. This ensures other environment variables in `.env` (like `DISCORD_BOT_TOKEN`, `COMFYUI_URL`, `GITHUB_TOKEN`, etc.) are not exposed to the agent. Note: `COMFYUI_URL` stays host-side because ComfyUI requests are made by the host process via IPC, not by the container agent directly.
 
 ### Changing the Assistant Name
 
@@ -632,6 +632,15 @@ The `nanoclaw` MCP server is created dynamically per agent call with the current
 | `resume_task` | Resume a paused task |
 | `cancel_task` | Delete a task |
 | `send_message` | Send a message to the group via its channel |
+| `send_image` | Send an image to the group (file path or base64) |
+| `send_audio` | Send an audio file to the group (MP3, OGG, etc.) |
+| `generate_image` | Generate an image via Gemini AI |
+| `comfyui_generate` | Generate an image via ComfyUI (local GPU) |
+| `comfyui_music` | Generate music via ACE-Step 1.5 on ComfyUI (local GPU) |
+| `elevenlabs_music` | Generate music via ElevenLabs API |
+| `elevenlabs_sound_effect` | Generate sound effects via ElevenLabs API |
+| `elevenlabs_tts` | Text-to-speech via ElevenLabs API |
+| `semantic_search` | Search group memory by meaning (hybrid/semantic/keyword) |
 
 ---
 
