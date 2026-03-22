@@ -269,10 +269,17 @@ export async function generateImageComfyUI(
   const isFluxDev =
     opts.checkpoint === 'flux1-dev.safetensors' ||
     opts.checkpoint === 'flux1-dev';
-  const workflow = loadWorkflow(isFluxDev ? 'flux-dev' : undefined);
+  const isIllustrious =
+    opts.checkpoint?.toLowerCase().includes('illustrious') ?? false;
+  const variant = isFluxDev
+    ? 'flux-dev'
+    : isIllustrious
+      ? 'illustrious-sprite'
+      : undefined;
+  const workflow = loadWorkflow(variant);
 
   // Inject checkpoint/model — support both CheckpointLoaderSimple and UNETLoader
-  if (opts.checkpoint && !isFluxDev) {
+  if (opts.checkpoint && !isFluxDev && !isIllustrious) {
     const checkpoint = findNodeByClass(workflow, 'CheckpointLoaderSimple');
     const unetLoader = findNodeByClass(workflow, 'UNETLoader');
     if (checkpoint) {
