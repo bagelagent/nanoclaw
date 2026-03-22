@@ -84,9 +84,7 @@ export async function getComfyUIModels(
  * Upload an image to ComfyUI's input folder.
  * Returns the filename as stored on the server.
  */
-export async function uploadImageToComfyUI(
-  imagePath: string,
-): Promise<string> {
+export async function uploadImageToComfyUI(imagePath: string): Promise<string> {
   if (!comfyuiUrl) throw new Error('ComfyUI not initialized');
 
   const imageBuffer = fs.readFileSync(imagePath);
@@ -188,18 +186,17 @@ const DEFAULT_WORKFLOW = {
   },
 };
 
-function loadWorkflow(): Record<string, any> {
-  const workflowPath = path.join(
-    process.cwd(),
-    'data',
-    'comfyui-workflow.json',
-  );
+function loadWorkflow(variant?: string): Record<string, any> {
+  const filename = variant
+    ? `comfyui-workflow-${variant}.json`
+    : 'comfyui-workflow.json';
+  const workflowPath = path.join(process.cwd(), 'data', filename);
   try {
     if (fs.existsSync(workflowPath)) {
       return JSON.parse(fs.readFileSync(workflowPath, 'utf-8'));
     }
   } catch (err) {
-    logger.warn({ err }, 'Failed to load comfyui-workflow.json, using default');
+    logger.warn({ err }, `Failed to load ${filename}, using default`);
   }
   return JSON.parse(JSON.stringify(DEFAULT_WORKFLOW));
 }
@@ -268,10 +265,14 @@ export async function generateImageComfyUI(
     );
   }
 
-  const workflow = loadWorkflow();
+  // Select workflow variant based on checkpoint
+  const isFluxDev =
+    opts.checkpoint === 'flux1-dev.safetensors' ||
+    opts.checkpoint === 'flux1-dev';
+  const workflow = loadWorkflow(isFluxDev ? 'flux-dev' : undefined);
 
   // Inject checkpoint/model — support both CheckpointLoaderSimple and UNETLoader
-  if (opts.checkpoint) {
+  if (opts.checkpoint && !isFluxDev) {
     const checkpoint = findNodeByClass(workflow, 'CheckpointLoaderSimple');
     const unetLoader = findNodeByClass(workflow, 'UNETLoader');
     if (checkpoint) {
@@ -487,7 +488,13 @@ const IPADAPTER_WORKFLOW = {
   },
   '7': {
     class_type: 'ModelSamplingFlux',
-    inputs: { max_shift: 1.15, base_shift: 0.5, width: 1024, height: 1024, model: ['12', 0] },
+    inputs: {
+      max_shift: 1.15,
+      base_shift: 0.5,
+      width: 1024,
+      height: 1024,
+      model: ['12', 0],
+    },
   },
   '13': {
     class_type: 'FluxGuidance',
@@ -591,9 +598,7 @@ export async function generateImageWithIPAdapter(
 
   if (!queueRes.ok) {
     const body = await queueRes.text();
-    throw new Error(
-      `ComfyUI /prompt failed (${queueRes.status}): ${body}`,
-    );
+    throw new Error(`ComfyUI /prompt failed (${queueRes.status}): ${body}`);
   }
 
   const { prompt_id } = (await queueRes.json()) as { prompt_id: string };
