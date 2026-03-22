@@ -172,9 +172,7 @@ export class YahooEmailChannel implements Channel {
     //   Subject: custom subject       (optional — overrides Re: subject)
     const toMatch = text.match(/^To:\s*(.+)/i);
     if (!toMatch) {
-      logger.error(
-        'Yahoo send: no "To:" header in first line. Cannot send.',
-      );
+      logger.error('Yahoo send: no "To:" header in first line. Cannot send.');
       return;
     }
     const toAddr = toMatch[1].trim().toLowerCase();
@@ -415,9 +413,7 @@ export class YahooEmailChannel implements Channel {
     const messageId = parsed.messageId || '';
 
     // Collect all recipients (To + CC) for reply-all support
-    const collectAddresses = (
-      field: typeof parsed.to,
-    ): string[] => {
+    const collectAddresses = (field: typeof parsed.to): string[] => {
       if (!field) return [];
       const items = Array.isArray(field) ? field : [field];
       return items.flatMap((obj) =>
@@ -475,7 +471,10 @@ export class YahooEmailChannel implements Channel {
     }
 
     if (!body && attachmentPaths.length === 0) {
-      logger.debug({ seq, subject }, 'Yahoo: skipping email with no text body and no attachments');
+      logger.debug(
+        { seq, subject },
+        'Yahoo: skipping email with no text body and no attachments',
+      );
       return;
     }
 

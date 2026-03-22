@@ -37,6 +37,7 @@ import {
   getRegisteredChannelNames,
 } from './channels/registry.js';
 import {
+  clearContainerContext,
   runContainerAgent,
   shutdownPool,
   warmUpMain,
@@ -418,6 +419,27 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       TRIGGER_PATTERN.test(m.content.trim()),
     );
     if (!hasTrigger) return true;
+  }
+
+  // Handle /clear command — reset Claude Code context window
+  const lastMsg = missedMessages[missedMessages.length - 1];
+  const clearPattern = /^(?:@\w+\s+)?\/clear$/i;
+  if (clearPattern.test(lastMsg.content.trim())) {
+    // Advance cursor so we don't re-process
+    lastAgentTimestamp[chatJid] =
+      missedMessages[missedMessages.length - 1].timestamp;
+    saveState();
+
+    const cleared = await clearContainerContext(group.folder);
+    if (cleared) {
+      await sendMessage(chatJid, 'Context cleared ✨');
+    } else {
+      await sendMessage(
+        chatJid,
+        'No active session to clear — context will start fresh on the next message.',
+      );
+    }
+    return true;
   }
 
   // Download any image attachments into the group workspace
@@ -1824,10 +1846,7 @@ async function processTaskIpc(
     case 'comfyui_music': {
       const requestId = data.requestId;
       if (!requestId || !(data as any).tags) {
-        logger.warn(
-          { sourceGroup },
-          'comfyui_music missing requestId or tags',
-        );
+        logger.warn({ sourceGroup }, 'comfyui_music missing requestId or tags');
         return;
       }
       if (!isComfyUIEnabled()) {

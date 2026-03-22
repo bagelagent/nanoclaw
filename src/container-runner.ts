@@ -993,6 +993,37 @@ export function restartContainer(groupFolder: string): boolean {
   return containerPool.restartContainer(groupFolder);
 }
 
+/**
+ * Send /clear to a group's Claude Code tmux session to reset context.
+ * Returns true if the command was sent, false if no container exists.
+ */
+export async function clearContainerContext(
+  groupFolder: string,
+): Promise<boolean> {
+  const entry = containerPool.getEntry(groupFolder);
+  if (!entry) return false;
+
+  try {
+    // Wait for idle before sending /clear
+    await waitForIdle(entry.containerName, 30000);
+    await sendToTmux(entry.containerName, '/clear');
+    // Wait for /clear to process
+    await new Promise((r) => setTimeout(r, 3000));
+    await waitForIdle(entry.containerName, 15000);
+    logger.info(
+      { group: groupFolder, containerName: entry.containerName },
+      'Context cleared via /clear command',
+    );
+    return true;
+  } catch (err) {
+    logger.error(
+      { group: groupFolder, error: err instanceof Error ? err.message : String(err) },
+      'Failed to clear context',
+    );
+    return false;
+  }
+}
+
 export function writeTasksSnapshot(
   groupFolder: string,
   isMain: boolean,

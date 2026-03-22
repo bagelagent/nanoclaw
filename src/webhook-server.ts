@@ -413,6 +413,10 @@ function spawnGitHubContainer(
  * Build prompt for issue_assigned event
  */
 function buildIssueAssignedPrompt(data: any): string {
+  const description = data.description
+    ? data.description
+    : `(No description provided — use the issue title as your guide: "${data.title}")`;
+
   return `You've been assigned to work on a GitHub issue. Here are the details:
 
 **Repository**: ${data.repo_owner}/${data.repo_name}
@@ -420,11 +424,20 @@ function buildIssueAssignedPrompt(data: any): string {
 **URL**: ${data.issue_url}
 
 **Description**:
-${data.description || '(No description provided)'}
+${description}
 
 ---
 
 **WORKSPACE**: The repository is in \`/workspace/group/${data.repo_name}/\`
+
+**AVAILABLE INTEGRATIONS** (MCP tools you can call directly):
+- \`comfyui_generate\` — Generate images using ComfyUI on a local GPU (Stable Diffusion, z-image-turbo, etc.). Params: prompt, negative_prompt, width, height, steps, cfg_scale, checkpoint. Returns a file path.
+- \`comfyui_music\` — Generate music using ACE-Step 1.5 via ComfyUI (local GPU). Params: tags, lyrics, duration_seconds, bpm, language, keyscale, timesignature. Returns a file path.
+- \`elevenlabs_music\` — Generate music via ElevenLabs API. Params: prompt, duration_seconds, instrumental.
+- \`elevenlabs_sound_effect\` — Generate sound effects via ElevenLabs API. Params: prompt, duration_seconds.
+- \`elevenlabs_tts\` — Text-to-speech via ElevenLabs API. Params: text, voice_id, model_id.
+- \`generate_image\` — Generate images via Gemini AI. Params: prompt, aspect_ratio.
+- \`send_image\` / \`send_audio\` — Send generated files to users.
 
 **YOUR WORKFLOW**:
 
