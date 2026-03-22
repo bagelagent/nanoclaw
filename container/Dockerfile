@@ -68,6 +68,10 @@ RUN npm install -g @playwright/test && \
     cp -r /root/.cache/ms-playwright /home/node/.cache/ && \
     chown -R node:node /home/node/.cache
 
+# Enable Claude Code auto-updater: make global npm dirs writable by node user
+RUN chown node:node /usr/local && \
+    chown -R node:node /usr/local/lib/node_modules /usr/local/bin
+
 # Create workspace directories
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input /workspace/ipc/replies /workspace/ipc/progress
 
