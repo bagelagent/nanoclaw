@@ -43,8 +43,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install agent-browser and claude-code globally
-RUN npm install -g agent-browser @anthropic-ai/claude-code
+# Install agent-browser, claude-code, and MCP servers globally
+RUN npm install -g agent-browser @anthropic-ai/claude-code @notionhq/notion-mcp-server figma-developer-mcp
 
 # Create app directory for MCP server
 WORKDIR /app

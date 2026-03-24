@@ -306,8 +306,38 @@ function buildVolumeMounts(
       })()
     : {};
 
-  // Extract API key suffix for pre-approval
-  const envVars = readEnvFile(['ANTHROPIC_API_KEY']);
+  // Extract API key and MCP tokens — check host .env first, then group .env
+  const envVars = readEnvFile([
+    'ANTHROPIC_API_KEY',
+    'NOTION_TOKEN',
+    'FIGMA_API_KEY',
+  ]);
+  // Also read from group .env for tokens not in host .env
+  const groupEnvFile = path.join(groupDir, '.env');
+  if (fs.existsSync(groupEnvFile)) {
+    try {
+      const groupEnvContent = fs.readFileSync(groupEnvFile, 'utf-8');
+      for (const line of groupEnvContent.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        if (['NOTION_TOKEN', 'FIGMA_API_KEY'].includes(key) && !envVars[key]) {
+          let value = trimmed.slice(eqIdx + 1).trim();
+          if (
+            (value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))
+          ) {
+            value = value.slice(1, -1);
+          }
+          if (value) envVars[key] = value;
+        }
+      }
+    } catch {
+      // ignore read errors
+    }
+  }
   const apiKey = envVars.ANTHROPIC_API_KEY || '';
   const apiKeySuffix = apiKey ? apiKey.slice(-20) : '';
 
@@ -329,6 +359,28 @@ function buildVolumeMounts(
         args: ['/app/dist/ipc-mcp-stdio.js'],
         env: {},
       },
+      ...(envVars.FIGMA_API_KEY
+        ? {
+            figma: {
+              command: 'figma-developer-mcp',
+              args: ['--stdio'],
+              env: {
+                FIGMA_API_KEY: envVars.FIGMA_API_KEY,
+              },
+            },
+          }
+        : {}),
+      ...(envVars.NOTION_TOKEN
+        ? {
+            notion: {
+              command: 'notion-mcp-server',
+              args: [],
+              env: {
+                NOTION_TOKEN: envVars.NOTION_TOKEN,
+              },
+            },
+          }
+        : {}),
     },
     // Pre-accept workspace trust for known directories
     projects: {
@@ -422,34 +474,48 @@ function buildVolumeMounts(
     readonly: true,
   });
 
-  // Environment file directory
+  // Environment file directory — merge host .env and group .env
   const envDir = path.join(DATA_DIR, 'env');
   fs.mkdirSync(envDir, { recursive: true });
-  const envFile = path.join(projectRoot, '.env');
-  if (fs.existsSync(envFile)) {
-    const envContent = fs.readFileSync(envFile, 'utf-8');
-    const allowedVars = [
-      'ANTHROPIC_API_KEY',
-      'OPENAI_API_KEY',
-      'ELEVENLABS_API_KEY',
-    ];
-    const filteredLines = envContent.split('\n').filter((line) => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return false;
-      return allowedVars.some((v) => trimmed.startsWith(`${v}=`));
-    });
-
-    if (filteredLines.length > 0) {
-      fs.writeFileSync(
-        path.join(envDir, 'env'),
-        filteredLines.join('\n') + '\n',
-      );
-      mounts.push({
-        hostPath: envDir,
-        containerPath: '/workspace/env-dir',
-        readonly: true,
-      });
+  const allowedVars = [
+    'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
+    'ELEVENLABS_API_KEY',
+    'NOTION_TOKEN',
+    'FIGMA_API_KEY',
+  ];
+  const envLines = new Map<string, string>();
+  // Read from host .env first
+  const hostEnvFile = path.join(projectRoot, '.env');
+  for (const envSrc of [hostEnvFile, groupEnvFile]) {
+    try {
+      if (!fs.existsSync(envSrc)) continue;
+      const content = fs.readFileSync(envSrc, 'utf-8');
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        if (allowedVars.includes(key) && !envLines.has(key)) {
+          envLines.set(key, trimmed);
+        }
+      }
+    } catch {
+      // ignore read errors
     }
+  }
+
+  if (envLines.size > 0) {
+    fs.writeFileSync(
+      path.join(envDir, 'env'),
+      Array.from(envLines.values()).join('\n') + '\n',
+    );
+    mounts.push({
+      hostPath: envDir,
+      containerPath: '/workspace/env-dir',
+      readonly: true,
+    });
   }
 
   // Embeddings DB for semantic memory (read-only, shared across all groups)
