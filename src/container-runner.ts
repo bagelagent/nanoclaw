@@ -88,39 +88,6 @@ async function sendToTmux(containerName: string, text: string): Promise<void> {
   const pasteDelay = Math.min(500 + Math.ceil(text.length / 1024) * 50, 3000);
   await new Promise((r) => setTimeout(r, pasteDelay));
   await dockerExec(containerName, 'tmux send-keys -t claude C-m');
-
-  // Verify Claude started processing — retry Enter if it didn't register.
-  // Check for "Esc to interrupt" or "ctrl+c to interrupt" which appear when processing.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await new Promise((r) => setTimeout(r, 2000));
-    try {
-      const pane = await dockerExec(
-        containerName,
-        'tmux capture-pane -t claude -p',
-        10000,
-      );
-      if (
-        pane.includes('Esc to interrupt') ||
-        pane.includes('ctrl+c to interrupt')
-      ) {
-        return; // Claude is processing
-      }
-    } catch {
-      // Docker exec can fail transiently
-    }
-    // Retry sending Enter
-    logger.warn(
-      { containerName, attempt: attempt + 1 },
-      'Claude not processing after paste — retrying Enter',
-    );
-    await dockerExec(containerName, 'tmux send-keys -t claude C-m');
-  }
-  // If we get here, Claude may still not be processing — the IDLE_CHECK_DELAY
-  // will handle it, but log a warning.
-  logger.warn(
-    { containerName },
-    'Claude did not start processing after 3 Enter retries',
-  );
 }
 
 /**
@@ -259,6 +226,29 @@ function buildVolumeMounts(
     }
   }
 
+  // Shared credentials: mount bundles the group is allowed to access
+  const sharedCredsConfig = path.join(projectRoot, 'shared-credentials.json');
+  if (fs.existsSync(sharedCredsConfig)) {
+    try {
+      const bundles = JSON.parse(fs.readFileSync(sharedCredsConfig, 'utf-8'));
+      for (const [bundleName, bundle] of Object.entries(bundles)) {
+        const b = bundle as { groups?: string[] };
+        if (b.groups && b.groups.includes(group.folder)) {
+          const bundleDir = path.join(GROUPS_DIR, 'shared-creds', bundleName);
+          if (fs.existsSync(bundleDir)) {
+            mounts.push({
+              hostPath: bundleDir,
+              containerPath: `/workspace/credentials/${bundleName}`,
+              readonly: false,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to read shared-credentials.json');
+    }
+  }
+
   // Per-group Claude sessions directory (isolated from other groups)
   const groupSessionsDir = path.join(
     DATA_DIR,
@@ -274,6 +264,20 @@ function buildVolumeMounts(
     ? JSON.parse(fs.readFileSync(settingsFile, 'utf-8'))
     : {};
 
+  // Detect enabled plugins from host settings
+  const hostSettingsFile = path.join(os.homedir(), '.claude', 'settings.json');
+  let hostEnabledPlugins: Record<string, boolean> = {};
+  if (fs.existsSync(hostSettingsFile)) {
+    try {
+      const hostSettings = JSON.parse(
+        fs.readFileSync(hostSettingsFile, 'utf-8'),
+      );
+      hostEnabledPlugins = hostSettings.enabledPlugins || {};
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
   const settings = {
     ...existingSettings,
     env: {
@@ -284,9 +288,61 @@ function buildVolumeMounts(
     },
     // Skip the bypass-permissions confirmation dialog
     skipDangerousModePermissionPrompt: true,
+    // Mirror host's enabled plugins into container settings
+    ...(Object.keys(hostEnabledPlugins).length > 0
+      ? {
+          enabledPlugins: {
+            ...(existingSettings.enabledPlugins || {}),
+            ...hostEnabledPlugins,
+          },
+        }
+      : {}),
   };
 
   fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+
+  // Write plugin registry with container-appropriate paths
+  const hostPluginsJson = path.join(
+    os.homedir(),
+    '.claude',
+    'plugins',
+    'installed_plugins.json',
+  );
+  if (fs.existsSync(hostPluginsJson)) {
+    const pluginsDir = path.join(groupSessionsDir, 'plugins');
+    fs.mkdirSync(pluginsDir, { recursive: true });
+
+    // Rewrite installPath from host HOME to container HOME (/home/node)
+    const homeDir = os.homedir();
+    const raw = fs.readFileSync(hostPluginsJson, 'utf-8');
+    const rewritten = raw.replaceAll(
+      homeDir + '/.claude/',
+      '/home/node/.claude/',
+    );
+    fs.writeFileSync(
+      path.join(pluginsDir, 'installed_plugins.json'),
+      rewritten,
+    );
+
+    // Also copy known_marketplaces.json with rewritten paths
+    const hostMarketplaces = path.join(
+      os.homedir(),
+      '.claude',
+      'plugins',
+      'known_marketplaces.json',
+    );
+    if (fs.existsSync(hostMarketplaces)) {
+      const rawMkt = fs.readFileSync(hostMarketplaces, 'utf-8');
+      const rewrittenMkt = rawMkt.replaceAll(
+        homeDir + '/.claude/',
+        '/home/node/.claude/',
+      );
+      fs.writeFileSync(
+        path.join(pluginsDir, 'known_marketplaces.json'),
+        rewrittenMkt,
+      );
+    }
+  }
 
   // Write ~/.claude.json to skip ALL first-run onboarding prompts
   // (theme picker, trust folder, API key confirmation, bypass permissions)
@@ -387,8 +443,9 @@ function buildVolumeMounts(
       ...(existingOnboarding.projects || {}),
       '/workspace/group': {
         ...(existingOnboarding.projects?.['/workspace/group'] || {}),
-        allowedTools: [],
+        allowedTools: ['Edit .claude/', 'Write .claude/'],
         hasTrustDialogAccepted: true,
+        hasClaudeMdExternalIncludesApproved: true,
       },
     },
   };
@@ -528,20 +585,33 @@ function buildVolumeMounts(
     });
   }
 
-  // Mount code-review plugin (read-only)
-  const codeReviewPlugin = path.join(
+  // Mount plugin cache (read-only) — makes all installed plugins available in containers.
+  // The plugin registry (installed_plugins.json) is written into the session dir by
+  // writeSessionFiles() with paths rewritten for the container's HOME.
+  const hostPluginsCache = path.join(
+    os.homedir(),
+    '.claude',
+    'plugins',
+    'cache',
+  );
+  if (fs.existsSync(hostPluginsCache)) {
+    mounts.push({
+      hostPath: hostPluginsCache,
+      containerPath: '/home/node/.claude/plugins/cache',
+      readonly: true,
+    });
+  }
+  // Also mount marketplaces dir (read-only) — needed for plugin discovery
+  const hostMarketplacesDir = path.join(
     os.homedir(),
     '.claude',
     'plugins',
     'marketplaces',
-    'claude-plugins-official',
-    'plugins',
-    'code-review',
   );
-  if (fs.existsSync(codeReviewPlugin)) {
+  if (fs.existsSync(hostMarketplacesDir)) {
     mounts.push({
-      hostPath: codeReviewPlugin,
-      containerPath: '/app/plugins/code-review',
+      hostPath: hostMarketplacesDir,
+      containerPath: '/home/node/.claude/plugins/marketplaces',
       readonly: true,
     });
   }
@@ -682,6 +752,10 @@ class ContainerPool {
     // Wait for Claude Code to be ready (shows `>` prompt)
     try {
       await waitForIdle(containerName, TMUX_READY_TIMEOUT);
+      // Extra stabilization delay for fresh containers — Claude Code shows the
+      // `❯` prompt before MCP servers and tools are fully loaded. Without this,
+      // the first paste can land before the TUI is truly ready to accept input.
+      await new Promise((r) => setTimeout(r, 5000));
       entry.confirmedIdle = true;
       logger.info(
         { group: group.name, containerName },
@@ -749,6 +823,18 @@ class ContainerPool {
       // Update per-query context for MCP server
       await writeQueryContext(entry.containerName, input);
 
+      // Headless path for scheduled tasks: run claude -p directly, no tmux
+      if (input.isScheduledTask) {
+        const b64 = Buffer.from(input.prompt).toString('base64');
+        await dockerExec(
+          entry.containerName,
+          `bash -c 'echo ${b64} | base64 -d | claude -p --dangerously-skip-permissions'`,
+          MAX_QUERY_DURATION,
+        );
+        // tmux session untouched — preserve confirmedIdle state
+        return { status: 'success', result: null };
+      }
+
       // Skip pre-query idle check if we already confirmed idle after last query
       if (entry.confirmedIdle) {
         logger.info(
@@ -763,7 +849,42 @@ class ContainerPool {
       // Paste the prompt into tmux
       await sendToTmux(entry.containerName, input.prompt);
 
-      // Wait before checking for idle — gives Claude Code time to start
+      // Verify Claude started processing within a reasonable window.
+      // If it didn't, re-paste and retry — the initial paste may have been
+      // lost (e.g. TUI not ready on a fresh container).
+      let started = false;
+      for (let check = 0; check < 5; check++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        try {
+          const pane = await dockerExec(
+            entry.containerName,
+            'tmux capture-pane -t claude -p',
+            10000,
+          );
+          if (
+            pane.includes('Esc to interrupt') ||
+            pane.includes('ctrl+c to interrupt') ||
+            pane.includes('to run in background')
+          ) {
+            started = true;
+            break;
+          }
+        } catch {
+          // Docker exec can fail transiently
+        }
+      }
+
+      if (!started) {
+        logger.warn(
+          { group: entry.group.name, containerName: entry.containerName },
+          'Claude not processing 15s after paste — retrying full paste+Enter',
+        );
+        // Re-paste the entire prompt (not just Enter — the original paste may
+        // have been swallowed by TUI initialization)
+        await sendToTmux(entry.containerName, input.prompt);
+      }
+
+      // Wait before checking for idle — gives Claude Code time to finish
       // processing. Without this, the idle detector can see the pre-processing
       // state and immediately declare the query complete.
       await new Promise((r) => setTimeout(r, IDLE_CHECK_DELAY));
@@ -1048,28 +1169,9 @@ export async function runHeadlessQuery(
   const entry = await containerPool.getOrSpawn(group, input.isMain);
   onContainerReady(entry.containerName);
 
-  try {
-    // Write context file for MCP server
-    await writeQueryContext(entry.containerName, input);
-
-    // Run headless claude -p inside the existing container
-    // Escape single quotes in prompt for bash
-    const escapedPrompt = input.prompt.replace(/'/g, "'\\''");
-    const b64 = Buffer.from(input.prompt).toString('base64');
-    await dockerExec(
-      entry.containerName,
-      `bash -c 'echo ${b64} | base64 -d | claude -p --dangerously-skip-permissions'`,
-      MAX_QUERY_DURATION,
-    );
-
-    return { status: 'success', result: null };
-  } catch (err) {
-    return {
-      status: 'error',
-      result: null,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
+  // Route through sendQuery so the container-level busy check and queue
+  // serializes headless tasks with interactive tmux queries.
+  return containerPool.sendQuery(entry, input);
 }
 
 /**

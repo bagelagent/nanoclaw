@@ -244,6 +244,14 @@ Container builds are the foundation of the deployment system. If they don't work
   4. Convert PDF to PNG: use `pdf-to-img` npm package (installed in /workspace/group): `const { pdf } = require('pdf-to-img'); for await (const image of await pdf('file.pdf', { scale: 2 })) { fs.writeFileSync('out.png', image); }`
   5. Send image via `send_image`, send balances via `send_message`
 
+*NYT Crossword*
+- NYT-S cookie stored at `/workspace/group/.nyt-cookie`
+- Use the check-crossword skill (API-based, not screenshot-based)
+- Supports Daily, Midi, Mini puzzles
+- API is read-only — does NOT affect streak or stars
+- User has an almost 3-year streak — be careful
+- Blue highlights in screenshots = cursor position, NOT errors
+
 *Food Delivery*
 - DoorDash skill available at `.claude/skills/doordash/SKILL.md`
 - Waiting for user to provide cookies (screenshot from browser DevTools)
@@ -519,6 +527,20 @@ When scheduling tasks for other groups, use the `target_group_jid` parameter wit
 - `schedule_task(prompt: "...", schedule_type: "cron", schedule_value: "0 9 * * 1", target_group_jid: "120363336345536173@g.us")`
 
 The task will run in that group's context with access to their files and memory.
+
+### Credential Awareness
+
+**IMPORTANT:** Each group's container only has access to credentials explicitly configured for it. Before scheduling a task that requires specific credentials (Google Sheets, APIs, etc.), verify the target group has access.
+
+Shared credentials are configured in `/workspace/project/shared-credentials.json`. Each bundle maps to a set of allowed group folders. For example, `google-sheets` credentials are only available to groups listed in that bundle's `groups` array.
+
+- Credentials mount at `/workspace/credentials/{bundle-name}/` (read-only)
+- The main group also has credentials at `/workspace/group/` (its own copies)
+- If a task needs credentials the target group doesn't have, either:
+  1. Schedule it with `group_folder: "main"` instead, or
+  2. Add the group to the bundle's `groups` array in `shared-credentials.json`
+
+**Do not promise credential-dependent functionality to a group that lacks access.** Check `shared-credentials.json` first.
 
 ## Email
 
