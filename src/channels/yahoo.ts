@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { ImapFlow } from 'imapflow';
+import { ImapFlow, MailboxLockObject } from 'imapflow';
 import nodemailer from 'nodemailer';
 import { simpleParser } from 'mailparser';
 
@@ -47,18 +47,19 @@ export class YahooEmailChannel implements Channel {
   private imapClient: ImapFlow | null = null;
   private smtpTransport: nodemailer.Transporter | null = null;
   private opts: ChannelOpts;
-  private pollIntervalMs: number;
-  private pollTimer: ReturnType<typeof setTimeout> | null = null;
   private threadMeta = new Map<string, ThreadMeta>();
   private consecutiveErrors = 0;
   private userEmail = '';
   private allowedSenders = new Set<string>();
   private connected = false;
   private config: YahooConfig | null = null;
+  private mailboxLock: MailboxLockObject | null = null;
+  private isProcessing = false;
+  private safetyPollTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnecting = false;
 
-  constructor(opts: ChannelOpts, pollIntervalMs = 60000) {
+  constructor(opts: ChannelOpts) {
     this.opts = opts;
-    this.pollIntervalMs = pollIntervalMs;
   }
 
   async connect(): Promise<void> {
@@ -78,7 +79,7 @@ export class YahooEmailChannel implements Channel {
       config.allowedSenders.map((s) => s.toLowerCase()),
     );
 
-    // Create IMAP client
+    // Create IMAP client with IDLE keepalive
     this.imapClient = new ImapFlow({
       host: IMAP_HOST,
       port: IMAP_PORT,
@@ -88,6 +89,8 @@ export class YahooEmailChannel implements Channel {
         pass: config.appPassword,
       },
       logger: false,
+      maxIdleTime: 5 * 60 * 1000, // Restart IDLE every 5 min to keep connection alive
+      missingIdleCommand: 'NOOP',
     });
 
     // Create SMTP transport
@@ -136,28 +139,16 @@ export class YahooEmailChannel implements Channel {
       false,
     );
 
-    // Start polling
-    const schedulePoll = () => {
-      const backoffMs =
-        this.consecutiveErrors > 0
-          ? Math.min(
-              this.pollIntervalMs * Math.pow(2, this.consecutiveErrors),
-              5 * 60 * 1000,
-            )
-          : this.pollIntervalMs;
-      this.pollTimer = setTimeout(() => {
-        this.pollForMessages()
-          .catch((err) => logger.error({ err }, 'Yahoo poll error'))
-          .finally(() => {
-            if (this.connected) schedulePoll();
-          });
-      }, backoffMs);
-    };
+    // Register IDLE event handlers
+    this.registerImapEvents();
 
-    // Initial poll (non-blocking to avoid holding up other channel connections)
-    this.pollForMessages()
-      .catch((err) => logger.error({ err }, 'Yahoo initial poll error'))
-      .finally(() => schedulePoll());
+    // Initial inbox check (non-blocking to avoid holding up other channel connections)
+    this.processInbox()
+      .then(() => this.enterIdleState())
+      .catch((err) => logger.error({ err }, 'Yahoo initial setup error'));
+
+    // Safety poll as fallback for missed IDLE notifications
+    this.startSafetyPoll();
   }
 
   async sendMessage(jid: string, text: string): Promise<void> {
@@ -309,11 +300,19 @@ export class YahooEmailChannel implements Channel {
   }
 
   async disconnect(): Promise<void> {
-    if (this.pollTimer) {
-      clearTimeout(this.pollTimer);
-      this.pollTimer = null;
+    if (this.safetyPollTimer) {
+      clearTimeout(this.safetyPollTimer);
+      this.safetyPollTimer = null;
     }
     this.connected = false;
+    if (this.mailboxLock) {
+      try {
+        this.mailboxLock.release();
+      } catch {
+        /* ignore */
+      }
+      this.mailboxLock = null;
+    }
     if (this.imapClient) {
       try {
         await this.imapClient.logout();
@@ -328,10 +327,106 @@ export class YahooEmailChannel implements Channel {
 
   // --- Private ---
 
-  private async pollForMessages(): Promise<void> {
+  private registerImapEvents(): void {
     if (!this.imapClient) return;
 
+    this.imapClient.on('exists', (data) => {
+      if (data.path === 'INBOX' && data.count > (data.prevCount ?? 0)) {
+        logger.info(
+          { count: data.count, prev: data.prevCount },
+          'Yahoo: new message(s) via IDLE',
+        );
+        this.processInbox().catch((err) =>
+          logger.error({ err }, 'Yahoo: error processing after IDLE exists'),
+        );
+      }
+    });
+
+    this.imapClient.on('close', () => {
+      logger.warn('Yahoo: IMAP connection closed');
+      if (this.connected && !this.reconnecting) {
+        this.handleDisconnect().catch((err) =>
+          logger.error({ err }, 'Yahoo: handleDisconnect error'),
+        );
+      }
+    });
+
+    this.imapClient.on('error', (err: Error) => {
+      logger.error({ err }, 'Yahoo: IMAP error event');
+    });
+  }
+
+  private async enterIdleState(): Promise<void> {
+    if (!this.imapClient) return;
+
+    // Release any existing lock
+    if (this.mailboxLock) {
+      try {
+        this.mailboxLock.release();
+      } catch {
+        /* ignore */
+      }
+      this.mailboxLock = null;
+    }
+
+    this.mailboxLock = await this.imapClient.getMailboxLock('INBOX');
+    logger.info('Yahoo: entered IDLE state on INBOX');
+  }
+
+  private startSafetyPoll(): void {
+    if (this.safetyPollTimer) clearTimeout(this.safetyPollTimer);
+
+    const SAFETY_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+    this.safetyPollTimer = setTimeout(() => {
+      if (!this.connected) return;
+
+      this.processInbox()
+        .catch((err) => logger.error({ err }, 'Yahoo: safety poll error'))
+        .finally(() => {
+          if (this.connected) this.startSafetyPoll();
+        });
+    }, SAFETY_INTERVAL);
+  }
+
+  private async handleDisconnect(): Promise<void> {
+    if (this.reconnecting) return;
+    this.reconnecting = true;
+
+    if (this.mailboxLock) {
+      try {
+        this.mailboxLock.release();
+      } catch {
+        /* ignore */
+      }
+      this.mailboxLock = null;
+    }
+
     try {
+      await this.reconnectImap();
+
+      if (this.imapClient && this.connected) {
+        this.registerImapEvents();
+        // Process any messages that arrived during disconnect, then re-enter IDLE
+        await this.processInbox();
+        await this.enterIdleState();
+      }
+    } finally {
+      this.reconnecting = false;
+    }
+  }
+
+  private async processInbox(): Promise<void> {
+    if (!this.imapClient || this.isProcessing) return;
+    this.isProcessing = true;
+
+    try {
+      // Release the IDLE lock so we can do mailbox operations
+      if (this.mailboxLock) {
+        this.mailboxLock.release();
+        this.mailboxLock = null;
+      }
+
       const lock = await this.imapClient.getMailboxLock('INBOX');
       try {
         // Get ALL messages in inbox. Every message gets moved to NanoClaw
@@ -373,22 +468,29 @@ export class YahooEmailChannel implements Channel {
     } catch (err) {
       this.consecutiveErrors++;
       logger.error(
-        {
-          err,
-          consecutiveErrors: this.consecutiveErrors,
-        },
-        'Yahoo poll failed',
+        { err, consecutiveErrors: this.consecutiveErrors },
+        'Yahoo processInbox failed',
       );
 
-      // Reconnect IMAP if connection was lost
       const errMsg = err instanceof Error ? err.message : String(err);
       if (
         errMsg.includes('not available') ||
         errMsg.includes('closed') ||
         errMsg.includes('ECONNRESET')
       ) {
-        await this.reconnectImap();
+        this.isProcessing = false;
+        await this.handleDisconnect();
+        return;
       }
+    } finally {
+      this.isProcessing = false;
+    }
+
+    // Re-enter IDLE state after processing
+    try {
+      await this.enterIdleState();
+    } catch (err) {
+      logger.error({ err }, 'Yahoo: failed to re-enter IDLE after processing');
     }
   }
 
@@ -557,6 +659,8 @@ export class YahooEmailChannel implements Channel {
           pass: this.config.appPassword,
         },
         logger: false,
+        maxIdleTime: 5 * 60 * 1000,
+        missingIdleCommand: 'NOOP',
       });
       await this.imapClient.connect();
       this.consecutiveErrors = 0;
